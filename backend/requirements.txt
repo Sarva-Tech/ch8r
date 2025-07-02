@@ -60,6 +60,7 @@ pyasn1_modules==0.4.2
 pydantic==2.11.7
 pydantic_core==2.33.2
 pyparsing==3.2.3
+python-dotenv==1.1.1
 pytz==2025.2
 PyYAML==6.0.2
 qdrant-client==1.14.3
