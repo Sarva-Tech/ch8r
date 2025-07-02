@@ -1,0 +1,250 @@
+<button id="ch8r-bubble-btn" aria-label="Open chat" title="Chat with us" class="ch8r-bubble">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"></path>
+  </svg>
+</button>
+
+<div id="ch8r-widget" class="ch8r-closed ch8r-hidden">
+  <div class="ch8r-header">
+    <div class="ch8r-agent-info">
+      <span class="ch8r-agent-name">Ch8r Agent</span>
+      <span class="ch8r-online-indicator" title="Online"></span>
+    </div>
+    <button id="ch8r-toggle-btn" class="ch8r-close-btn" aria-label="Minimize chat">×</button>
+  </div>
+  <div id="ch8r-messages" class="ch8r-messages"></div>
+  <form id="ch8r-form" class="ch8r-input-area" autocomplete="off">
+    <input id="ch8r-input" type="text" placeholder="Type a message..." autocomplete="off" />
+    <button type="submit" class="ch8r-send-btn" aria-label="Send message">➤</button>
+  </form>
+</div>
+
+<style>
+  .ch8r-bubble {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #3b82f6;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(59, 130, 246, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: background-color 0.2s ease;
+  }
+  .ch8r-bubble:hover {
+    background-color: #2563eb;
+  }
+
+  .ch8r-hidden {
+    display: none !important;
+  }
+
+  #ch8r-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    max-height: 400px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    overflow: hidden;
+    transition: transform 0.3s ease;
+    z-index: 9999;
+  }
+  .ch8r-closed {
+    transform: translateY(90%);
+  }
+
+  .ch8r-header {
+    background-color: #3b82f6;
+    color: white;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 15px;
+    user-select: none;
+  }
+  .ch8r-agent-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ch8r-agent-name {
+    font-weight: 600;
+  }
+  .ch8r-online-indicator {
+    width: 10px;
+    height: 10px;
+    background: #22c55e;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #22c55e;
+  }
+  .ch8r-close-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    font-weight: 700;
+    transition: color 0.2s ease;
+  }
+  .ch8r-close-btn:hover {
+    color: #bfdbfe;
+  }
+
+  #ch8r-messages {
+    flex-grow: 1;
+    padding: 12px 16px;
+    overflow-y: auto;
+    background: #f9fafb;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+    color: #111827;
+    min-height: 250px
+  }
+
+  .ch8r-message {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+  }
+  .ch8r-message.user {
+    background-color: #3b82f6;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 6px;
+  }
+  .ch8r-message.agent {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    align-self: flex-start;
+    border-bottom-left-radius: 6px;
+  }
+
+  .ch8r-input-area {
+    display: flex;
+    padding: 10px 16px;
+    border-top: 1px solid #e5e7eb;
+    gap: 10px;
+    background: white;
+  }
+  #ch8r-input {
+    flex-grow: 1;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    border: 1.5px solid #d1d5db;
+    border-radius: 9999px;
+    background-color: white;
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.05);
+    outline-offset: 2px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  #ch8r-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.3);
+    outline: none;
+  }
+
+  .ch8r-send-btn {
+    all: unset;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    background-color: #2563eb;
+    color: white;
+    font-weight: 700;
+    font-size: 18px;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+            0 1px 2px rgb(0 0 0 / 0.1),
+            inset 0 -1px 0 rgb(255 255 255 / 0.15);
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    user-select: none;
+  }
+  .ch8r-send-btn:hover {
+    background-color: #1e40af;
+    box-shadow:
+            0 2px 6px rgb(0 0 0 / 0.15),
+            inset 0 -1px 0 rgb(255 255 255 / 0.2);
+  }
+
+  .ch8r-send-btn:active {
+    background-color: #1e3a8a;
+    box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.2);
+  }
+</style>
+
+<script>
+  (function () {
+    const widget = document.getElementById('ch8r-widget');
+    const toggleBtn = document.getElementById('ch8r-toggle-btn');
+    const messagesContainer = document.getElementById('ch8r-messages');
+    const form = document.getElementById('ch8r-form');
+    const input = document.getElementById('ch8r-input');
+    const bubbleBtn = document.getElementById('ch8r-bubble-btn');
+
+    function openWidget() {
+      bubbleBtn.classList.add('ch8r-hidden');
+      widget.classList.remove('ch8r-closed', 'ch8r-hidden');
+      scrollToBottom();
+      input.focus();
+    }
+
+    function closeWidget() {
+      widget.classList.add('ch8r-closed', 'ch8r-hidden');
+      bubbleBtn.classList.remove('ch8r-hidden');
+    }
+
+    toggleBtn.addEventListener('click', closeWidget);
+    bubbleBtn.addEventListener('click', openWidget);
+
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function addMessage(text, sender) {
+      const msgEl = document.createElement('div');
+      msgEl.classList.add('ch8r-message', sender);
+      msgEl.textContent = text;
+      messagesContainer.appendChild(msgEl);
+      scrollToBottom();
+    }
+
+    addMessage('Hello! How can I help you?', 'agent');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const msg = input.value.trim();
+      if (!msg) return;
+      addMessage(msg, 'user');
+      input.value = '';
+      setTimeout(() => {
+        addMessage('Thanks for your message!', 'agent');
+      }, 1000);
+    });
+  })();
+</script>
