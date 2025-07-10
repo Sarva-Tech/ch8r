@@ -3,8 +3,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
-from core.views import UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView, MeView, APITokenViewSet, \
-    ApplicationPermissionViewSet
+from core.views import UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView, MeView, WidgetView
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
 from core.views.chatroom import ChatRoomDetailView
 from core.views.message import SendMessageView
@@ -12,9 +11,6 @@ from core.views.ingestion import IngestApplicationKBView
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
-router.register(r'tokens', APITokenViewSet, basename='token')
-router.register(r'permissions', ApplicationPermissionViewSet, basename='permission')
-
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')
 nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='application-knowledge-bases')
 
@@ -41,6 +37,8 @@ urlpatterns = [
     path('chatrooms/<uuid:chatroom_uuid>/', ChatRoomDetailView.as_view(), name='chatroom-detail'),
 
     path('applications/<uuid:application_uuid>/ingests/', IngestApplicationKBView.as_view(), name='application-ingest'),
+
+    path('applications/<uuid:application_uuid>/widget/', WidgetView.as_view(), name='enable-widget'),
 
     path('', include(router.urls)),
     path('', include(nested_router.urls)),

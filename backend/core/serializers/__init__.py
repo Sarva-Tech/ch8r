@@ -3,5 +3,3 @@ from .application import ApplicationCreateSerializer, ApplicationViewSerializer
 from .knowledge_base import KnowledgeBaseCreateSerializer, KnowledgeBaseViewSerializer
 from .chatroom import ChatRoomViewSerializer
 from .message import CreateMessageSerializer, ViewMessageSerializer
-from .api_token import APITokenSerializer
-from .application_permission import ApplicationPermissionSerializer

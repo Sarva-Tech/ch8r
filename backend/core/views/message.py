@@ -1,5 +1,6 @@
 import os
 
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -17,6 +18,7 @@ from core.serializers.message import CreateMessageSerializer, ViewMessageSeriali
 from langchain.chat_models import init_chat_model
 
 from core.views.ingestion import get_context_chunks
+from core.widget_auth import WidgetTokenAuthentication
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
@@ -25,10 +27,17 @@ def generate_chatroom_name(a, b):
     return f"chat:{':'.join(sorted([a, b]))}"
 
 class SendMessageView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
 
     def post(self, request, application_uuid):
-        app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        # Refactor
+        if request.user and request.user.is_authenticated:
+            app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        else:
+            app = getattr(request, 'application', None)
+            if not app or str(app.uuid) != str(application_uuid):
+                return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
+
         serializer = CreateMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
