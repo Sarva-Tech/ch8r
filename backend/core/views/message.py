@@ -18,7 +18,7 @@ from core.serializers.message import CreateMessageSerializer, ViewMessageSeriali
 from langchain.chat_models import init_chat_model
 
 from core.views.ingestion import get_context_chunks
-from core.widget_auth import WidgetTokenAuthentication
+from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
@@ -28,7 +28,7 @@ def generate_chatroom_name(a, b):
 
 class SendMessageView(APIView):
     authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
-
+    permission_classes = [IsAuthenticatedOrWidget]
     def post(self, request, application_uuid):
         # Refactor
         if request.user and request.user.is_authenticated:
