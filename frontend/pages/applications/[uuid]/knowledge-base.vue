@@ -1,6 +1,9 @@
 <template>
   <div class="flex flex-col h-screen">
     <div class="overflow-y-auto pt-[72px] pb-[120px] p-4">
+      <Button variant="outline" @click="ingestApplication">
+        Ingest
+      </Button>
       <Sheet>
         <SheetTrigger as-child>
           <Button variant="outline">
@@ -182,4 +185,23 @@ const handleSubmit = async () => {
   }
 }
 
+const ingestApplication = async () => {
+  try {
+    const token = userStore.getToken
+    const data = await $fetch(
+      `http://localhost:8000/api/applications/${selectedApp.value?.uuid}/ingests/`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Token ${token.value}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    console.log('Ingestion successful:', data)
+  } catch (error) {
+    console.error('Ingestion failed:', error)
+  }
+}
 </script>
