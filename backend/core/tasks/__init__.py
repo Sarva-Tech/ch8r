@@ -1,0 +1,1 @@
+from core.tasks.message import generate_bot_response

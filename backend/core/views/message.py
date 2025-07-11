@@ -3,7 +3,7 @@ import os
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, permissions
+from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.conf import settings
@@ -14,10 +14,7 @@ from core.models.chatroom_participant import ChatroomParticipant
 from core.models.message import Message
 
 from core.serializers.message import CreateMessageSerializer, ViewMessageSerializer
-
-from langchain.chat_models import init_chat_model
-
-from core.views.ingestion import get_context_chunks
+from core.tasks import generate_bot_response
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
@@ -85,19 +82,9 @@ class SendMessageView(APIView):
             metadata=metadata
         )
 
-        context = get_context_chunks(message.message, app.uuid, top_k=5)
-        prompt = f"Based on the context:\n{context} provide answer to the user query. If you do not have a context simply avoid answering the question.\n\nUser: {message.message}"
-
-        model = init_chat_model("gemini-2.0-flash", model_provider="google_genai", api_key=GEMINI_API_KEY)
-        llm_response = model.invoke(prompt)
-
-        bot_message = Message.objects.create(
-            chatroom=chatroom,
-            sender_identifier=AGENT_IDENTIFIER,
-            message=llm_response.content,
-        )
-
-        response_data = ViewMessageSerializer(bot_message).data
-        response_data['message_identifier'] = message.uuid
+        generate_bot_response.delay(message.id, app.uuid)
+        response_data = ViewMessageSerializer(message).data
+        response_data['message_status'] = 'message_sent'
+        response_data['llm_processing'] = True
         response_data['chatroom_identifier'] = chatroom.uuid
-        return Response(response_data, status=status.HTTP_201_CREATED)
+        return Response(ViewMessageSerializer(message).data, status=status.HTTP_200_OK)
