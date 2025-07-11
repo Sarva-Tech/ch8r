@@ -250,6 +250,45 @@
     const input = document.getElementById('ch8r-input');
     const bubbleBtn = document.getElementById('ch8r-bubble-btn');
 
+    let socket = null;
+
+    function connectWebSocket(chatroom_uuid) {
+      if (socket) {
+        socket.close();
+      }
+
+      const wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
+      const wsUrl = `${wsProtocol}localhost:8000/ws/chat/${chatroom_uuid}/`;
+
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        console.log("WebSocket connected");
+        addMessage("Connected to chat", "System");
+      };
+
+      socket.onmessage = (event) => {
+        console.log('message received..', event.data)
+        try {
+          const data = JSON.parse(event.data);
+          if (data.message) {
+            addMessage(data.message, "agent");
+          }
+        } catch (e) {
+          console.error("Invalid WS message", e);
+        }
+      };
+
+      socket.onclose = () => {
+        addMessage("System", "WebSocket connection closed");
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        addMessage("System", "WebSocket error occurred");
+      };
+    }
+
     function getOrCreateSenderIdentifier() {
       const key = 'ch8r_sender_identifier';
       let id = localStorage.getItem(key);
@@ -327,6 +366,17 @@
         input.focus();
         window.parent.postMessage({ type: 'ch8r-resize', height: 480 }, '*');
       });
+
+      const config = window.CH8R_CONFIG || {};
+      const { sender_identifier } = config;
+      const chatroomKey = `ch8r_chatroom_${sender_identifier}`;
+
+      let chatroom_identifier = localStorage.getItem(chatroomKey);
+
+      if (chatroom_identifier) {
+        console.log('connected..')
+        connectWebSocket(chatroom_identifier);
+      }
     }
 
     function closeWidget() {
