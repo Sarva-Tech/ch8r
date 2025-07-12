@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { useFetch } from '#app'
 import { useUserStore} from '@/stores/user'
 
 interface Message {
@@ -17,8 +16,6 @@ interface ChatRoomMessagesResponse {
   application: Application
   messages: Message[]
 }
-
-// const userStore = useUserStore()
 
 export const useChatroomMessagesStore = defineStore('chatroom', {
   state: () => ({
@@ -43,7 +40,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       }
 
       try {
-        const { data, error } = await useFetch<ChatRoomMessagesResponse>(
+        const data = await $fetch<ChatRoomMessagesResponse>(
           `http://localhost:8000/api/applications/${applicationUuid}/chatrooms/${chatroomUuid}/messages/`,
           {
             method: 'GET',
@@ -53,10 +50,11 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           }
         )
 
-        if (error.value) throw new Error(error.value.message)
-
-        this.selectedChatroom = data.value!
-        this.messages = data.value!.messages
+        this.selectedChatroom = {
+          uuid: data.uuid,
+          name: data.name
+        }
+        this.messages = data.messages
       } catch (err: any) {
         this.error = err.message || 'Failed to load chatroom'
       } finally {
@@ -64,8 +62,11 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       }
     },
 
-    // TODO: we need to update sender_identifier here
-    async sendMessage(applicationUuid: string, messageText: string, sender = 'reg_1') {
+    async sendMessage(applicationUuid: string, messageText: string) {
+      const userStore = useUserStore()
+      const user = userStore.getUser
+      const sender = `reg_${user.id}`
+
       if (!this.selectedChatroom) {
         throw new Error('No chatroom selected')
       }
@@ -79,17 +80,14 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         created_at: `${Date.now()}`
       }
 
-      this.messages.push(dummyMessage)
+      this.addMessage(dummyMessage)
 
-      const userStore = useUserStore()
       const token = userStore.getToken
-      console.log(token)
       if (!token.value) {
         this.error = 'No auth token'
         this.loading = false
         return
       }
-
 
       try {
         const body = {
@@ -101,7 +99,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           }
         }
 
-        const { data, error } = await useFetch<Message>(
+        await $fetch<Message>(
           `http://localhost:8000/api/applications/${applicationUuid}/chatrooms/send-message/`,
           {
             method: 'POST',
@@ -111,11 +109,6 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
             },
           }
         )
-
-        if (error.value) throw new Error(error.value.message)
-
-        // Optionally append it to the list immediately
-        this.messages.push(data.value!)
       } catch (err: any) {
         console.error('Failed to send message:', err)
         throw err

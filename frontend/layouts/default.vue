@@ -17,6 +17,13 @@ import {
 
 const appStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
+const userStore = useUserStore()
+
+const authUser = useCookie<User>('auth_user')
+
+if (authUser.value?.id) {
+  userStore.setUser(authUser.value)
+}
 
 const selectedApp = computed(() => appStore.selectedApplication)
 

@@ -22,15 +22,18 @@ import {
   type SidebarProps,
   useSidebar,
 } from '@/components/ui/sidebar'
-import type { Application } from '@/stores/applications'
+import { useRouter } from '#vue-router'
 const { isMobile } = useSidebar()
 
 const applicationsStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
-const chatroomMessagesStore = useChatroomMessagesStore()
+
+const { selectAndNavigate } = useAppNavigation()
 
 const applications = computed(() => applicationsStore.applications)
-const selectedApplication = computed(() => applicationsStore.selectedApplication)
+const selectedApplication = computed(
+  () => applicationsStore.selectedApplication,
+)
 const chatrooms = computed(() => chatroomStore.chatrooms)
 
 const props = withDefaults(defineProps<SidebarProps>(), {
@@ -57,25 +60,10 @@ const data = {
       isActive: false,
     },
   ],
-  mails: [
-    {
-      name: 'William Smith',
-      email: 'williamsmith@example.com',
-      subject: 'Meeting Tomorrow',
-      date: '09:34 AM',
-      teaser:
-        'Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.',
-    },
-  ],
 }
 
 const activeItem = ref(data.navMain[0])
-const mails = ref(data.mails)
 const { setOpen } = useSidebar()
-
-function selectApplication(app: Application) {
-  applicationsStore.selectApplication(app)
-}
 </script>
 
 <template>
@@ -118,12 +106,6 @@ function selectApplication(app: Application) {
                   @click="
                     () => {
                       activeItem = item
-
-                      const mail = data.mails.sort(() => Math.random() - 0.5)
-                      mails = mail.slice(
-                        0,
-                        Math.max(5, Math.floor(Math.random() * 10) + 1),
-                      )
                       setOpen(true)
                     }
                   "
@@ -153,7 +135,9 @@ function selectApplication(app: Application) {
                 <AvatarFallback class="rounded-lg"> CN </AvatarFallback>
               </Avatar>
               <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-semibold">{{ selectedApplication?.name }}</span>
+                <span class="truncate font-semibold">{{
+                  selectedApplication?.name
+                }}</span>
               </div>
               <ChevronsUpDown class="ml-auto size-4" />
             </SidebarMenuButton>
@@ -168,7 +152,7 @@ function selectApplication(app: Application) {
               <DropdownMenuItem
                 v-for="application in applications"
                 :key="application.uuid"
-                @click="selectApplication(application)"
+                @click="selectAndNavigate(application)"
               >
                 <Sparkles />
                 {{ application.name }}
@@ -183,9 +167,7 @@ function selectApplication(app: Application) {
               :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
               class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
             >
-              <div class="flex w-full items-center">
-                Knowledge Base
-              </div>
+              <div class="flex w-full items-center">Knowledge Base</div>
             </NuxtLink>
             <a
               href="#"
@@ -195,7 +177,6 @@ function selectApplication(app: Application) {
                 <span>API & Widgets</span>
               </div>
             </a>
-
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarHeader>
@@ -203,23 +184,24 @@ function selectApplication(app: Application) {
         <SidebarGroup class="px-0">
           <SidebarGroupContent>
             <SidebarGroupLabel>Chat</SidebarGroupLabel>
-            <a
+            <NuxtLink
               v-for="chatroom in chatrooms"
               :key="chatroom.uuid"
-              href="#"
+              :to="`/applications/${selectedApplication.uuid}/messages/${chatroom.uuid}`"
               class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0"
-              @click="chatroomMessagesStore.selectChatroom(selectedApplication?.uuid!, chatroom.uuid)"
             >
               <div class="flex w-full items-center gap-2">
                 <span>{{ chatroom.name }}</span>
-                <span class="ml-auto text-xs">{{ chatroom.last_message?.created_at }}</span>
+                <span class="ml-auto text-xs">{{
+                  chatroom.last_message?.created_at
+                }}</span>
               </div>
               <span
                 class="line-clamp-2 w-[260px] whitespace-break-spaces text-xs"
               >
                 {{ chatroom.last_message?.message }}
               </span>
-            </a>
+            </NuxtLink>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

@@ -22,6 +22,7 @@ const email = ref('')
 const password = ref('')
 const baseUrl = 'http://localhost:8000/api'
 const token = useCookie('auth_token')
+const authUser = useCookie<User>('auth_user')
 
 const handleLogin = async () => {
   try {
@@ -46,6 +47,7 @@ const handleLogin = async () => {
         },
       })
 
+      authUser.value = userResponse
       userStore.setUser(userResponse)
       navigateTo('/')
     } else {

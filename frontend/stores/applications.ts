@@ -17,7 +17,7 @@ export type Application = {
   owner_id: number
   owner: User
   knowledge_base: KnowledgeBaseItem[]
-}
+} | undefined
 
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
