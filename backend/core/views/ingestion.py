@@ -1,3 +1,4 @@
+from qdrant_client.http.exceptions import UnexpectedResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -25,15 +26,20 @@ def chunk_text(text: str, chunk_size=300, overlap=50) -> list[str]:
 def get_context_chunks(query_text, app_uuid, top_k=5):
     query_vector = model.encode(query_text).tolist()
 
-    search_result = qdrant.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        limit=top_k,
-        query_filter=Filter(
-            must=[FieldCondition(key="app_id", match=MatchValue(value=str(app_uuid)))]
-        ),
-        with_payload=True
-    )
+    try:
+        search_result = qdrant.query_points(
+            collection_name=COLLECTION_NAME,
+            query=query_vector,
+            limit=top_k,
+            query_filter=Filter(
+                must=[FieldCondition(key="app_id", match=MatchValue(value=str(app_uuid)))]
+            ),
+            with_payload=True
+        )
+    except UnexpectedResponse as e:
+        print("Qdrant query failed:", str(e))
+        return "No context available."
+
 
     chunk_uuids = [point.id for point in search_result.points if point.score >= 0.5]
 
