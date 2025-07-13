@@ -12,11 +12,16 @@ export default defineNuxtConfig({
     '@nuxt/image',
     'shadcn-nuxt',
     '@pinia/nuxt',
+    'dayjs-nuxt',
   ],
 
   shadcn: {
     prefix: '',
     componentDir: './components/ui',
+  },
+
+  dayjs: {
+    plugins: ['relativeTime'],
   },
 
   vite: {

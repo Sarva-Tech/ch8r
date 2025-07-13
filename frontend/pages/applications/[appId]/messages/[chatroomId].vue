@@ -58,6 +58,12 @@ watch(chatrooms, (newVal) => {
   }
 }, { immediate: true });
 
+watch(selectedChatroom, (newVal) => {
+  if (newVal) {
+    connectWebSocket()
+  }
+})
+
 
 onMounted(() => {
   if (!apps.value || apps.value.length === 0) {

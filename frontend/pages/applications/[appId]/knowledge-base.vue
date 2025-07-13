@@ -106,10 +106,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+const route = useRoute()
+const { appId } = route.params
+
+
 const userStore = useUserStore()
 const appStore = useApplicationsStore()
 
 const selectedApp = computed(() => appStore.selectedApplication)
+const apps: Ref<Application[]> = computed(() => appStore.applications)
 
 const appDetails = ref({})
 const knowledgeBase = ref([])
@@ -119,7 +124,22 @@ const textInput = ref('')
 const urlInput = ref('')
 const fileInput = ref<File | null>(null)
 
+watch(apps, async (newVal) => {
+  if (newVal && !selectedApp.value) {
+    const app: Application = apps.value.find((app) => app?.uuid === appId)
+
+    if (app) {
+      appStore.selectApplication(app)
+      await loadKB()
+    }
+  }
+}, { immediate: true });
+
+
 onMounted(async () => {
+  if (!apps.value || apps.value.length === 0) {
+    await appStore.fetchApplications()
+  }
   await loadKB()
 })
 
@@ -179,9 +199,9 @@ const handleSubmit = async () => {
     }
 
     const result = await res.json()
-    console.log('✅ Created KB:', result)
+    console.log('Created KB:', result)
   } catch (err) {
-    console.error('❌ Upload failed:', err)
+    console.error('Upload failed:', err)
   }
 }
 
