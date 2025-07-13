@@ -257,8 +257,8 @@
         socket.close();
       }
 
-      const wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
-      const wsUrl = `${wsProtocol}localhost:8000/ws/chat/${chatroom_uuid}/`;
+        const wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
+        const wsUrl = `${wsProtocol}localhost:8000/ws/chat/${chatroom_uuid}/`;
 
       socket = new WebSocket(wsUrl);
 
