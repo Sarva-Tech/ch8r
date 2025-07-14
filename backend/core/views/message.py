@@ -7,6 +7,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.conf import settings
+from rest_framework_api_key.permissions import HasAPIKey
 
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
@@ -25,7 +26,7 @@ def generate_chatroom_name(a, b):
 
 class SendMessageView(APIView):
     authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrWidget]
+    permission_classes = [IsAuthenticatedOrWidget | HasAPIKey]
     def post(self, request, application_uuid):
         # Refactor
         if request.user and request.user.is_authenticated:

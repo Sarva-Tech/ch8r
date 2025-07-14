@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'channels',
     'core',
     'corsheaders',
+    'rest_framework_api_key',
 ]
 
 MIDDLEWARE = [
@@ -93,6 +94,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'rest_framework_api_key.permissions.HasAPIKey',
     ],
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',

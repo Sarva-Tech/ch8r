@@ -8,11 +8,11 @@ from rest_framework_api_key.permissions import HasAPIKey
 from core.serializers import UserRegisterSerializer, UserViewSerializer
 
 
-class UserRegisterView(APIView):
+class APIKeyGenerateView(APIView):
     permission_classes = []
 
     def post(self, request):
-        serializer = UserRegisterSerializer(data=request.data)
+        serializer = APIKeyGenerateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
