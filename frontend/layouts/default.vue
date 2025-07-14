@@ -14,6 +14,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import Toaster from '@/components/ui/sonner/Sonner.vue'
+import 'vue-sonner/style.css'
+
+
 
 const appStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
@@ -76,5 +80,8 @@ watch(
         <NuxtPage />
       </div>
     </SidebarInset>
+    <ClientOnly>
+      <Toaster />
+    </ClientOnly>
   </SidebarProvider>
 </template>

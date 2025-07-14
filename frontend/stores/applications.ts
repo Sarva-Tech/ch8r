@@ -29,6 +29,7 @@ export const useApplicationsStore = defineStore('applications', {
 
   actions: {
     async fetchApplications() {
+      const config = useRuntimeConfig()
       this.loading = true
       this.error = null
 
@@ -42,7 +43,7 @@ export const useApplicationsStore = defineStore('applications', {
 
       try {
         this.applications = await $fetch<Application[]>(
-          'http://localhost:8000/api/applications/',
+          `${config.public.apiBaseUrl}/applications/`,
           {
             method: 'GET',
             headers: {
@@ -58,6 +59,47 @@ export const useApplicationsStore = defineStore('applications', {
       } catch (err) {
         console.error('Fetch error:', err)
         this.error = 'Failed to load applications'
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async createApplication(name: string) {
+      const config = useRuntimeConfig()
+      const userStore = useUserStore()
+      const token = userStore.getToken
+
+      if (!token.value) {
+        this.error = 'No auth token found'
+        return
+      }
+
+      this.loading = true
+      this.error = null
+
+      try {
+        const newApp = await $fetch<Application>(
+          `${config.public.apiBaseUrl}/applications/`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Token ${token.value}`,
+              'Content-Type': 'application/json',
+            },
+            body: {
+              name,
+            },
+          }
+        )
+
+        this.applications.push(newApp)
+
+        if (!this.selectedApplication) {
+          this.selectedApplication = newApp
+        }
+      } catch (err) {
+        console.error('Create error:', err)
+        this.error = 'Failed to create application'
       } finally {
         this.loading = false
       }
