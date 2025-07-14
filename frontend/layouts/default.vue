@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import AppSidebar from '@/components/AppSidebar.vue'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
 import { Separator } from '@/components/ui/separator'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import ThemePopover from '~/components/ThemePopover.vue'
 
 const appStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
@@ -53,24 +46,16 @@ watch(
     <AppSidebar />
     <SidebarInset>
       <header
-        class="bg-background fixed w-full top-0 flex shrink-0 items-center gap-2 border-b p-4"
+        class="
+          bg-background fixed w-full top-0 flex shrink-0 items-center gap-2 border-b p-4
+        "
       >
         <SidebarTrigger class="-ml-1" />
         <Separator
           orientation="vertical"
           class="mr-2 data-[orientation=vertical]:h-4"
         />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem class="hidden md:block">
-              <BreadcrumbLink href="#"> All Inboxes </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator class="hidden md:block" />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Inbox</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <ThemePopover />
       </header>
       <div class="flex flex-col h-screen">
         <NuxtPage />

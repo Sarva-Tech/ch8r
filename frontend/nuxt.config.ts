@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: true },
+  ssr: false,
   css: ['~/assets/css/main.css'],
 
   modules: [
@@ -13,6 +14,7 @@ export default defineNuxtConfig({
     'shadcn-nuxt',
     '@pinia/nuxt',
     'dayjs-nuxt',
+    '@nuxtjs/color-mode'
   ],
 
   shadcn: {
@@ -22,6 +24,10 @@ export default defineNuxtConfig({
 
   dayjs: {
     plugins: ['relativeTime'],
+  },
+
+  colorMode: {
+    classSuffix: ''
   },
 
   vite: {
