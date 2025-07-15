@@ -38,17 +38,22 @@ const loading = computed(() => applicationsStore.loading)
 
 const appName = ref('');
 const handleCreate = async () => {
-  if (!appName.value.trim()) {
-    return
-  }
-  try {    
-    await applicationsStore.createApplication(appName.value)
-    toast.success('Application created successfully!')
-    appName.value = ''
+  if (!appName.value.trim()) return
+
+  try {
+    const newApp = await applicationsStore.createApplication(appName.value);
+    if (newApp) {
+      toast.success('Application created successfully!')
+      appName.value = ''
+      await selectAndNavigate(newApp);
+    } else {
+      toast.error('Failed to create application')
+    }
   } catch (error) {
     toast.error('Failed to create application')
   }
 }
+
 </script>
 
 <template>

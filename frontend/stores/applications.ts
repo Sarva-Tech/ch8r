@@ -64,46 +64,40 @@ export const useApplicationsStore = defineStore('applications', {
       }
     },
 
-    async createApplication(name: string) {
+    async createApplication(name: string): Promise<Application | null> {
       const config = useRuntimeConfig()
       const userStore = useUserStore()
       const token = userStore.getToken
 
       if (!token.value) {
         this.error = 'No auth token found'
-        return
+        return null
       }
 
       this.loading = true
       this.error = null
 
       try {
-        const newApp = await $fetch<Application>(
-          `${config.public.apiBaseUrl}/applications/`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Token ${token.value}`,
-              'Content-Type': 'application/json',
-            },
-            body: {
-              name,
-            },
-          }
-        )
+        const newApp = await $fetch<Application>(`${config.public.apiBaseUrl}/applications/`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${token.value}`,
+            'Content-Type': 'application/json',
+          },
+          body: { name },
+        })
 
-        this.applications.push(newApp)
-
-        if (!this.selectedApplication) {
-          this.selectedApplication = newApp
-        }
+        this.applications.push(newApp);
+        return newApp
       } catch (err) {
         console.error('Create error:', err)
         this.error = 'Failed to create application'
+        return null
       } finally {
         this.loading = false
       }
     },
+
 
     selectApplication(app: Application) {
       this.selectedApplication = app
