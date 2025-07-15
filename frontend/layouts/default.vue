@@ -6,6 +6,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import Toaster from '@/components/ui/sonner/Sonner.vue'
+import 'vue-sonner/style.css'
+
+
 import ThemePopover from '~/components/ThemePopover.vue'
 
 const appStore = useApplicationsStore()
@@ -61,5 +65,8 @@ watch(
         <NuxtPage />
       </div>
     </SidebarInset>
+    <ClientOnly>
+      <Toaster />
+    </ClientOnly>
   </SidebarProvider>
 </template>
