@@ -59,14 +59,13 @@ watch(chatrooms, (newVal) => {
 }, { immediate: true });
 
 watch(selectedChatroom, (newVal) => {
-  if (newVal) {
+  if (newVal && newVal.uuid !== 'new_chat') {
     connectWebSocket()
   }
 })
 
 
 onMounted(() => {
-  console.log('hello')
   if (!apps.value || apps.value.length === 0) {
     appStore.fetchApplications()
   }

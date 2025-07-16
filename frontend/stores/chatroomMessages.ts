@@ -73,6 +73,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
 
     async sendMessage(applicationUuid: string, messageText: string) {
       const userStore = useUserStore()
+      const chatroomStore = useChatroomStore()
+
       const router = useRouter()
 
       const user = userStore.getUser
@@ -122,11 +124,10 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         )
 
         if (this.selectedChatroom.uuid === 'new_chat') {
-          console.log(response.chatroom_identifier)
-          console.log(`/applications/${applicationUuid}/messages/${response.chatroom_identifier}`)
           await router.push(`/applications/${applicationUuid}/messages/${response.chatroom_identifier}`)
+          await chatroomStore.fetchChatrooms(applicationUuid)
+          // await this.selectChatroom(applicationUuid, response.chatroom_identifier)
         }
-
       } catch (err: any) {
         console.error('Failed to send message:', err)
         throw err
