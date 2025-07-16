@@ -106,15 +106,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
-const route = useRoute()
-const { appId } = route.params
-
-
 const userStore = useUserStore()
 const appStore = useApplicationsStore()
 
 const selectedApp = computed(() => appStore.selectedApplication)
-const apps: Ref<Application[]> = computed(() => appStore.applications)
 
 const appDetails = ref({})
 const knowledgeBase = ref([])
@@ -124,22 +119,7 @@ const textInput = ref('')
 const urlInput = ref('')
 const fileInput = ref<File | null>(null)
 
-watch(apps, async (newVal) => {
-  if (newVal && !selectedApp.value) {
-    const app: Application = apps.value.find((app) => app?.uuid === appId)
-
-    if (app) {
-      appStore.selectApplication(app)
-      await loadKB()
-    }
-  }
-}, { immediate: true });
-
-
 onMounted(async () => {
-  if (!apps.value || apps.value.length === 0) {
-    await appStore.fetchApplications()
-  }
   await loadKB()
 })
 
@@ -147,7 +127,6 @@ const onFileChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   fileInput.value = target.files?.[0] ?? null
 }
-
 
 async function loadKB() {
   try {
@@ -165,8 +144,6 @@ async function loadKB() {
     knowledgeBase.value = appDetails.value.application?.knowledge_base
   } catch (err) {
     console.error('Fetch error:', err)
-  } finally {
-
   }
 }
 

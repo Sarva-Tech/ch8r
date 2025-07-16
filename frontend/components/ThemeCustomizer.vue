@@ -30,7 +30,7 @@ const isDark = computed(() => colorMode.value === 'dark')
             <span class="text-xs">Light</span>
           </Button>
           <Button
-            class="h-8"
+            class="h-8 ring"
             variant="outline"
             :class="{ 'border-2 border-foreground': isDark }"
             @click="colorMode.preference = 'dark'"

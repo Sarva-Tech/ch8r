@@ -8,27 +8,19 @@ import {
 } from '@/components/ui/sidebar'
 import Toaster from '@/components/ui/sonner/Sonner.vue'
 import 'vue-sonner/style.css'
-
-
 import ThemePopover from '~/components/ThemePopover.vue'
 
+const userStore = useUserStore()
 const appStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
-const userStore = useUserStore()
 
 const authUser = useCookie<User>('auth_user')
+
+const selectedApp = computed(() => appStore.selectedApplication)
 
 if (authUser.value?.id) {
   userStore.setUser(authUser.value)
 }
-
-const selectedApp = computed(() => appStore.selectedApplication)
-
-onMounted(async () => {
-  if (!appStore.applications.length) {
-    await appStore.fetchApplications()
-  }
-})
 
 watch(
   selectedApp,

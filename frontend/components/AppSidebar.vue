@@ -23,15 +23,14 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useRouter } from '#vue-router'
+import { DUMMY_NEW_CHATROOM } from '~/lib/consts'
+import { useNavigation } from '~/composables/useNavigation'
 const { isMobile } = useSidebar()
-const router = useRouter()
 
 const applicationsStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
-const chatroomMessages = useChatroomMessagesStore()
 
-const { selectAndNavigate } = useAppNavigation()
+const { selectAppAndNavigate, selectChatroomAndNavigate } = useNavigation()
 const { ellipsis } = useTextUtils()
 
 const applications = computed(() => applicationsStore.applications)
@@ -48,31 +47,20 @@ const handleCreate = async () => {
   try {
     const newApp = await applicationsStore.createApplication(appName.value)
     if (newApp) {
-      toast.success('Application created successfully!')
       appName.value = ''
-      await selectAndNavigate(newApp)
+      toast.success('Application created successfully!')
+      await selectAppAndNavigate(newApp)
     } else {
       toast.error('Failed to create application')
     }
-  } catch (error) {
+  } catch {
     toast.error('Failed to create application')
   }
 }
 
-const newChat = {
-  uuid: 'new_chat',
-  name: 'New Chat',
-}
-
-async function initializeNewChatroom() {
-  if (selectedApplication.value?.uuid) {
-    await chatroomMessages.selectChatroom(
-      selectedApplication.value.uuid,
-      newChat.uuid,
-    )
-    await router.push(
-      `/applications/${selectedApplication.value.uuid}/messages/${newChat.uuid}`,
-    )
+async function initNewChat() {
+  if (selectedApplication.value) {
+    await selectChatroomAndNavigate(selectedApplication.value, DUMMY_NEW_CHATROOM)
   }
 }
 </script>
@@ -106,7 +94,7 @@ async function initializeNewChatroom() {
               <DropdownMenuItem
                 v-for="application in applications"
                 :key="application?.uuid"
-                @click="selectAndNavigate(application)"
+                @click="selectAppAndNavigate(application)"
               >
                 <Sparkles />
                 {{ application?.name }}
@@ -164,23 +152,24 @@ async function initializeNewChatroom() {
               <div>API Keys & Widget</div>
             </div>
           </NuxtLink>
+          <div
+            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+            @click="initNewChat"
+          >
+            <div class="flex w-full items-center space-x-2">
+              <MessageSquare class="size-4" />
+              <div>Start New Conversation</div>
+            </div>
+          </div>
         </SidebarGroupContent>
       </SidebarGroup>
     </SidebarHeader>
     <SidebarContent class="overflow-x-hidden">
       <SidebarGroup class="p-0 m-0">
         <SidebarGroupContent>
-          <div class="flex w-full items-center px-4 py-2">
-            <MessageSquare class="size-4" />
+          <div class="flex w-full items-center px-2 py-2">
             <SidebarGroupLabel>Conversations</SidebarGroupLabel>
           </div>
-          <NuxtLink
-            class="flex w-full items-center px-4 py-2"
-            @click="initializeNewChatroom"
-          >
-            <Plus class="size-4" />
-            <SidebarGroupLabel>Start New Conversation</SidebarGroupLabel>
-          </NuxtLink>
           <NuxtLink
             v-for="chatroom in chatrooms"
             :key="chatroom.uuid"

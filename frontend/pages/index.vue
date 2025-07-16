@@ -2,7 +2,7 @@
 const appStore = useApplicationsStore()
 const route = useRoute()
 
-const { selectAndNavigate } = useAppNavigation()
+const { selectAppAndNavigate } = useNavigation()
 
 onMounted(async () => {
   await appStore.fetchApplications()
@@ -10,7 +10,7 @@ onMounted(async () => {
 
   if (route.path === '/') {
     const selectedApp: Application = apps[0]
-    await selectAndNavigate(selectedApp)
+    await selectAppAndNavigate(selectedApp)
   }
 })
 </script>
