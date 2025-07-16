@@ -50,7 +50,7 @@ class SendMessageView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if chatroom_uuid:
+        if chatroom_uuid != 'new_chat':
             chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=app)
 
             if sender_id and not ChatroomParticipant.objects.filter(chatroom=chatroom,
@@ -87,4 +87,5 @@ class SendMessageView(APIView):
         response_data['message_status'] = 'message_sent'
         response_data['llm_processing'] = True
         response_data['chatroom_identifier'] = chatroom.uuid
+        print(response_data)
         return Response(ViewMessageSerializer(message).data, status=status.HTTP_200_OK)

@@ -23,29 +23,34 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useRouter } from '#vue-router'
 const { isMobile } = useSidebar()
+const router = useRouter()
 
 const applicationsStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
+const chatroomMessages = useChatroomMessagesStore()
 
 const { selectAndNavigate } = useAppNavigation()
 const { ellipsis } = useTextUtils()
 
 const applications = computed(() => applicationsStore.applications)
-const selectedApplication = computed(() => applicationsStore.selectedApplication)
+const selectedApplication = computed(
+  () => applicationsStore.selectedApplication,
+)
 const chatrooms = computed(() => chatroomStore.chatrooms)
 const loading = computed(() => applicationsStore.loading)
 
-const appName = ref('');
+const appName = ref('')
 const handleCreate = async () => {
   if (!appName.value.trim()) return
 
   try {
-    const newApp = await applicationsStore.createApplication(appName.value);
+    const newApp = await applicationsStore.createApplication(appName.value)
     if (newApp) {
       toast.success('Application created successfully!')
       appName.value = ''
-      await selectAndNavigate(newApp);
+      await selectAndNavigate(newApp)
     } else {
       toast.error('Failed to create application')
     }
@@ -54,6 +59,22 @@ const handleCreate = async () => {
   }
 }
 
+const newChat = {
+  uuid: 'new_chat',
+  name: 'New Chat',
+}
+
+async function initializeNewChatroom() {
+  if (selectedApplication.value?.uuid) {
+    await chatroomMessages.selectChatroom(
+      selectedApplication.value.uuid,
+      newChat.uuid,
+    )
+    await router.push(
+      `/applications/${selectedApplication.value.uuid}/messages/${newChat.uuid}`,
+    )
+  }
+}
 </script>
 
 <template>
@@ -62,8 +83,10 @@ const handleCreate = async () => {
       <div class="flex w-full items-center justify-between">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <SidebarMenuButton size="lg"
-              class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+            <SidebarMenuButton
+              size="lg"
+              class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
               <AppWindow class="ml-auto size-4" />
               <div class="grid flex-1 text-left text-sm leading-tight">
                 <span class="truncate font-semibold">
@@ -73,11 +96,18 @@ const handleCreate = async () => {
               <ChevronsUpDown class="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent class="w-[--reka-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            :side="isMobile ? 'bottom' : 'right'" align="start" :side-offset="4">
+          <DropdownMenuContent
+            class="w-[--reka-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            :side="isMobile ? 'bottom' : 'right'"
+            align="start"
+            :side-offset="4"
+          >
             <DropdownMenuGroup>
-              <DropdownMenuItem v-for="application in applications" :key="application?.uuid"
-                @click="selectAndNavigate(application)">
+              <DropdownMenuItem
+                v-for="application in applications"
+                :key="application?.uuid"
+                @click="selectAndNavigate(application)"
+              >
                 <Sparkles />
                 {{ application?.name }}
                 <DropdownMenuSeparator />
@@ -86,31 +116,49 @@ const handleCreate = async () => {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <AppSheet title="Create Application" submitText="Save", cancelText="Cancel" :onSubmit="handleCreate" :loading="loading">
+        <AppSheet
+          title="Create Application"
+          submitText="Save"
+          ,
+          cancelText="Cancel"
+          :onSubmit="handleCreate"
+          :loading="loading"
+        >
           <template #trigger>
             <button
-              class="h-8 px-3 ml-2 flex items-center gap-1 rounded-md bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 text-sm cursor-pointer">
+              class="h-8 px-3 ml-2 flex items-center gap-1 rounded-md bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 text-sm cursor-pointer"
+            >
               <Plus class="w-4 h-4" />
             </button>
           </template>
           <div class="space-y-2">
-            <Label for="name" class="text-sm font-medium text-gray-900">Application Name</Label>
-            <Input id="name" v-model="appName" placeholder="Application name"
-              class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2" />
+            <Label for="name" class="text-sm font-medium text-gray-900"
+              >Application Name</Label
+            >
+            <Input
+              id="name"
+              v-model="appName"
+              placeholder="Application name"
+              class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
+            />
           </div>
         </AppSheet>
       </div>
       <SidebarGroup class="p-0 m-0">
         <SidebarGroupContent>
-          <NuxtLink :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0">
+          <NuxtLink
+            :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
+            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+          >
             <div class="flex w-full items-center space-x-2">
               <BookOpen class="size-4" />
               <div class="">Knowledge Base</div>
             </div>
           </NuxtLink>
-          <NuxtLink :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0">
+          <NuxtLink
+            :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
+            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+          >
             <div class="flex w-full items-center space-x-2">
               <KeyRound class="size-4" />
               <div>API Keys & Widget</div>
@@ -126,9 +174,19 @@ const handleCreate = async () => {
             <MessageSquare class="size-4" />
             <SidebarGroupLabel>Conversations</SidebarGroupLabel>
           </div>
-          <NuxtLink v-for="chatroom in chatrooms" :key="chatroom.uuid"
-            :to="`/applications/${selectedApplication?.uuid}/messages/${chatroom.uuid}`"
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b px-4 py-2 text-sm leading-tight whitespace-nowrap last:border-b-0">
+          <NuxtLink
+            class="flex w-full items-center px-4 py-2"
+            @click="initializeNewChatroom"
+          >
+            <Plus class="size-4" />
+            <SidebarGroupLabel>Start New Conversation</SidebarGroupLabel>
+          </NuxtLink>
+          <NuxtLink
+            v-for="chatroom in chatrooms"
+            :key="chatroom.uuid"
+            :to="`/applications/${selectedApplication.uuid}/messages/${chatroom.uuid}`"
+            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b px-4 py-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+          >
             <div class="flex w-full items-center gap-2">
               <span>{{ ellipsis(chatroom.name, 30) }}</span>
               <span class="ml-auto text-xs">

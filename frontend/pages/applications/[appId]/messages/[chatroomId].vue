@@ -66,6 +66,7 @@ watch(selectedChatroom, (newVal) => {
 
 
 onMounted(() => {
+  console.log('hello')
   if (!apps.value || apps.value.length === 0) {
     appStore.fetchApplications()
   }
