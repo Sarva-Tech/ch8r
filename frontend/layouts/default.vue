@@ -10,6 +10,7 @@ import Toaster from '@/components/ui/sonner/Sonner.vue'
 import 'vue-sonner/style.css'
 import ThemePopover from '~/components/ThemePopover.vue'
 
+const themeStore = useThemeStore()
 const userStore = useUserStore()
 const appStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
@@ -29,11 +30,15 @@ watch(
       await chatroomStore.fetchChatrooms(newApp.uuid)
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
+
+onMounted(() => {
+  themeStore.fetchAndApplyTheme()
+})
 </script>
 
-<template>
+<template class="theme-red">
   <SidebarProvider
     :style="{
       '--sidebar-width': '350px',
@@ -42,9 +47,7 @@ watch(
     <AppSidebar />
     <SidebarInset>
       <header
-        class="
-          bg-background fixed w-full top-0 flex shrink-0 items-center gap-2 border-b p-4
-        "
+        class="bg-background fixed w-full top-0 flex shrink-0 items-center gap-2 border-b p-4"
       >
         <SidebarTrigger class="-ml-1" />
         <Separator

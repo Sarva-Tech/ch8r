@@ -2,26 +2,27 @@
 import { Moon, Sun } from 'lucide-vue-next'
 import { Button } from "@/components/ui/button"
 import { Label } from '@/components/ui/label'
+import { AVAILABLE_COLORS } from '~/lib/consts'
 
 const colorMode = useColorMode()
+const themeStore = useThemeStore()
+
+const selectedTheme = computed(() => themeStore.currentTheme)
 const isDark = computed(() => colorMode.value === 'dark')
+
+const updateTheme = (color: string) => {
+  themeStore.setTheme(color)
+}
 </script>
 
 <template>
   <div class="flex flex-col space-y-4 md:space-y-6">
-    <div class="flex items-start pt-4 md:pt-0">
-      <div class="space-y-1 pr-2">
-        <div class="font-semibold leading-none tracking-tight">
-          Theme Customizer
-        </div>
-      </div>
-    </div>
     <div class="flex flex-1 flex-col space-y-4 md:space-y-6">
-      <div class="space-y-1.5 ">
+      <div class="space-y-2">
         <Label for="theme" class="text-xs"> Theme </Label>
-        <div class="flex space-x-2">
+        <div class="flex gap-2">
           <Button
-            class="h-8"
+            class="flex items-center h-8 min-w-fit justify-start"
             variant="outline"
             :class="{ 'border-2 border-foreground': !isDark }"
             @click="colorMode.preference = 'light'"
@@ -30,13 +31,32 @@ const isDark = computed(() => colorMode.value === 'dark')
             <span class="text-xs">Light</span>
           </Button>
           <Button
-            class="h-8 ring"
+            class="flex items-center h-8 min-w-fit justify-start ring"
             variant="outline"
             :class="{ 'border-2 border-foreground': isDark }"
             @click="colorMode.preference = 'dark'"
           >
             <Moon class="w-4 h-4 mr-2" />
             <span class="text-xs">Dark</span>
+          </Button>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <Label for="theme-color" class="text-xs"> Color </Label>
+        <div class="flex flex-wrap gap-2">
+          <Button
+            v-for="color in AVAILABLE_COLORS"
+            :key="color.id"
+            class="flex items-center h-8 min-w-fit justify-start ring"
+            variant="outline"
+            :class="{ 'border-2 border-foreground': selectedTheme === color.id }"
+            @click="updateTheme(color.id)"
+          >
+            <span
+              class="w-4 h-4 rounded-full mr-2"
+              :style="{ backgroundColor: color.preview }"
+            />
+            <span class="text-xs capitalize">{{ color.label }}</span>
           </Button>
         </div>
       </div>
