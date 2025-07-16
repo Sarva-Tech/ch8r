@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useUserStore} from '@/stores/user'
+import { DUMMY_NEW_CHATROOM, NEW_CHAT } from '~/lib/consts'
 
 interface Message {
   id: number
@@ -30,11 +31,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       this.loading = true
       this.error = null
 
-      if (chatroomUuid === 'new_chat') {
-        this.selectedChatroom = {
-          uuid: 'new_chat',
-          name: 'New Chat'
-        }
+      if (chatroomUuid === NEW_CHAT) {
+        this.selectedChatroom = DUMMY_NEW_CHATROOM
         this.messages = []
         return
       }
@@ -73,10 +71,6 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
 
     async sendMessage(applicationUuid: string, messageText: string) {
       const userStore = useUserStore()
-      const chatroomStore = useChatroomStore()
-
-      const router = useRouter()
-
       const user = userStore.getUser
       const sender = `reg_${user.id}`
 
@@ -112,7 +106,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           }
         }
 
-        const response = await $fetch<Message>(
+        return $fetch<Message>(
           `http://localhost:8000/api/applications/${applicationUuid}/chatrooms/send-message/`,
           {
             method: 'POST',
@@ -122,12 +116,6 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
             },
           }
         )
-
-        if (this.selectedChatroom.uuid === 'new_chat') {
-          await router.push(`/applications/${applicationUuid}/messages/${response.chatroom_identifier}`)
-          await chatroomStore.fetchChatrooms(applicationUuid)
-          // await this.selectChatroom(applicationUuid, response.chatroom_identifier)
-        }
       } catch (err: any) {
         console.error('Failed to send message:', err)
         throw err
@@ -136,11 +124,6 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
 
     addMessage(newMessage: Message) {
       this.messages.push(newMessage)
-    },
-
-    clearChatroom() {
-      this.selectedChatroom = null
-      this.messages = []
     },
   },
 })
