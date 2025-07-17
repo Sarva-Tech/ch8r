@@ -76,7 +76,7 @@ async function initNewChat() {
               class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <AppWindow class="ml-auto size-4" />
-              <div class="grid flex-1 text-left text-sm leading-tight">
+              <div class="grid flex-1 text-left text-sm leading-tight theme-neutral">
                 <span class="truncate font-semibold">
                   {{ selectedApplication?.name }}
                 </span>
@@ -91,6 +91,7 @@ async function initNewChat() {
             :side-offset="4"
           >
             <DropdownMenuGroup>
+              <SidebarGroupLabel>Applications</SidebarGroupLabel>
               <DropdownMenuItem
                 v-for="application in applications"
                 :key="application?.uuid"
@@ -98,7 +99,6 @@ async function initNewChat() {
               >
                 <Sparkles />
                 {{ application?.name }}
-                <DropdownMenuSeparator />
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
@@ -106,10 +106,9 @@ async function initNewChat() {
 
         <AppSheet
           title="Create Application"
-          submitText="Save"
-          ,
-          cancelText="Cancel"
-          :onSubmit="handleCreate"
+          submit-text="Save"
+          cancel-text="Cancel"
+          :on-submit="handleCreate"
           :loading="loading"
         >
           <template #trigger>
@@ -134,47 +133,65 @@ async function initNewChat() {
       </div>
       <SidebarGroup class="p-0 m-0">
         <SidebarGroupContent>
-          <NuxtLink
-            :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
-          >
-            <div class="flex w-full items-center space-x-2">
-              <BookOpen class="size-4" />
-              <div class="">Knowledge Base</div>
-            </div>
-          </NuxtLink>
-          <NuxtLink
-            :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
-          >
-            <div class="flex w-full items-center space-x-2">
-              <KeyRound class="size-4" />
-              <div>API Keys & Widget</div>
-            </div>
-          </NuxtLink>
-          <div
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+          <SidebarMenuButton>
+            <NuxtLink
+              :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
+              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap"
+            >
+              <div class="flex w-full items-center space-x-2">
+                <BookOpen class="size-4" />
+                <div class="">Knowledge Base</div>
+              </div>
+            </NuxtLink>
+          </SidebarMenuButton>
+          <SidebarMenuButton>
+            <NuxtLink
+              :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
+              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap"
+            >
+              <div class="flex w-full items-center space-x-2">
+                <KeyRound class="size-4" />
+                <div>API Keys & Widget</div>
+              </div>
+            </NuxtLink>
+          </SidebarMenuButton>
+          <SidebarMenuButton
+            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap"
             @click="initNewChat"
           >
             <div class="flex w-full items-center space-x-2">
               <MessageSquare class="size-4" />
               <div>Start New Conversation</div>
             </div>
-          </div>
+          </SidebarMenuButton>
         </SidebarGroupContent>
       </SidebarGroup>
     </SidebarHeader>
+    <div class="flex w-full items-center px-2 py-2">
+      <SidebarGroupLabel>Conversations</SidebarGroupLabel>
+    </div>
+
     <SidebarContent class="overflow-x-hidden">
       <SidebarGroup class="p-0 m-0">
-        <SidebarGroupContent>
-          <div class="flex w-full items-center px-2 py-2">
-            <SidebarGroupLabel>Conversations</SidebarGroupLabel>
-          </div>
+        <SidebarGroupContent class="p-2">
           <NuxtLink
             v-for="chatroom in chatrooms"
             :key="chatroom.uuid"
             :to="`/applications/${selectedApplication.uuid}/messages/${chatroom.uuid}`"
-            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b px-4 py-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+            class="
+              hover:bg-sidebar-accent
+              hover:text-sidebar-accent-foreground
+              flex
+              flex-col
+              items-start
+              gap-2
+              px-4
+              py-2
+              text-sm
+              leading-tight
+              whitespace-nowrap
+              rounded-lg
+            "
           >
             <div class="flex w-full items-center gap-2">
               <span>{{ ellipsis(chatroom.name, 30) }}</span>

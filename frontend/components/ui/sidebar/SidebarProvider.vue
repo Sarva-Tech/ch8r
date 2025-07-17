@@ -3,7 +3,10 @@ import { useEventListener, useMediaQuery, useVModel } from '@vueuse/core'
 import { TooltipProvider } from 'reka-ui'
 import { computed, type HTMLAttributes, type Ref, ref } from 'vue'
 import { cn } from '@/lib/utils'
-import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_ICON } from './utils'
+import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH } from './utils'
+import ThemePopover from '~/components/ThemePopover.vue'
+import { SidebarInset, SidebarTrigger } from '~/components/ui/sidebar/index'
+import { Separator } from '~/components/ui/separator'
 
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
@@ -53,6 +56,10 @@ useEventListener('keydown', (event: KeyboardEvent) => {
 // This makes it easier to style the sidebar with Tailwind classes.
 const state = computed(() => open.value ? 'expanded' : 'collapsed')
 
+const sidebarWidth = computed(() =>
+  state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem'
+)
+
 provideSidebarContext({
   state,
   open,
@@ -70,12 +77,27 @@ provideSidebarContext({
       data-slot="sidebar-wrapper"
       :style="{
         '--sidebar-width': SIDEBAR_WIDTH,
-        '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
       }"
       :class="cn('group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full', props.class)"
       v-bind="$attrs"
     >
       <slot />
+      <SidebarInset>
+        <header
+          class="fixed top-0 right-0 z-50 flex items-center gap-2 border-b bg-background p-4 justify-between transition-[left] duration-300"
+          :style="{ left: isMobile ? '0' : sidebarWidth }"
+        >
+          <SidebarTrigger class="-ml-1" />
+          <Separator
+            orientation="vertical"
+            class="mr-2 data-[orientation=vertical]:h-4"
+          />
+          <ThemePopover />
+        </header>
+        <div class="flex flex-col">
+          <NuxtPage />
+        </div>
+      </SidebarInset>
     </div>
   </TooltipProvider>
 </template>

@@ -22,8 +22,9 @@ const updateTheme = (color: string) => {
         <Label for="theme" class="text-xs"> Theme </Label>
         <div class="flex gap-2">
           <Button
-            class="flex items-center h-8 min-w-fit justify-start"
+            class="flex items-center min-w-fit justify-start"
             variant="outline"
+            size="sm"
             :class="{ 'border-2 border-foreground': !isDark }"
             @click="colorMode.preference = 'light'"
           >
@@ -31,12 +32,13 @@ const updateTheme = (color: string) => {
             <span class="text-xs">Light</span>
           </Button>
           <Button
-            class="flex items-center h-8 min-w-fit justify-start ring"
+            class="flex items-center min-w-fit justify-start"
             variant="outline"
-            :class="{ 'border-2 border-foreground': isDark }"
+            size="sm"
+            :class="{ 'border-2 border-foreground ring': isDark }"
             @click="colorMode.preference = 'dark'"
           >
-            <Moon class="w-4 h-4 mr-2" />
+            <Moon class="w-4 h-4" />
             <span class="text-xs">Dark</span>
           </Button>
         </div>
@@ -47,13 +49,14 @@ const updateTheme = (color: string) => {
           <Button
             v-for="color in AVAILABLE_COLORS"
             :key="color.id"
-            class="flex items-center h-8 min-w-fit justify-start ring"
+            class="flex items-center min-w-fit justify-start"
             variant="outline"
-            :class="{ 'border-2 border-foreground': selectedTheme === color.id }"
+            size="sm"
+            :class="{ 'border-foreground ring': selectedTheme === color.id }"
             @click="updateTheme(color.id)"
           >
             <span
-              class="w-4 h-4 rounded-full mr-2"
+              class="w-4 h-4 rounded-full"
               :style="{ backgroundColor: color.preview }"
             />
             <span class="text-xs capitalize">{{ color.label }}</span>

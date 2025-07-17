@@ -1,3 +1,5 @@
+import { SENDER_ID_PREFIX } from '~/lib/consts'
+
 export interface User {
   id: number | null;
   email: string;
@@ -24,6 +26,7 @@ export const useUserStore = defineStore('user', {
   getters: {
     isLoggedIn: (state) => !!state.authUser.id,
     getUser: (state) => state.authUser,
-    getToken: () => useCookie('auth_token') || null
+    getToken: () => useCookie('auth_token') || null,
+    senderIdentifier: (state) => `${SENDER_ID_PREFIX}_${state.authUser.id}`,
   },
 });
