@@ -1,3 +1,5 @@
+import { File, LetterText, Link } from 'lucide-vue-next'
+
 export const NEW_CHAT = 'new_chat'
 export const DUMMY_NEW_CHATROOM = {
   uuid: NEW_CHAT,
@@ -17,3 +19,23 @@ export const AVAILABLE_COLORS = [
 export const DEFAULT_COLOR = AVAILABLE_COLORS[0]
 
 export const SENDER_ID_PREFIX = 'reg'
+
+export const SUPPORTED_FILE_EXTENSIONS = [
+  { id: '.pdf', label: 'PDF', mime: 'application/pdf' },
+  { id: '.doc', label: 'DOC', mime: 'application/msword' },
+  { id: '.txt', label: 'TXT', mime: 'text/plain' },
+  { id: '.md', label: 'Markdown', mime: 'text/markdown' },
+  { id: '.png', label: 'PNG', mime: 'image/png' },
+  { id: '.jpg', label: 'JPG', mime: 'image/jpeg' },
+  { id: '.jpeg', label: 'JPEG', mime: 'image/jpeg' },
+]
+
+export const SUPPORTED_FILE_EXTENSIONS_STR = SUPPORTED_FILE_EXTENSIONS
+  .map((ext) => ext.id)
+  .join(', ')
+
+export const KB_SOURCES = [
+  { label: 'File', value: 'file', icon: File },
+  { label: 'URL', value: 'url', icon: Link },
+  { label: 'Text', value: 'text', icon: LetterText }
+]

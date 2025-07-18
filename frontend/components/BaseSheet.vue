@@ -32,15 +32,19 @@ const props = withDefaults(
     </SheetTrigger>
 
     <SheetContent>
-      <SheetHeader>
+      <SheetHeader class="border-b">
         <SheetTitle class="text-left">{{ title }}</SheetTitle>
       </SheetHeader>
 
-      <div class="grid gap-4 p-4">
+      <div
+        class=
+          "mx-4 flex flex-col h-full max-h-[calc(100vh-150px)]
+           overflow-x-hidden overflow-y-auto"
+      >
         <slot />
       </div>
 
-      <SheetFooter>
+      <SheetFooter class="border-t">
         <div class="flex w-full justify-between gap-2">
           <SheetClose as-child>
             <Button type="button" variant="outline">
