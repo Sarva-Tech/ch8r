@@ -23,6 +23,7 @@
     "dayjs-nuxt": "^2.1.11",
     "eslint": "^9.29.0",
     "lucide-vue-next": "^0.522.0",
+    "markdown-it": "^14.1.0",
     "nuxt": "^3.17.5",
     "reka-ui": "^2.3.2",
     "shadcn-nuxt": "^2.2.0",
