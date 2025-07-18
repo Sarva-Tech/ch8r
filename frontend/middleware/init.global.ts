@@ -1,6 +1,4 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  if (to.path === '/') return
-
   const appStore = useApplicationsStore()
   const chatroomStore = useChatroomStore()
   const chatroomMessagesStore = useChatroomMessagesStore()
@@ -13,10 +11,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   const apps = appStore.applications
-
-  if (!apps.length) {
-    return navigateTo('/')
-  }
 
   const appToBeSelected = appId
     ? apps.find((app) => app?.uuid === appId)
@@ -31,10 +25,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
     if (chatroomId) {
       await chatroomMessagesStore.selectChatroom(appToBeSelected.uuid, chatroomId)
-    }
-  } else {
-    if (to.path !== '/') {
-      return navigateTo('/')
     }
   }
 })
