@@ -7,6 +7,9 @@ import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SID
 import ThemePopover from '~/components/ThemePopover.vue'
 import { SidebarInset, SidebarTrigger } from '~/components/ui/sidebar/index'
 import { Separator } from '~/components/ui/separator'
+import { LogOut } from 'lucide-vue-next'
+import { Button } from '@/components/ui/button'
+import { useLogout } from '@/composables/useLogout'
 
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
@@ -30,9 +33,6 @@ const open = useVModel(props, 'open', emits, {
 }) as Ref<boolean>
 
 function setOpen(value: boolean) {
-  open.value = value // emits('update:open', value)
-
-  // This sets the cookie to keep the sidebar state.
   document.cookie = `${SIDEBAR_COOKIE_NAME}=${open.value}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
 }
 
@@ -40,7 +40,6 @@ function setOpenMobile(value: boolean) {
   openMobile.value = value
 }
 
-// Helper to toggle the sidebar.
 function toggleSidebar() {
   return isMobile.value ? setOpenMobile(!openMobile.value) : setOpen(!open.value)
 }
@@ -59,6 +58,8 @@ const state = computed(() => open.value ? 'expanded' : 'collapsed')
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem'
 )
+const { logout } = useLogout()
+
 
 provideSidebarContext({
   state,
@@ -92,8 +93,17 @@ provideSidebarContext({
             orientation="vertical"
             class="mr-2 data-[orientation=vertical]:h-4"
           />
-          <ThemePopover />
+          <div class="flex items-center gap-2">
+            <ThemePopover />
+            <div
+              class="hover:text-destructive text-muted-foreground transition-colors p-2"
+              @click="logout"
+            >
+              <LogOut class="w-5 h-5" />
+            </div>
+          </div>
         </header>
+
         <div class="flex flex-col">
           <NuxtPage />
         </div>

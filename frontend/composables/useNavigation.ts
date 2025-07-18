@@ -6,7 +6,7 @@ export function useNavigation() {
 
     const selectedApp = appStore.selectedApplication
     if (selectedApp) {
-      await navigateTo(`/applications/${selectedApp.uuid}`)
+      await navigateTo(`/applications/${selectedApp.uuid}/knowledge-base`)
     }
   }
 
