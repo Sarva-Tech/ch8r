@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen">
+  <div class="flex flex-col">
     <div
       class="overflow-y-auto pt-[72px] pb-[120px] px-6 space-y-6"
       :style="`height: calc(100vh - 64px - 112px);`"
@@ -7,12 +7,16 @@
       <div
         v-for="message in messages"
         :key="message.id"
-        :class="cn(
+        :class="
+          cn(
             'flex w-fit max-w-[75%] lg:max-w-[60%] xl:max-w-[50%] flex-col gap-2 rounded-lg p-2 text-sm',
-            isMessageSentByCurrentUser(message.sender_identifier) ? 'ml-auto bg-primary text-primary-foreground' : 'bg-muted',
-          )"
+            isMessageSentByCurrentUser(message.sender_identifier)
+              ? 'ml-auto bg-primary text-primary-foreground'
+              : 'bg-muted',
+          )
+        "
       >
-        {{ message.message }}
+        <div v-html="md.render(message.message)" />
       </div>
     </div>
 
@@ -43,11 +47,11 @@
 </template>
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
+import MarkdownIt from 'markdown-it'
+
 import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT } from '~/lib/consts'
-import {
-  useSidebar,
-} from '@/components/ui/sidebar'
+import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
 import { Send } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
@@ -67,8 +71,10 @@ const currentMessage = ref('')
 
 const { state, isMobile } = useSidebar()
 
+const md = new MarkdownIt()
+
 const sidebarWidth = computed(() =>
-  state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem'
+  state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem',
 )
 
 const isMessageSentByCurrentUser = (sender: string) => {
@@ -153,7 +159,7 @@ watch(
       disconnectWebSocket()
     })
   },
-  { immediate: true, once: true }
+  { immediate: true, once: true },
 )
 
 onUnmounted(() => {
