@@ -4,7 +4,7 @@ run-qdrant:
 		qdrant/qdrant
 
 run-server:
-	cd backend && watchfiles "daphne config.asgi:application" .
+	cd backend && watchfiles --ignore-paths uploads "daphne config.asgi:application" .
 
 run-celery:
 	cd backend && celery -A config worker -l info --pool=solo

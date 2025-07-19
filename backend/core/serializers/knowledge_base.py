@@ -2,23 +2,32 @@ from rest_framework import serializers
 
 from core.models import KnowledgeBase
 
-class KnowledgeBaseCreateSerializer(serializers.Serializer):
-    source_type = serializers.ChoiceField(choices=['youtube', 'url', 'text', 'file'])
-    url = serializers.URLField(required=False)
-    text = serializers.CharField(required=False)
-    file = serializers.FileField(required=False)
+class KnowledgeBaseItemSerializer(serializers.Serializer):
+    type = serializers.ChoiceField(choices=['file', 'text', 'url'])
+    value = serializers.CharField(required=False, allow_null=True)
+    file = serializers.FileField(required=False, allow_null=True)
 
     def validate(self, data):
-        source_type = data.get('source_type')
-        if source_type == 'youtube' and not data.get('url'):
-            raise serializers.ValidationError("YouTube URL is required.")
-        if source_type == 'url' and not data.get('url'):
-            raise serializers.ValidationError("URL is required.")
-        if source_type == 'text' and not data.get('text'):
-            raise serializers.ValidationError("Text is required.")
-        if source_type == 'file' and not data.get('file'):
-            raise serializers.ValidationError("File is required.")
+        item_type = data.get("type")
+
+        if item_type == "file":
+            if not data.get("value") and not data.get("file"):
+                raise serializers.ValidationError({"file": "File is required for type 'file'."})
+        elif item_type == "text":
+            if not data.get("value"):
+                raise serializers.ValidationError({"value": "Text value is required for type 'text'."})
+        elif item_type == "url":
+            if not data.get("value"):
+                raise serializers.ValidationError({"value": "URL value is required for type 'url'."})
+
         return data
+
+
+class KnowledgeBaseItemListSerializer(serializers.Serializer):
+    items = KnowledgeBaseItemSerializer(many=True)
+
+    def create(self, validated_data):
+        return validated_data
 
 class KnowledgeBaseViewSerializer(serializers.ModelSerializer):
     application_id = serializers.IntegerField(source='application.id', read_only=True)
