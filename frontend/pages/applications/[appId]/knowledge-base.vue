@@ -21,7 +21,7 @@ import {
   FileText,
   File,
   Image,
-  Trash2,
+  Trash,
   Pencil,
   MoreVertical,
   ChevronDown,
@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'vue-sonner'
+import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
 
 interface FileData {
   id: string
@@ -196,11 +197,11 @@ async function handleUpdate() {
 
 <template>
   <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
-    <div class="w-full">
+    <div class="w-full space-y-4">
       <div class="flex gap-2 items-center py-4">
         <Input class="max-w-sm" placeholder="Filter content..." />
         <div class="ml-auto">
-          <Button>Upload KB</Button>
+          <NewKnowledgeBase />
         </div>
       </div>
 
@@ -258,7 +259,7 @@ async function handleUpdate() {
                       <Pencil class="mr-2 h-4 w-4" /> Edit
                     </DropdownMenuItem>
                     <DropdownMenuItem class="text-red-600" @click="handleDelete(row.original.id)">
-                      <Trash2 class="mr-2 h-4 w-4" /> Delete
+                      <Trash class="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -305,7 +306,6 @@ async function handleUpdate() {
           />
         </div>
       </AppSheet>
-
     </div>
   </div>
 </template>
