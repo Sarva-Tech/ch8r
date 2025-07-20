@@ -105,6 +105,7 @@ const textInput = ref('')
 const urlInput = ref('')
 
 const kbDraft = useKBDraftStore()
+const emit = defineEmits(['knowledgeAdded'])
 
 const addText = () => {
   if (textInput.value.trim()) {
@@ -121,6 +122,9 @@ const addURL = () => {
 }
 
 async function uploadAndProcess() {
+  const config = useRuntimeConfig()
+  const baseUrl = config.public.apiBaseUrl
+
   const formData = new FormData()
 
   kbDraft.items.forEach((item, index) => {
@@ -136,7 +140,7 @@ async function uploadAndProcess() {
   try {
     const token = userStore.getToken
     const res = await $fetch(
-      `http://localhost:8000/api/applications/${selectedApp.value?.uuid}/knowledge-bases/`,
+      `${baseUrl}/applications/${selectedApp.value?.uuid}/knowledge-bases/`,
       {
         method: 'POST',
         headers: {
@@ -146,6 +150,8 @@ async function uploadAndProcess() {
       },
     )
     console.log('Uploaded:', res)
+    emit('knowledgeAdded', true)
+
   } catch (err) {
     console.error('Error uploading:', err)
   }
