@@ -8,6 +8,8 @@ from core.models import KnowledgeBase, Application
 from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from django.core.files.storage import default_storage
 
+from core.tasks import process_kb
+
 
 class KnowledgeBaseViewSet(viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.none()
@@ -66,14 +68,12 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
                 item_type = item['type']
                 if item_type == 'file':
                     uploaded_file = item['file']
-                    print(uploaded_file)
-                    filename = default_storage.save(f"uploads/{uploaded_file.name}", uploaded_file)
-                    file_path = default_storage.url(filename)
+                    filename = default_storage.save(uploaded_file.name, uploaded_file)
 
                     records.append(KnowledgeBase(
                         application=application,
                         source_type="file",
-                        path=file_path,
+                        path=filename,
                         status="pending",
                         metadata={
                             'filename': filename,
@@ -115,8 +115,10 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
             created_kbs = KnowledgeBase.objects.filter(
                 application=application
             ).order_by('-id')[:len(records)][::-1]
+            kb_ids = [kb.id for kb in created_kbs]
+            process_kb.delay(kb_ids)
 
-            return Response(KnowledgeBaseViewSerializer(created_kbs, many=True).data, status=status.HTTP_201_CREATED)
+            return Response({"message": "Knowledge base files added."}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

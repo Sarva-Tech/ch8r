@@ -25,9 +25,9 @@ export const SUPPORTED_FILE_EXTENSIONS = [
   { id: '.doc', label: 'DOC', mime: 'application/msword' },
   { id: '.txt', label: 'TXT', mime: 'text/plain' },
   { id: '.md', label: 'Markdown', mime: 'text/markdown' },
-  { id: '.png', label: 'PNG', mime: 'image/png' },
-  { id: '.jpg', label: 'JPG', mime: 'image/jpeg' },
-  { id: '.jpeg', label: 'JPEG', mime: 'image/jpeg' },
+  // { id: '.png', label: 'PNG', mime: 'image/png' },
+  // { id: '.jpg', label: 'JPG', mime: 'image/jpeg' },
+  // { id: '.jpeg', label: 'JPEG', mime: 'image/jpeg' },
 ]
 
 export const SUPPORTED_FILE_EXTENSIONS_STR = SUPPORTED_FILE_EXTENSIONS
@@ -36,6 +36,6 @@ export const SUPPORTED_FILE_EXTENSIONS_STR = SUPPORTED_FILE_EXTENSIONS
 
 export const KB_SOURCES = [
   { label: 'File', value: 'file', icon: File },
-  { label: 'URL', value: 'url', icon: Link },
+  // { label: 'URL', value: 'url', icon: Link },
   { label: 'Text', value: 'text', icon: LetterText }
 ]

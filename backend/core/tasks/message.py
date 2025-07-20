@@ -8,8 +8,8 @@ from django.conf import settings
 from core.models import IngestedChunk
 from core.models.message import Message
 from langchain.chat_models import init_chat_model
-from core.views.ingestion import get_context_chunks
 from core.serializers.message import ViewMessageSerializer
+from core.services import get_chunks
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
@@ -25,7 +25,7 @@ def generate_bot_response(message_id, app_uuid):
     ).exists()
 
     if has_chunks:
-        context = get_context_chunks(question, app_uuid, top_k=5)
+        context = get_chunks(question, app_uuid, top_k=5)
         prompt = f"Based on the context:\n{context}\n\nAnswer the user query:\n{question}"
     else:
         print("No ingested chunks found for this application.")

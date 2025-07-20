@@ -34,4 +34,4 @@ class KnowledgeBaseViewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = KnowledgeBase
-        fields = ['id', 'uuid', 'application_id', 'path', 'metadata', 'source_type']
+        fields = ['id', 'uuid', 'application_id', 'path', 'metadata', 'source_type', 'status']
