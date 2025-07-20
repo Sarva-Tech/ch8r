@@ -63,11 +63,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ch8rbox',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('PORT'),
     }
 }
 
@@ -101,6 +101,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.MultiPartParser',
         'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.JSONParser',
     ]
 }
 

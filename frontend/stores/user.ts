@@ -21,6 +21,9 @@ export const useUserStore = defineStore('user', {
       this.authUser.email = user.email;
       this.authUser.username = user.username;
     },
+    clearUser() {
+      this.authUser = { id: null, email: '', username: '' }
+    },
   },
 
   getters: {

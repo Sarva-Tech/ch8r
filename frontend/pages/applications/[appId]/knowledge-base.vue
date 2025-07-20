@@ -172,7 +172,7 @@ async function handleUpdate() {
     await $fetch(
       `http://localhost:8000/api/applications/${selectedApp.value.uuid}/knowledge-bases/${editingRow.value.id}/`,
       {
-        method: 'PATCH',
+        method: 'PUT',
         headers: {
           Authorization: `Token ${token.value}`,
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ async function handleUpdate() {
       <div class="flex gap-2 items-center py-4">
         <Input class="max-w-sm" placeholder="Filter content..." />
         <div class="ml-auto">
-          <NewKnowledgeBase />
+          <NewKnowledgeBase @knowledge-added="loadKB"/>
         </div>
       </div>
 
