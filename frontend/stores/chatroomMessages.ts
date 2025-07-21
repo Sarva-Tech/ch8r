@@ -71,7 +71,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
 
     async sendMessage(applicationUuid: string, messageText: string) {
       const userStore = useUserStore()
-      const sender = userStore.senderIdentifier
+      const sender = userStore.userIdentifier
 
       if (!this.selectedChatroom) {
         throw new Error('No chatroom selected')

@@ -50,15 +50,17 @@ import { cn } from '@/lib/utils'
 import MarkdownIt from 'markdown-it'
 
 import { Textarea } from '@/components/ui/textarea'
-import { NEW_CHAT } from '~/lib/consts'
+import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
 import { Send } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
-const websocket = ref<WebSocket | null>(null)
-const connectedChatroomId = ref<string | null>(null)
+
+const route = useRoute()
+const { chatroomId } = route.params
 
 const userStore = useUserStore()
+const liveUpdateStore = useLiveUpdateStore()
 const chatroomsStore = useChatroomStore()
 const chatroomMessagesStore = useChatroomMessagesStore()
 const appStore = useApplicationsStore()
@@ -78,7 +80,7 @@ const sidebarWidth = computed(() =>
 )
 
 const isMessageSentByCurrentUser = (sender: string) => {
-  return sender === userStore.senderIdentifier
+  return sender === userStore.userIdentifier
 }
 
 async function send() {
@@ -101,68 +103,14 @@ async function send() {
   }
 }
 
-const connectWebSocket = () => {
-  const chatroom = selectedChatroom.value
-  if (!chatroom) return
-
-  const wsProtocol = location.protocol === 'https:' ? 'wss://' : 'ws://'
-  const wsUrl = `${wsProtocol}localhost:8000/ws/chat/${chatroom.uuid}/`
-
-  const ws = new WebSocket(wsUrl)
-
-  ws.onopen = () => {
-    console.log('WebSocket connected to', chatroom.uuid)
+// Triggers logic only for messages targeted at this chatroom to maintain updates.
+const unsubscribe = liveUpdateStore.subscribe((msg) => {
+  if (msg.type === NEW_MESSAGE_UPDATE && msg.data.chatroom_identifier === chatroomId) {
+    chatroomMessagesStore.addMessage(msg.data)
   }
+})
 
-  ws.onmessage = (event: MessageEvent) => {
-    chatroomMessagesStore.addMessage(JSON.parse(event.data))
-  }
-
-  ws.onclose = (event: CloseEvent) => {
-    console.log('WebSocket disconnected:', event.code, event.reason)
-    connectedChatroomId.value = null
-  }
-
-  ws.onerror = (error: Event) => {
-    console.error('WebSocket error:', error)
-  }
-
-  websocket.value = ws
-}
-
-const disconnectWebSocket = () => {
-  if (websocket.value) {
-    console.log('Disconnecting WebSocket')
-    websocket.value.close()
-    websocket.value = null
-  }
-}
-
-watch(
-  selectedChatroom,
-  (newChatroom, _, onCleanup) => {
-    const newId = newChatroom?.uuid ?? null
-
-    if (newId === NEW_CHAT) {
-      return
-    }
-
-    disconnectWebSocket()
-
-    if (newChatroom && newChatroom.uuid !== NEW_CHAT) {
-      setTimeout(() => {
-        connectWebSocket()
-      }, 100)
-    }
-
-    onCleanup(() => {
-      disconnectWebSocket()
-    })
-  },
-  { immediate: true, once: true },
-)
-
-onUnmounted(() => {
-  disconnectWebSocket()
+onBeforeUnmount(() => {
+  unsubscribe()
 })
 </script>

@@ -1,15 +1,18 @@
 import os
+import logging
 
 from celery import shared_task
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
-
+from django.db.models import Q
 from core.models import IngestedChunk
 from core.models.message import Message
 from langchain.chat_models import init_chat_model
 from core.serializers.message import ViewMessageSerializer
 from core.services import get_chunks
+
+logger = logging.getLogger(__name__)
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
@@ -41,10 +44,21 @@ def generate_bot_response(message_id, app_uuid):
     )
 
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"chatroom_{chatroom.uuid}",
-        {
-            "type": "send.message",
-            "message": ViewMessageSerializer(bot_message).data,
-        }
+    participants = list(
+        user_message.chatroom.participants.exclude(
+            Q(role='agent')
+        ).values_list('user_identifier', flat=True)
     )
+
+    for participant_id in participants:
+        group_name = f"live_{participant_id}"
+        try:
+            async_to_sync(channel_layer.group_send)(
+                group_name,
+                {
+                    "type": "send.message",
+                    "message": ViewMessageSerializer(bot_message).data,
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send message to {group_name}: {str(e)}")

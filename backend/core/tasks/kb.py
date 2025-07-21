@@ -5,7 +5,6 @@ from core.services import extract_text_from_file, ingest_kb
 
 
 def process_kb_item(kb):
-
     if kb.source_type == 'file':
         content = extract_text_from_file(kb.path)
         kb.metadata = kb.metadata or {}

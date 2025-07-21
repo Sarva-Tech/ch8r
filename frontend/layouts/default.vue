@@ -7,6 +7,7 @@ import Toaster from '@/components/ui/sonner/Sonner.vue'
 import 'vue-sonner/style.css'
 
 const themeStore = useThemeStore()
+const liveUpdateStore = useLiveUpdateStore()
 const userStore = useUserStore()
 const appStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
@@ -31,6 +32,7 @@ watch(
 
 onMounted(() => {
   themeStore.fetchAndApplyTheme()
+  liveUpdateStore.connect(userStore.userIdentifier)
 })
 </script>
 

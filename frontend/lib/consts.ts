@@ -18,7 +18,7 @@ export const AVAILABLE_COLORS = [
 ]
 export const DEFAULT_COLOR = AVAILABLE_COLORS[0]
 
-export const SENDER_ID_PREFIX = 'reg'
+export const USER_ID_PREFIX = 'reg'
 
 export const SUPPORTED_FILE_EXTENSIONS = [
   { id: '.pdf', label: 'PDF', mime: 'application/pdf' },
@@ -39,3 +39,5 @@ export const KB_SOURCES = [
   // { label: 'URL', value: 'url', icon: Link },
   { label: 'Text', value: 'text', icon: LetterText }
 ]
+
+export const NEW_MESSAGE_UPDATE = 'message'
