@@ -3,7 +3,7 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
-from core.views import UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView, MeView, WidgetView
+from core.views import UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView, MeView, WidgetView, GenerateAPIKeyView
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
 from core.views.chatroom import ChatRoomDetailView
 from core.views.message import SendMessageView
@@ -17,7 +17,7 @@ nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='appli
 urlpatterns = [
     path('login/', obtain_auth_token, name='api_login'),
     path('register/', UserRegisterView.as_view(), name='api_register'),
-
+    path('generate-api-key/', GenerateAPIKeyView.as_view(), name='generate-api-key'),
     path('me/', MeView.as_view(), name='api_me'),
 
     path(

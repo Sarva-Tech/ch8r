@@ -2,16 +2,16 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
-from rest_framework_api_key.permissions import HasAPIKey
 
 from core.models import KnowledgeBase, Application
 from core.serializers import KnowledgeBaseCreateSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from django.core.files.storage import default_storage
+from core.permissions import HasAPIKeyPermission
 
 
 class KnowledgeBaseViewSet(viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.none()
-    permission_classes = [permissions.IsAuthenticated | HasAPIKey]
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
     lookup_field = 'uuid'
 
     def get_serializer_class(self):

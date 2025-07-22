@@ -3,10 +3,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from core.models import Application, ApplicationWidgetToken
-from rest_framework_api_key.permissions import HasAPIKey
+from core.permissions import HasAPIKeyPermission
 
 class WidgetView(APIView):
-    permission_classes = [IsAuthenticated | HasAPIKey]
+    permission_classes = [IsAuthenticated | HasAPIKeyPermission]
 
     def post(self, request, application_uuid):
         app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)

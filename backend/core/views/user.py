@@ -3,7 +3,6 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_api_key.permissions import HasAPIKey
 
 from core.serializers import UserRegisterSerializer, UserViewSerializer
 
@@ -20,7 +19,7 @@ class UserRegisterView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class MeView(APIView):
-    permission_classes = [IsAuthenticated | HasAPIKey]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         serializer = UserViewSerializer(request.user)

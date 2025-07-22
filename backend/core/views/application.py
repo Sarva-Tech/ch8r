@@ -2,7 +2,6 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_api_key.permissions import HasAPIKey
 
 from core.models import Application, ChatRoom
 from core.serializers import ApplicationCreateSerializer, ApplicationViewSerializer
@@ -11,7 +10,7 @@ from core.serializers.chatroom import ChatRoomPreviewSerializer
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.none()
-    permission_classes = [permissions.IsAuthenticated | HasAPIKey]
+    permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'uuid'
 
     def get_serializer_class(self):

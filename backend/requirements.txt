@@ -6,6 +6,7 @@ async-timeout==4.0.3
 attrs==25.3.0
 autobahn==24.4.2
 Automat==25.4.16
+bcrypt==4.3.0
 billiard==4.2.1
 cachetools==5.5.2
 celery==5.5.3

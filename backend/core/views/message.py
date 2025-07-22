@@ -7,7 +7,6 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.conf import settings
-from rest_framework_api_key.permissions import HasAPIKey
 
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
@@ -17,6 +16,7 @@ from core.models.message import Message
 from core.serializers.message import CreateMessageSerializer, ViewMessageSerializer
 from core.tasks import generate_bot_response
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
+from core.permissions import HasAPIKeyPermission
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
@@ -26,7 +26,7 @@ def generate_chatroom_name(a, b):
 
 class SendMessageView(APIView):
     authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
-    permission_classes = [IsAuthenticatedOrWidget | HasAPIKey]
+    permission_classes = [IsAuthenticatedOrWidget | HasAPIKeyPermission]
     def post(self, request, application_uuid):
         # Refactor
         if request.user and request.user.is_authenticated:
