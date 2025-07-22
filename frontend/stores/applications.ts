@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
-import { $fetch } from 'ofetch'
-import { useUserStore } from '~/stores/user'
+import { useHttpClient } from '~/composables/useHttpClient'
 
 export interface KnowledgeBaseItem {
   id: number;
@@ -19,6 +18,7 @@ export type Application = {
   knowledge_base: KnowledgeBaseItem[]
 } | undefined
 
+
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
     applications: [] as Application[],
@@ -29,75 +29,42 @@ export const useApplicationsStore = defineStore('applications', {
 
   actions: {
     async fetchApplications() {
-      const config = useRuntimeConfig()
+      const { httpGet } = useHttpClient()
+
       this.loading = true
       this.error = null
 
-      const userStore = useUserStore()
-      const token = userStore.getToken
-      if (!token.value) {
-        this.error = 'No auth token found'
-        this.loading = false
-        return
-      }
-
       try {
-        this.applications = await $fetch<Application[]>(
-          `${config.public.apiBaseUrl}/applications/`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Token ${token.value}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        )
+        this.applications = await httpGet<Application[]>('/applications/')
 
         if (!this.selectedApplication && this.applications.length > 0) {
           this.selectedApplication = this.applications[0]
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Fetch error:', err)
-        this.error = 'Failed to load applications'
+        this.error = err?.message || 'Failed to load applications'
       } finally {
         this.loading = false
       }
     },
 
     async createApplication(name: string): Promise<Application | null> {
-      const config = useRuntimeConfig()
-      const userStore = useUserStore()
-      const token = userStore.getToken
-
-      if (!token.value) {
-        this.error = 'No auth token found'
-        return null
-      }
-
+      const { httpPut } = useHttpClient()
       this.loading = true
       this.error = null
 
       try {
-        const newApp = await $fetch<Application>(`${config.public.apiBaseUrl}/applications/`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Token ${token.value}`,
-            'Content-Type': 'application/json',
-          },
-          body: { name },
-        })
-
-        this.applications.push(newApp);
+        const newApp = await httpPut<Application>('/applications/', { name })
+        this.applications.push(newApp)
         return newApp
-      } catch (err) {
+      } catch (err: any) {
         console.error('Create error:', err)
-        this.error = 'Failed to create application'
+        this.error = err?.message || 'Failed to create application'
         return null
       } finally {
         this.loading = false
       }
     },
-
 
     selectApplication(app: Application) {
       this.selectedApplication = app

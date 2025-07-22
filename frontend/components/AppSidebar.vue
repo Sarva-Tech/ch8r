@@ -13,6 +13,7 @@ import AppSheet from '~/components/BaseSheet.vue'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
+import { getErrorMessage } from '~/lib/utils'
 
 import {
   Sidebar,
@@ -53,8 +54,9 @@ const handleCreate = async () => {
     } else {
       toast.error('Failed to create application')
     }
-  } catch {
-    toast.error('Failed to create application')
+  } catch (error) {
+    const message = getErrorMessage(error)
+    toast.error(message || 'Failed to create application')
   }
 }
 

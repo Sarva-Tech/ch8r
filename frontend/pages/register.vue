@@ -5,6 +5,8 @@ import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useHttpClient } from '~/composables/useHttpClient'
+import { getErrorMessage } from '~/lib/utils'
 
 definePageMeta({
   layout: 'public',
@@ -19,12 +21,11 @@ const showConfirmPassword = ref(false)
 const isSubmitting = ref(false)
 const passwordsMatch = ref(true)
 
-const config = useRuntimeConfig()
-const baseUrl = config.public.apiBaseUrl
 
 watch([password, confirmPassword], () => {
   passwordsMatch.value = password.value === confirmPassword.value
 })
+const { httpPost } = useHttpClient()
 
 const handleRegister = async () => {
   if (!passwordsMatch.value) {
@@ -35,45 +36,38 @@ const handleRegister = async () => {
   isSubmitting.value = true
 
   try {
-    await $fetch(`${baseUrl}/register/`, {
-      method: 'POST',
-      body: {
-        email: email.value,
-        password: password.value,
-        username: email.value,
-      },
-      headers: { 'Content-Type': 'application/json' },
-    })
+    await httpPost('/register/', {
+      email: email.value,
+      password: password.value,
+      username: email.value,
+    }, false)
+
     toast.success('Registration successful! Please login.')
     navigateTo('/login')
-  } catch (err: any) {
-    const errors = err?.data
-    if (errors && typeof errors === 'object') {
-      Object.entries(errors).forEach(([, messages]) => {
-        if (Array.isArray(messages)) {
-          messages.forEach((message) => toast.error(message))
-        } else if (typeof messages === 'string') {
-          toast.error(messages)
-        }
-      })
-    } else {
-      toast.error('Registration failed. Please try again.')
+  } catch (err: never) {
+    const message = getErrorMessage(err)
+    try {
+      const errorData = JSON.parse(err.message)
+      Object.values(errorData).flat().forEach((msg) => toast.error(String(msg)))
+    } catch {
+      toast.error(message || 'Registration failed. Please try again.')
     }
   } finally {
     isSubmitting.value = false
   }
 }
+
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col justify-center items-center px-6">
-    <div class="max-w-md w-full backdrop-blur-md rounded-lg shadow-xl border p-10">
-      <header class="mb-8 text-center">
-        <h1 class="text-3xl font-extrabold mb-2">Create Account</h1>
-        <p class="text-gray-600 text-sm">Fill the form below to register</p>
+  <div class="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6">
+    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card">
+      <header class="mb-6 sm:mb-8 text-center">
+        <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Create Account</h1>
+        <p class="text-sm sm:text-base">Fill the form below to register</p>
       </header>
 
-      <form class="space-y-6" novalidate @submit.prevent="handleRegister">
+      <form class="space-y-5 sm:space-y-6" novalidate @submit.prevent="handleRegister">
         <div>
           <Label for="email" class="block text-sm font-medium mb-1">Email</Label>
           <Input
@@ -83,9 +77,10 @@ const handleRegister = async () => {
             placeholder="you@example.com"
             required
             autofocus
-            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm"
+            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm"
           />
         </div>
+
         <div class="relative">
           <Label for="password" class="block text-sm font-medium mb-1">Password</Label>
           <Input
@@ -94,11 +89,11 @@ const handleRegister = async () => {
             :type="showPassword ? 'text' : 'password'"
             required
             placeholder="••••••••"
-            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10"
+            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
           />
           <button
             type="button"
-            class="absolute right-3 top-9.5 cursor-pointer"
+            class="absolute right-3 top-9 focus:outline-none"
             aria-label="Toggle password visibility"
             tabindex="-1"
             @click="showPassword = !showPassword"
@@ -106,6 +101,7 @@ const handleRegister = async () => {
             <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
           </button>
         </div>
+
         <div class="relative">
           <Label for="confirmPassword" class="block text-sm font-medium mb-1">Confirm Password</Label>
           <Input
@@ -116,27 +112,27 @@ const handleRegister = async () => {
             placeholder="••••••••"
             @keyup.enter="handleRegister"
             :class="[
-              'ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10',
-              passwordsMatch ? 'ring-gray-300' : 'ring-red-500',
+              'w-full ring-1 pr-10 rounded-sm',
+              passwordsMatch ? 'ring-muted' : 'ring-destructive'
             ]"
           />
           <button
             type="button"
-            class="absolute right-3 top-9.5 cursor-pointer"
+            class="absolute right-3 top-9 focus:outline-none"
             aria-label="Toggle confirm password visibility"
             tabindex="-1"
             @click="showConfirmPassword = !showConfirmPassword"
           >
             <component :is="showConfirmPassword ? Eye : EyeOff" class="w-5 h-5" />
           </button>
-          <p v-if="!passwordsMatch" class="text-sm text-red-600 mt-1">
+          <p v-if="!passwordsMatch" class="text-sm text-destructive mt-1">
             Passwords do not match
           </p>
         </div>
 
         <Button
           type="submit"
-          class="w-full font-semibold text-lg rounded-sm shadow-md transition cursor-pointer"
+          class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md transition cursor-pointer"
           :disabled="isSubmitting"
         >
           <span v-if="isSubmitting">Registering...</span>
@@ -144,9 +140,9 @@ const handleRegister = async () => {
         </Button>
       </form>
 
-      <p class="mt-8 text-center text-sm">
+      <p class="mt-6 sm:mt-8 text-center text-sm">
         Already have an account?
-        <a href="/login" class="text-indigo-600 font-semibold hover:underline">
+        <a href="/login" class="font-semibold underline underline-offset-4">
           Login here
         </a>
       </p>

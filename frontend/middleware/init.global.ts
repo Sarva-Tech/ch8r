@@ -1,4 +1,6 @@
 export default defineNuxtRouteMiddleware(async (to) => {
+  const userStore = useUserStore();
+  if(!userStore.getToken?.value) return
   const appStore = useApplicationsStore()
   const chatroomStore = useChatroomStore()
   const chatroomMessagesStore = useChatroomMessagesStore()
