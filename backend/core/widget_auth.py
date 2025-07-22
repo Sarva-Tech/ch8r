@@ -16,7 +16,6 @@ class IsAuthenticatedOrWidget(BasePermission):
 class WidgetTokenAuthentication(BaseAuthentication):
     def authenticate(self, request):
         auth_header = request.headers.get('Authorization')
-        print('hello', request.headers.get('Authorization'))
         if not auth_header or not auth_header.startswith('Bearer '):
             return None
 

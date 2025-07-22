@@ -1,22 +1,26 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.generics import get_object_or_404
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from core.models import KnowledgeBase, Application
-from core.serializers import KnowledgeBaseCreateSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
+from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from django.core.files.storage import default_storage
 from core.permissions import HasAPIKeyPermission
+
+from core.tasks import process_kb
 
 
 class KnowledgeBaseViewSet(viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.none()
     permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
+    parser_classes = [MultiPartParser, FormParser]
     lookup_field = 'uuid'
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return KnowledgeBaseCreateSerializer
+            return KnowledgeBaseItemListSerializer
         return KnowledgeBaseViewSerializer
 
     def list(self, request, *args, **kwargs):
@@ -36,24 +40,86 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         application_uuid = kwargs.get('application_uuid')
         application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
 
-        serializer = KnowledgeBaseCreateSerializer(data=request.data, context={'request': request})
+        parsed_items = []
+        i = 0
+
+        while True:
+            type_key = f"items[{i}].type"
+            value_key = f"items[{i}].value"
+            file_key = f"items[{i}].file"
+
+            if type_key not in request.data:
+                break
+
+            item = {
+                "type": request.data.get(type_key),
+                "value": request.data.get(value_key),
+                "file": request.FILES.get(file_key),
+            }
+            parsed_items.append(item)
+            i += 1
+
+
+        serializer = self.get_serializer(data={"items": parsed_items}, context={"request": request})
         if serializer.is_valid():
-            data = serializer.validated_data
-            path = ""
-            metadata = {}
+            items = serializer.validated_data['items']
 
-            if data['source_type'] in ['youtube', 'url']:
-                path = data['url']
-            elif data['source_type'] == 'text':
-                path = f"text://{data['text'][:50]}"
-                metadata = {'content': data['text']}
-            elif data['source_type'] == 'file':
-                uploaded_file = data['file']
-                filename = default_storage.save(f"uploads/{uploaded_file.name}", uploaded_file)
-                path = default_storage.url(filename)
+            records = []
+            for item in items:
+                item_type = item['type']
+                if item_type == 'file':
+                    uploaded_file = item['file']
+                    filename = default_storage.save(uploaded_file.name, uploaded_file)
 
-            kb = KnowledgeBase.objects.create(application=application, path=path, metadata=metadata, source_type=data['source_type'])
-            return Response(KnowledgeBaseViewSerializer(kb).data, status=status.HTTP_201_CREATED)
+                    records.append(KnowledgeBase(
+                        application=application,
+                        source_type="file",
+                        path=filename,
+                        status="pending",
+                        metadata={
+                            'filename': filename,
+                            'content': ""
+                        }
+                    ))
+                elif item_type == 'text':
+                    text_value = item['value']
+                    path = f"text://{text_value[:50]}"
+
+                    records.append(KnowledgeBase(
+                        application=application,
+                        source_type="text",
+                        path=path,
+                        status="pending",
+                        metadata={
+                            'filename': path,
+                            'content': text_value
+                        }
+                    ))
+
+                elif item_type == 'url':
+                    url_value = item['value']
+                    path = f"{url_value}"
+
+                    records.append(KnowledgeBase(
+                        application=application,
+                        source_type="url",
+                        path=path,
+                        status="pending",
+                        metadata={
+                            'filename': path,
+                            'content': ''
+                        }
+                    ))
+
+            KnowledgeBase.objects.bulk_create(records)
+
+            created_kbs = KnowledgeBase.objects.filter(
+                application=application
+            ).order_by('-id')[:len(records)][::-1]
+            kb_ids = [kb.id for kb in created_kbs]
+            process_kb.delay(kb_ids)
+
+            return Response({"message": "Knowledge base files added."}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

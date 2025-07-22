@@ -1,159 +1,85 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import {
   AppWindow,
-  LayoutDashboard,
-  Command,
   ChevronsUpDown,
   Sparkles,
+  BookOpen,
+  KeyRound,
+  MessageSquare,
+  Plus,
 } from 'lucide-vue-next'
+import AppSheet from '~/components/BaseSheet.vue'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'vue-sonner'
 
-import { h, ref } from 'vue'
-import NavUser from '@/components/NavUser.vue'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
-  SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem,
-  type SidebarProps,
   useSidebar,
 } from '@/components/ui/sidebar'
-import type { Application } from '@/stores/applications'
+import { DUMMY_NEW_CHATROOM } from '~/lib/consts'
+import { useNavigation } from '~/composables/useNavigation'
 const { isMobile } = useSidebar()
 
 const applicationsStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
-const chatroomMessagesStore = useChatroomMessagesStore()
+
+const { selectAppAndNavigate, selectChatroomAndNavigate } = useNavigation()
+const { ellipsis } = useTextUtils()
 
 const applications = computed(() => applicationsStore.applications)
-const selectedApplication = computed(() => applicationsStore.selectedApplication)
+const selectedApplication = computed(
+  () => applicationsStore.selectedApplication,
+)
 const chatrooms = computed(() => chatroomStore.chatrooms)
+const loading = computed(() => applicationsStore.loading)
 
-const props = withDefaults(defineProps<SidebarProps>(), {
-  collapsible: 'icon',
-})
+const appName = ref('')
+const handleCreate = async () => {
+  if (!appName.value.trim()) return
 
-const data = {
-  user: {
-    name: 'shadcn',
-    email: 'm@example.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
-  navMain: [
-    {
-      title: 'Dashboard',
-      url: '/',
-      icon: LayoutDashboard,
-      isActive: true,
-    },
-    {
-      title: 'Applications',
-      url: '/applications',
-      icon: AppWindow,
-      isActive: false,
-    },
-  ],
-  mails: [
-    {
-      name: 'William Smith',
-      email: 'williamsmith@example.com',
-      subject: 'Meeting Tomorrow',
-      date: '09:34 AM',
-      teaser:
-        'Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.',
-    },
-  ],
+  try {
+    const newApp = await applicationsStore.createApplication(appName.value)
+    if (newApp) {
+      appName.value = ''
+      toast.success('Application created successfully!')
+      await selectAppAndNavigate(newApp)
+    } else {
+      toast.error('Failed to create application')
+    }
+  } catch {
+    toast.error('Failed to create application')
+  }
 }
 
-const activeItem = ref(data.navMain[0])
-const mails = ref(data.mails)
-const { setOpen } = useSidebar()
-
-function selectApplication(app: Application) {
-  applicationsStore.selectApplication(app)
+async function initNewChat() {
+  if (selectedApplication.value) {
+    await selectChatroomAndNavigate(selectedApplication.value, DUMMY_NEW_CHATROOM)
+  }
 }
 </script>
 
 <template>
-  <Sidebar
-    class="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
-    v-bind="props"
-  >
-    <Sidebar
-      collapsible="none"
-      class="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
-    >
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" as-child class="md:h-8 md:p-0">
-              <a href="#">
-                <div
-                  class="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg"
-                >
-                  <Command class="size-4" />
-                </div>
-                <div class="grid flex-1 text-left text-sm leading-tight">
-                  <span class="truncate font-medium">Acme Inc</span>
-                  <span class="truncate text-xs">Enterprise</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent class="px-1.5 md:px-0">
-            <SidebarMenu>
-              <SidebarMenuItem v-for="item in data.navMain" :key="item.title">
-                <SidebarMenuButton
-                  :tooltip="h('div', { hidden: false }, item.title)"
-                  :is-active="activeItem.title === item.title"
-                  class="px-2.5 md:px-2"
-                  @click="
-                    () => {
-                      activeItem = item
-
-                      const mail = data.mails.sort(() => Math.random() - 0.5)
-                      mails = mail.slice(
-                        0,
-                        Math.max(5, Math.floor(Math.random() * 10) + 1),
-                      )
-                      setOpen(true)
-                    }
-                  "
-                >
-                  <component :is="item.icon" />
-                  <span>{{ item.title }}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser :user="data.user" />
-      </SidebarFooter>
-    </Sidebar>
-    <Sidebar collapsible="none" class="hidden flex-1 md:flex">
-      <SidebarHeader class="gap-3.5 border-b">
+  <Sidebar class="hidden flex-1 md:flex">
+    <SidebarHeader class="gap-3 border-b">
+      <div class="flex w-full items-center justify-between">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <SidebarMenuButton
               size="lg"
               class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage src="/avatars/shadcn.jpg" alt="Avt" />
-                <AvatarFallback class="rounded-lg"> CN </AvatarFallback>
-              </Avatar>
-              <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-semibold">{{ selectedApplication?.name }}</span>
+              <AppWindow class="ml-auto size-4" />
+              <div class="grid flex-1 text-left text-sm leading-tight theme-neutral">
+                <span class="truncate font-semibold">
+                  {{ selectedApplication?.name }}
+                </span>
               </div>
               <ChevronsUpDown class="ml-auto size-4" />
             </SidebarMenuButton>
@@ -165,64 +91,120 @@ function selectApplication(app: Application) {
             :side-offset="4"
           >
             <DropdownMenuGroup>
+              <SidebarGroupLabel>Applications</SidebarGroupLabel>
               <DropdownMenuItem
                 v-for="application in applications"
-                :key="application.uuid"
-                @click="selectApplication(application)"
+                :key="application?.uuid"
+                @click="selectAppAndNavigate(application)"
               >
                 <Sparkles />
-                {{ application.name }}
-                <DropdownMenuSeparator />
+                {{ application?.name }}
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-        <SidebarGroup class="px-0">
-          <SidebarGroupContent>
+
+        <AppSheet
+          title="Create Application"
+          submit-text="Save"
+          cancel-text="Cancel"
+          :on-submit="handleCreate"
+          :loading="loading"
+        >
+          <template #trigger>
+            <button
+              class="h-8 px-3 ml-2 flex items-center gap-1 rounded-md bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 text-sm cursor-pointer"
+            >
+              <Plus class="w-4 h-4" />
+            </button>
+          </template>
+          <div class="space-y-2">
+            <Label for="name" class="text-sm font-medium text-gray-900"
+              >Application Name</Label
+            >
+            <Input
+              id="name"
+              v-model="appName"
+              placeholder="Application name"
+              class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
+            />
+          </div>
+        </AppSheet>
+      </div>
+      <SidebarGroup class="p-0 m-0">
+        <SidebarGroupContent>
+          <SidebarMenuButton>
             <NuxtLink
               :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
-              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap"
             >
-              <div class="flex w-full items-center">
-                Knowledge Base
+              <div class="flex w-full items-center space-x-2">
+                <BookOpen class="size-4" />
+                <div class="">Knowledge Base</div>
               </div>
             </NuxtLink>
-            <a
-              href="#"
-              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-2 text-sm leading-tight whitespace-nowrap last:border-b-0"
+          </SidebarMenuButton>
+          <SidebarMenuButton>
+            <NuxtLink
+              :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
+              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap"
             >
-              <div class="flex w-full items-center">
-                <span>API & Widgets</span>
+              <div class="flex w-full items-center space-x-2">
+                <KeyRound class="size-4" />
+                <div>API Keys & Widget</div>
               </div>
-            </a>
+            </NuxtLink>
+          </SidebarMenuButton>
+          <SidebarMenuButton
+            class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap"
+            @click="initNewChat"
+          >
+            <div class="flex w-full items-center space-x-2">
+              <MessageSquare class="size-4" />
+              <div>Start New Conversation</div>
+            </div>
+          </SidebarMenuButton>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </SidebarHeader>
+    <div class="flex w-full items-center px-2 py-2">
+      <SidebarGroupLabel>Conversations</SidebarGroupLabel>
+    </div>
 
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup class="px-0">
-          <SidebarGroupContent>
-            <SidebarGroupLabel>Chat</SidebarGroupLabel>
-            <a
-              v-for="chatroom in chatrooms"
-              :key="chatroom.uuid"
-              href="#"
-              class="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0"
-              @click="chatroomMessagesStore.selectChatroom(selectedApplication?.uuid!, chatroom.uuid)"
-            >
-              <div class="flex w-full items-center gap-2">
-                <span>{{ chatroom.name }}</span>
-                <span class="ml-auto text-xs">{{ chatroom.last_message?.created_at }}</span>
-              </div>
-              <span
-                class="line-clamp-2 w-[260px] whitespace-break-spaces text-xs"
-              >
-                {{ chatroom.last_message?.message }}
+    <SidebarContent class="overflow-x-hidden">
+      <SidebarGroup class="p-0 m-0">
+        <SidebarGroupContent class="p-2">
+          <NuxtLink
+            v-for="chatroom in chatrooms"
+            :key="chatroom.uuid"
+            :to="`/applications/${selectedApplication.uuid}/messages/${chatroom.uuid}`"
+            class="
+              hover:bg-sidebar-accent
+              hover:text-sidebar-accent-foreground
+              flex
+              flex-col
+              items-start
+              gap-2
+              px-4
+              py-2
+              text-sm
+              leading-tight
+              whitespace-nowrap
+              rounded-lg
+            "
+          >
+            <div class="flex w-full items-center gap-2">
+              <span>{{ ellipsis(chatroom.name, 30) }}</span>
+              <span class="ml-auto text-xs">
+                {{ $dayjs(chatroom.last_message?.created_at).fromNow() }}
               </span>
-            </a>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+            </div>
+            <span class="line-clamp-2 whitespace-break-spaces text-xs">
+              {{ chatroom.last_message?.message }}
+            </span>
+          </NuxtLink>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </SidebarContent>
   </Sidebar>
 </template>

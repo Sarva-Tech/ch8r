@@ -1,8 +1,8 @@
 from django.urls import re_path
+from core.consumers import LiveUpdatesConsumer
 
-from core.consumers import ChatConsumer
-print("WebSocket URL patterns loaded")
+print("Live updates URL patterns loaded")
 
 websocket_urlpatterns = [
-    re_path(r'ws/chat/(?P<chatroom_uuid>[a-f0-9\-]+)/$', ChatConsumer.as_asgi()),
+    re_path(r'ws/updates/(?P<client_id>[\w\-]+)/$', LiveUpdatesConsumer.as_asgi()),
 ]

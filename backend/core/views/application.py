@@ -1,9 +1,10 @@
+from django.db.models import OuterRef, Subquery, DateTimeField
 from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Application, ChatRoom
+from core.models import Application, ChatRoom, Message
 from core.serializers import ApplicationCreateSerializer, ApplicationViewSerializer
 from core.serializers.chatroom import ChatRoomPreviewSerializer
 
@@ -54,6 +55,13 @@ class ApplicationChatRoomsPreviewView(APIView):
         except Application.DoesNotExist:
             return Response({"detail": "Application not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        chatrooms = ChatRoom.objects.filter(application=application).prefetch_related('messages')
+        last_message_time_subquery = Message.objects.filter(
+            chatroom=OuterRef('pk')
+        ).order_by('-created_at').values('created_at')[:1]
+
+        chatrooms = ChatRoom.objects.filter(application=application).annotate(
+            last_message_time=Subquery(last_message_time_subquery, output_field=DateTimeField())
+        ).order_by('-last_message_time', '-created_at').prefetch_related('messages')
+
         serializer = ChatRoomPreviewSerializer(chatrooms, many=True)
         return Response({'chatrooms': serializer.data})

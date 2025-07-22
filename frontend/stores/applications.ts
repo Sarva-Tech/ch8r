@@ -17,7 +17,7 @@ export type Application = {
   owner_id: number
   owner: User
   knowledge_base: KnowledgeBaseItem[]
-}
+} | undefined
 
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
@@ -29,6 +29,7 @@ export const useApplicationsStore = defineStore('applications', {
 
   actions: {
     async fetchApplications() {
+      const config = useRuntimeConfig()
       this.loading = true
       this.error = null
 
@@ -42,7 +43,7 @@ export const useApplicationsStore = defineStore('applications', {
 
       try {
         this.applications = await $fetch<Application[]>(
-          'http://localhost:8000/api/applications/',
+          `${config.public.apiBaseUrl}/applications/`,
           {
             method: 'GET',
             headers: {
@@ -62,6 +63,41 @@ export const useApplicationsStore = defineStore('applications', {
         this.loading = false
       }
     },
+
+    async createApplication(name: string): Promise<Application | null> {
+      const config = useRuntimeConfig()
+      const userStore = useUserStore()
+      const token = userStore.getToken
+
+      if (!token.value) {
+        this.error = 'No auth token found'
+        return null
+      }
+
+      this.loading = true
+      this.error = null
+
+      try {
+        const newApp = await $fetch<Application>(`${config.public.apiBaseUrl}/applications/`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Token ${token.value}`,
+            'Content-Type': 'application/json',
+          },
+          body: { name },
+        })
+
+        this.applications.push(newApp);
+        return newApp
+      } catch (err) {
+        console.error('Create error:', err)
+        this.error = 'Failed to create application'
+        return null
+      } finally {
+        this.loading = false
+      }
+    },
+
 
     selectApplication(app: Application) {
       this.selectedApplication = app

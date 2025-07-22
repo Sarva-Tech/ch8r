@@ -1,3 +1,5 @@
+import { USER_ID_PREFIX } from '~/lib/consts'
+
 export interface User {
   id: number | null;
   email: string;
@@ -19,11 +21,15 @@ export const useUserStore = defineStore('user', {
       this.authUser.email = user.email;
       this.authUser.username = user.username;
     },
+    clearUser() {
+      this.authUser = { id: null, email: '', username: '' }
+    },
   },
 
   getters: {
     isLoggedIn: (state) => !!state.authUser.id,
     getUser: (state) => state.authUser,
-    getToken: () => useCookie('auth_token') || null
+    getToken: () => useCookie('auth_token') || null,
+    userIdentifier: (state) => `${USER_ID_PREFIX}_${state.authUser.id}`,
   },
 });

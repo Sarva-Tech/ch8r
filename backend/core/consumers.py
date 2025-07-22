@@ -1,15 +1,11 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-class ChatConsumer(AsyncJsonWebsocketConsumer):
+class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
-        from core.models.chatroom import ChatRoom
+        self.client_id = self.scope['url_route']['kwargs']['client_id']
+        self.group_name = f"live_{self.client_id}"
 
-        self.chatroom_uuid = self.scope['url_route']['kwargs']['chatroom_uuid']
-        self.group_name = f"chatroom_{self.chatroom_uuid}"
-
-        try:
-            self.chatroom = await self.get_chatroom(self.chatroom_uuid)
-        except ChatRoom.DoesNotExist:
+        if not self.client_id:
             await self.close()
             return
 
@@ -23,9 +19,14 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     async def send_message(self, event):
-        await self.send_json(event["message"])
+        await self.send_json({
+            "type": "message",
+            "data": event["message"],
+        })
 
-    @staticmethod
-    async def get_chatroom(uuid):
-        from core.models.chatroom import ChatRoom
-        return await ChatRoom.objects.aget(uuid=uuid)
+    # TODO: Send KB updates
+    # async def send_kb_updates(self, event):
+    #     await self.send_json({
+    #         "type": "kb_updates",
+    #         "data": event["data"],
+    #     })
