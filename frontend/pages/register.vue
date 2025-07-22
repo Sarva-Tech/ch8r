@@ -60,14 +60,14 @@ const handleRegister = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col justify-center items-center px-6">
-    <div class="max-w-md w-full backdrop-blur-md rounded-lg shadow-xl border p-10">
-      <header class="mb-8 text-center">
-        <h1 class="text-3xl font-extrabold mb-2">Create Account</h1>
-        <p class="text-gray-600 text-sm">Fill the form below to register</p>
+  <div class="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6">
+    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-white/80">
+      <header class="mb-6 sm:mb-8 text-center">
+        <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Create Account</h1>
+        <p class="text-gray-600 text-sm sm:text-base">Fill the form below to register</p>
       </header>
 
-      <form class="space-y-6" novalidate @submit.prevent="handleRegister">
+      <form class="space-y-5 sm:space-y-6" novalidate @submit.prevent="handleRegister">
         <div>
           <Label for="email" class="block text-sm font-medium mb-1">Email</Label>
           <Input
@@ -77,7 +77,7 @@ const handleRegister = async () => {
             placeholder="you@example.com"
             required
             autofocus
-            class="ring-1 rounded-sm"
+            class="w-full ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm"
           />
         </div>
         <div class="relative">
@@ -88,11 +88,11 @@ const handleRegister = async () => {
             :type="showPassword ? 'text' : 'password'"
             required
             placeholder="••••••••"
-            class="ring-1 ounded-sm pr-10"
+            class="w-full ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10"
           />
           <button
             type="button"
-            class="absolute right-3 top-9.5 cursor-pointer"
+            class="absolute right-3 top-9 text-gray-500"
             aria-label="Toggle password visibility"
             tabindex="-1"
             @click="showPassword = !showPassword"
@@ -110,13 +110,13 @@ const handleRegister = async () => {
             placeholder="••••••••"
             @keyup.enter="handleRegister"
             :class="[
-              'ring-1 rounded-sm pr-10',
-              passwordsMatch ? 'ring-gray-300' : 'ring-red-500',
+              'w-full ring-1 pr-10 rounded-sm',
+              passwordsMatch ? 'ring-gray-300' : 'ring-red-500'
             ]"
           />
           <button
             type="button"
-            class="absolute right-3 top-9.5 cursor-pointer"
+            class="absolute right-3 top-9 text-gray-500"
             aria-label="Toggle confirm password visibility"
             tabindex="-1"
             @click="showConfirmPassword = !showConfirmPassword"
@@ -130,7 +130,7 @@ const handleRegister = async () => {
 
         <Button
           type="submit"
-          class="w-full font-semibold text-lg rounded-sm shadow-md transition cursor-pointer"
+          class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md transition cursor-pointer"
           :disabled="isSubmitting"
         >
           <span v-if="isSubmitting">Registering...</span>
@@ -138,7 +138,7 @@ const handleRegister = async () => {
         </Button>
       </form>
 
-      <p class="mt-8 text-center text-sm">
+      <p class="mt-6 sm:mt-8 text-center text-sm">
         Already have an account?
         <a href="/login" class="text-indigo-600 font-semibold hover:underline">
           Login here

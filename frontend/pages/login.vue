@@ -67,21 +67,19 @@ const handleLogin = async () => {
 
 <template>
   <div
-    class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr"
+    class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr px-4"
   >
     <div
-      class="max-w-md w-full backdrop-blur-md rounded-lg shadow-xl border p-10"
+      class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-white/80"
     >
-      <header class="mb-8 text-center">
-        <h1 class="text-3xl font-extrabold mb-2">Welcome Back!</h1>
-        <p class="text-sm">Sign in to continue to your dashboard</p>
+      <header class="mb-6 sm:mb-8 text-center">
+        <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Welcome Back!</h1>
+        <p class="text-sm sm:text-base">Sign in to continue to your dashboard</p>
       </header>
 
-      <form class="space-y-6" @submit.prevent="handleLogin">
+      <form class="space-y-5 sm:space-y-6" @submit.prevent="handleLogin">
         <div>
-          <Label for="email" class="block text-sm font-medium mb-1"
-            >Email</Label
-          >
+          <Label for="email" class="block text-sm font-medium mb-1">Email</Label>
           <Input
             id="email"
             v-model="email"
@@ -89,23 +87,19 @@ const handleLogin = async () => {
             placeholder="you@example.com"
             required
             autofocus
-            class="ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm"
+            class="ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm w-full"
           />
         </div>
 
         <div class="relative">
-          <Label
-            for="password"
-            class="block text-sm font-medium text-gray-700 mb-1"
-            >Password</Label
-          >
+          <Label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</Label>
           <Input
             id="password"
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
             required
             placeholder="••••••••"
-            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10"
+            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10 w-full"
             @keyup.enter="handleLogin"
           />
           <button
@@ -121,7 +115,7 @@ const handleLogin = async () => {
 
         <Button
           type="submit"
-          class="w-full font-semibold text-lg rounded-sm shadow-md transition cursor-pointer"
+          class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md transition cursor-pointer"
           :disabled="loading"
         >
           <span v-if="loading">Signing in...</span>
@@ -130,7 +124,7 @@ const handleLogin = async () => {
 
         <Button
           variant="outline"
-          class="w-full flex items-center justify-center gap-2 cursor-pointer"
+          class="w-full flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"
           type="button"
           @click="() => toast.info('Google login not implemented')"
         >
@@ -139,13 +133,14 @@ const handleLogin = async () => {
         </Button>
       </form>
 
-      <p class="mt-8 text-center text-sm">
+      <p class="mt-6 sm:mt-8 text-center text-sm">
         Don't have an account?
         <a
           href="/register"
           class="text-indigo-600 font-semibold hover:underline"
-          >Register here</a
         >
+          Register here
+        </a>
       </p>
     </div>
   </div>
