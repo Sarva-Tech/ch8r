@@ -5,6 +5,8 @@ import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useHttpClient } from '~/composables/useHttpClient'
+import { getErrorMessage } from '~/lib/utils'
 
 definePageMeta({
   layout: 'public',
@@ -19,12 +21,11 @@ const showConfirmPassword = ref(false)
 const isSubmitting = ref(false)
 const passwordsMatch = ref(true)
 
-const config = useRuntimeConfig()
-const baseUrl = config.public.apiBaseUrl
 
 watch([password, confirmPassword], () => {
   passwordsMatch.value = password.value === confirmPassword.value
 })
+const { httpPost } = useHttpClient()
 
 const handleRegister = async () => {
   if (!passwordsMatch.value) {
@@ -35,34 +36,27 @@ const handleRegister = async () => {
   isSubmitting.value = true
 
   try {
-    await $fetch(`${baseUrl}/register/`, {
-      method: 'POST',
-      body: {
-        email: email.value,
-        password: password.value,
-        username: email.value,
-      },
-      headers: { 'Content-Type': 'application/json' },
-    })
+    await httpPost('/register/', {
+      email: email.value,
+      password: password.value,
+      username: email.value,
+    }, false)
+
     toast.success('Registration successful! Please login.')
     navigateTo('/login')
-  } catch (err: any) {
-    const errors = err?.data
-    if (errors && typeof errors === 'object') {
-      Object.entries(errors).forEach(([, messages]) => {
-        if (Array.isArray(messages)) {
-          messages.forEach((message) => toast.error(message))
-        } else if (typeof messages === 'string') {
-          toast.error(messages)
-        }
-      })
-    } else {
-      toast.error('Registration failed. Please try again.')
+  } catch (err: never) {
+    const message = getErrorMessage(err)
+    try {
+      const errorData = JSON.parse(err.message)
+      Object.values(errorData).flat().forEach((msg) => toast.error(String(msg)))
+    } catch {
+      toast.error(message || 'Registration failed. Please try again.')
     }
   } finally {
     isSubmitting.value = false
   }
 }
+
 </script>
 
 <template>
@@ -83,7 +77,7 @@ const handleRegister = async () => {
             placeholder="you@example.com"
             required
             autofocus
-            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm"
+            class="ring-1 rounded-sm"
           />
         </div>
         <div class="relative">
@@ -94,7 +88,7 @@ const handleRegister = async () => {
             :type="showPassword ? 'text' : 'password'"
             required
             placeholder="••••••••"
-            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10"
+            class="ring-1 ounded-sm pr-10"
           />
           <button
             type="button"
@@ -116,7 +110,7 @@ const handleRegister = async () => {
             placeholder="••••••••"
             @keyup.enter="handleRegister"
             :class="[
-              'ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10',
+              'ring-1 rounded-sm pr-10',
               passwordsMatch ? 'ring-gray-300' : 'ring-red-500',
             ]"
           />
