@@ -61,10 +61,10 @@ const handleRegister = async () => {
 
 <template>
   <div class="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6">
-    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-white/80">
+    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card">
       <header class="mb-6 sm:mb-8 text-center">
         <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Create Account</h1>
-        <p class="text-gray-600 text-sm sm:text-base">Fill the form below to register</p>
+        <p class="text-sm sm:text-base">Fill the form below to register</p>
       </header>
 
       <form class="space-y-5 sm:space-y-6" novalidate @submit.prevent="handleRegister">
@@ -77,9 +77,10 @@ const handleRegister = async () => {
             placeholder="you@example.com"
             required
             autofocus
-            class="w-full ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm"
+            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm"
           />
         </div>
+
         <div class="relative">
           <Label for="password" class="block text-sm font-medium mb-1">Password</Label>
           <Input
@@ -88,11 +89,11 @@ const handleRegister = async () => {
             :type="showPassword ? 'text' : 'password'"
             required
             placeholder="••••••••"
-            class="w-full ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10"
+            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
           />
           <button
             type="button"
-            class="absolute right-3 top-9 text-gray-500"
+            class="absolute right-3 top-9 focus:outline-none"
             aria-label="Toggle password visibility"
             tabindex="-1"
             @click="showPassword = !showPassword"
@@ -100,6 +101,7 @@ const handleRegister = async () => {
             <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
           </button>
         </div>
+
         <div class="relative">
           <Label for="confirmPassword" class="block text-sm font-medium mb-1">Confirm Password</Label>
           <Input
@@ -111,19 +113,19 @@ const handleRegister = async () => {
             @keyup.enter="handleRegister"
             :class="[
               'w-full ring-1 pr-10 rounded-sm',
-              passwordsMatch ? 'ring-gray-300' : 'ring-red-500'
+              passwordsMatch ? 'ring-muted' : 'ring-destructive'
             ]"
           />
           <button
             type="button"
-            class="absolute right-3 top-9 text-gray-500"
+            class="absolute right-3 top-9 focus:outline-none"
             aria-label="Toggle confirm password visibility"
             tabindex="-1"
             @click="showConfirmPassword = !showConfirmPassword"
           >
             <component :is="showConfirmPassword ? Eye : EyeOff" class="w-5 h-5" />
           </button>
-          <p v-if="!passwordsMatch" class="text-sm text-red-600 mt-1">
+          <p v-if="!passwordsMatch" class="text-sm text-destructive mt-1">
             Passwords do not match
           </p>
         </div>
@@ -140,7 +142,7 @@ const handleRegister = async () => {
 
       <p class="mt-6 sm:mt-8 text-center text-sm">
         Already have an account?
-        <a href="/login" class="text-indigo-600 font-semibold hover:underline">
+        <a href="/login" class="font-semibold underline underline-offset-4">
           Login here
         </a>
       </p>

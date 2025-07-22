@@ -66,12 +66,8 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div
-    class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr px-4"
-  >
-    <div
-      class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-white/80"
-    >
+  <div class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr from-background to-muted px-4">
+    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card">
       <header class="mb-6 sm:mb-8 text-center">
         <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Welcome Back!</h1>
         <p class="text-sm sm:text-base">Sign in to continue to your dashboard</p>
@@ -87,24 +83,24 @@ const handleLogin = async () => {
             placeholder="you@example.com"
             required
             autofocus
-            class="ring-1 ring-gray-300 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm w-full"
+            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm"
           />
         </div>
 
         <div class="relative">
-          <Label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</Label>
+          <Label for="password" class="block text-sm font-medium mb-1">Password</Label>
           <Input
             id="password"
             v-model="password"
             :type="showPassword ? 'text' : 'password'"
             required
             placeholder="••••••••"
-            class="ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-sm pr-10 w-full"
+            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
             @keyup.enter="handleLogin"
           />
           <button
             type="button"
-            class="absolute right-2 top-9 text-gray-500 focus:outline-none"
+            class="absolute right-2 top-9 focus:outline-none"
             aria-label="Toggle password visibility"
             tabindex="-1"
             @click="showPassword = !showPassword"
@@ -135,10 +131,7 @@ const handleLogin = async () => {
 
       <p class="mt-6 sm:mt-8 text-center text-sm">
         Don't have an account?
-        <a
-          href="/register"
-          class="text-indigo-600 font-semibold hover:underline"
-        >
+        <a href="/register" class="font-semibold underline underline-offset-4">
           Register here
         </a>
       </p>
