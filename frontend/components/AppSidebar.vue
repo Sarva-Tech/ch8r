@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import {
   AppWindow,
   ChevronsUpDown,
@@ -10,10 +9,16 @@ import {
   Plus,
 } from 'lucide-vue-next'
 import AppSheet from '~/components/BaseSheet.vue'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
 import { getErrorMessage } from '~/lib/utils'
+import { ref, computed } from 'vue'
+import { Input } from '@/components/ui/input'
+import { useKBDraftStore } from '~/stores/kbDraft'
+import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
+import FileUpload from '~/components/KnowledgeBase/FileUpload.vue'
+import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
+import TextInput from '~/components/KnowledgeBase/TextInput.vue'
+import Draft from '~/components/KnowledgeBase/Draft.vue'
 
 import {
   Sidebar,
@@ -24,7 +29,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { DUMMY_NEW_CHATROOM } from '~/lib/consts'
+import { DUMMY_NEW_CHATROOM, KB_SOURCES } from '~/lib/consts'
 import { useNavigation } from '~/composables/useNavigation'
 const { isMobile } = useSidebar()
 
@@ -41,25 +46,54 @@ const selectedApplication = computed(
 const chatrooms = computed(() => chatroomStore.chatrooms)
 const loading = computed(() => applicationsStore.loading)
 
+// Application creation
 const appName = ref('')
-const handleCreate = async () => {
-  if (!appName.value.trim()) return
 
-  try {
-    const newApp = await applicationsStore.createApplication(appName.value)
-    if (newApp) {
-      appName.value = ''
-      toast.success('Application created successfully!')
-      await selectAppAndNavigate(newApp)
-    } else {
-      toast.error('Failed to create application')
-    }
-  } catch (error) {
-    const message = getErrorMessage(error)
-    toast.error(message || 'Failed to create application')
+// Knowledge base
+const kbDraft = useKBDraftStore()
+const selectedSourceValue = ref('file')
+const textInput = ref('')
+const urlInput = ref('')
+
+const sources = KB_SOURCES
+const selectedSource = computed(() => sources.find((s) => s.value === selectedSourceValue.value))
+const isFile = computed(() => selectedSourceValue.value === 'file')
+const isUrl = computed(() => selectedSourceValue.value === 'url')
+const isText = computed(() => selectedSourceValue.value === 'text')
+
+const addText = () => {
+  if (textInput.value.trim()) {
+    kbDraft.addText(textInput.value.trim())
+    textInput.value = ''
   }
 }
 
+const addURL = () => {
+  if (urlInput.value.trim()) {
+    kbDraft.addUrl(urlInput.value.trim())
+    urlInput.value = ''
+  }
+}
+
+const handleFileUpload = (files: File[]) => {
+  kbDraft.setFiles(files)
+}
+
+const handleSubmit = () => {
+  // Handle both application creation and knowledge items here
+  if (appName.value.trim()) {
+    // In a real app, you would call your API here
+    setTimeout(() => {
+      toast.success(`Created application: ${appName.value}`)
+      appName.value = ''
+    }, 1000)
+  }
+
+  // Knowledge items are already in the draft store
+  if (kbDraft.items.length > 0) {
+    toast.success(`Added ${kbDraft.items.length} items to knowledge base`)
+  }
+}
 async function initNewChat() {
   if (selectedApplication.value) {
     await selectChatroomAndNavigate(selectedApplication.value, DUMMY_NEW_CHATROOM)
@@ -107,10 +141,10 @@ async function initNewChat() {
         </DropdownMenu>
 
         <AppSheet
-          title="Create Application"
-          submit-text="Save"
+          title="Create Application & Add Knowledge"
+          submit-text="Save All"
           cancel-text="Cancel"
-          :on-submit="handleCreate"
+          :on-submit="handleSubmit"
           :loading="loading"
         >
           <template #trigger>
@@ -120,16 +154,60 @@ async function initNewChat() {
               <Plus class="w-4 h-4" />
             </button>
           </template>
-          <div class="space-y-2">
-            <Label for="name" class="text-sm font-medium text-gray-900"
-              >Application Name</Label
-            >
-            <Input
-              id="name"
-              v-model="appName"
-              placeholder="Application name"
-              class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
-            />
+
+          <!-- Application Creation Section -->
+          <div class="space-y-4 mb-6 pb-6 border-b">
+            <h3 class="font-medium">Create New Application</h3>
+            <div class="space-y-2">
+              <Label for="name" class="text-sm font-medium text-gray-900">
+                Application Name
+              </Label>
+              <Input
+                id="name"
+                v-model="appName"
+                placeholder="Application name"
+                class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
+              />
+            </div>
+          </div>
+
+          <!-- Knowledge Base Section -->
+          <div class="space-y-4">
+            <h3 class="font-medium">Add to Knowledge Base</h3>
+            <SourceSelector v-model="selectedSourceValue" :sources="sources" />
+
+            <div class="space-y-2">
+              <div v-if="isFile" class="space-y-2">
+                <Label for="upload_files" class="text-sm font-medium">
+                  Upload Files
+                </Label>
+                <FileUpload
+                  :max-files="1"
+                  @update:files="handleFileUpload"
+                />
+              </div>
+
+              <UrlInput
+                v-if="isUrl"
+                v-model="urlInput"
+                @add="addURL"
+              />
+
+              <TextInput
+                v-if="isText"
+                v-model="textInput"
+                @add="addText"
+              />
+            </div>
+
+            <div class="space-y-2">
+              <Draft
+                v-for="item in kbDraft.items"
+                :key="item.id"
+                :item="item"
+                @remove="kbDraft.remove"
+              />
+            </div>
           </div>
         </AppSheet>
       </div>
