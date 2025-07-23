@@ -6,5 +6,5 @@ from core.views.dummy_view import DummyView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
-    path('dummy/<uuid:application_uuid>', DummyView.as_view(), name='dummy'),
+    path('dummy/applications/<uuid:application_uuid>', DummyView.as_view(), name='dummy'),
 ]

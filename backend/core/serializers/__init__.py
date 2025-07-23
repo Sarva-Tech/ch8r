@@ -3,3 +3,4 @@ from .application import ApplicationCreateSerializer, ApplicationViewSerializer
 from .knowledge_base import KnowledgeBaseItemListSerializer, KnowledgeBaseItemSerializer, KnowledgeBaseViewSerializer
 from .chatroom import ChatRoomViewSerializer
 from .message import CreateMessageSerializer, ViewMessageSerializer
+from .api_key import APIKeySerializer
