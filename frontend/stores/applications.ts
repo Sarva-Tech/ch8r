@@ -49,12 +49,12 @@ export const useApplicationsStore = defineStore('applications', {
     },
 
     async createApplication(name: string): Promise<Application | null> {
-      const { httpPut } = useHttpClient()
+      const { httpPost } = useHttpClient()
       this.loading = true
       this.error = null
 
       try {
-        const newApp = await httpPut<Application>('/applications/', { name })
+        const newApp = await httpPost<Application>('/applications/', { name })
         this.applications.push(newApp)
         return newApp
       } catch (err: any) {
