@@ -12,16 +12,16 @@ class APIKeySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ApplicationAPIKey
-        fields = ['name', 'application', 'permissions']
-        read_only_fields = ['api_key', 'created']
+        fields = ['name', 'application', 'permissions', 'id', 'created']
+        read_only_fields = ['api_key', 'created', 'id']
 
     def generate_api_key(self):
         return secrets.token_urlsafe(32)
 
     def create(self, validated_data):
+        request = self.context.get('request')
         api_key_raw = self.generate_api_key()
 
-        print(api_key_raw)
         application = validated_data['application']
         name = validated_data['name']
         permissions = validated_data['permissions']
@@ -29,7 +29,8 @@ class APIKeySerializer(serializers.ModelSerializer):
         api_key_instance = ApplicationAPIKey(
             application=application,
             name=name,
-            permissions=permissions
+            permissions=permissions,
+            owner=request.user
         )
 
         api_key_instance.set_api_key(api_key_raw)

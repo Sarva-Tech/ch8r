@@ -17,7 +17,8 @@ nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='appli
 urlpatterns = [
     path('login/', obtain_auth_token, name='api_login'),
     path('register/', UserRegisterView.as_view(), name='api_register'),
-    path('generate-api-key/', GenerateAPIKeyView.as_view(), name='generate-api-key'),
+    path('api-keys/', GenerateAPIKeyView.as_view(), name='generate-api-key'),
+    path('api-keys/<int:api_key_id>/', GenerateAPIKeyView.as_view(), name='delete-api-key'),
     path('me/', MeView.as_view(), name='api_me'),
 
     path(

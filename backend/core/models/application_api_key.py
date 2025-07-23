@@ -2,6 +2,7 @@ from django.db import (models)
 from django.utils import timezone
 from core.models import Application
 import bcrypt
+from django.contrib.auth.models import User
 
 class ApplicationAPIKey(models.Model):
     READ = 'read'
@@ -19,6 +20,7 @@ class ApplicationAPIKey(models.Model):
     hashed_api_key = models.CharField(max_length=255)
     permissions = models.JSONField(default=list)
     created = models.DateTimeField(default=timezone.now)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)  # Add this field
 
     def set_api_key(self, raw_api_key):
         self.hashed_api_key = bcrypt.hashpw(raw_api_key.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
