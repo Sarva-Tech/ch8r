@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { useUserStore} from '@/stores/user'
+import { useUserStore } from '@/stores/user'
+import { useHttpClient } from '~/composables/useHttpClient'
 import { DUMMY_NEW_CHATROOM, NEW_CHAT } from '~/lib/consts'
 
 interface Message {
@@ -34,29 +35,15 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       if (chatroomUuid === NEW_CHAT) {
         this.selectedChatroom = DUMMY_NEW_CHATROOM
         this.messages = []
-        return
-      }
-
-      const userStore = useUserStore()
-      const token = userStore.getToken
-
-      if (!token.value) {
-        this.error = 'No auth token'
         this.loading = false
         return
       }
 
+      const { httpGet } = useHttpClient()
       try {
-        const data = await $fetch<ChatRoomMessagesResponse>(
-          `http://localhost:8000/api/applications/${applicationUuid}/chatrooms/${chatroomUuid}/messages/`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Token ${token.value}`,
-            },
-          }
+        const data = await httpGet<ChatRoomMessagesResponse>(
+          `/applications/${applicationUuid}/chatrooms/${chatroomUuid}/messages/`
         )
-
         this.selectedChatroom = {
           uuid: data.uuid,
           name: data.name
@@ -83,19 +70,14 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         sender_identifier: sender,
         message: messageText,
         metadata: {},
-        created_at: `${Date.now()}`
+        created_at: new Date().toISOString()
       }
 
       this.addMessage(dummyMessage)
 
-      const token = userStore.getToken
-      if (!token.value) {
-        this.error = 'No auth token'
-        this.loading = false
-        return
-      }
-
       try {
+        const { httpPost } = useHttpClient()
+
         const body = {
           chatroom_identifier: this.selectedChatroom.uuid,
           message: messageText,
@@ -105,18 +87,13 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           }
         }
 
-        return $fetch<Message>(
-          `http://localhost:8000/api/applications/${applicationUuid}/chatrooms/send-message/`,
-          {
-            method: 'POST',
-            body,
-            headers: {
-              Authorization: `Token ${token.value}`,
-            },
-          }
+        return await httpPost<Message>(
+          `/applications/${applicationUuid}/chatrooms/send-message/`,
+          body
         )
       } catch (err: any) {
         console.error('Failed to send message:', err)
+        this.error = err.message || 'Failed to send message'
         throw err
       }
     },

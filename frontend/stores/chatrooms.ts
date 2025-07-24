@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { useUserStore} from '@/stores/user'
+import { useHttpClient } from '~/composables/useHttpClient'
 
 export interface ChatroomPreview {
   uuid: string
@@ -29,29 +29,16 @@ export const useChatroomStore = defineStore('chatrooms', {
     async fetchChatrooms(appUuid: string) {
       this.loading = true
       this.error = null
-
-      const userStore = useUserStore()
-      const token = userStore.getToken
-      if (!token.value) {
-        this.error = 'No auth token'
-        this.loading = false
-        return
-      }
+      const { httpGet } = useHttpClient()
 
       try {
-        const data = await $fetch<ChatroomsResponse>(
-          `http://localhost:8000/api/applications/${appUuid}/chatrooms/`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Token ${token.value}`,
-            },
-          }
+        const data = await httpGet<ChatroomsResponse>(
+          `/applications/${appUuid}/chatrooms/`
         )
         this.chatrooms = data.chatrooms || []
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch chatrooms:', err)
-        this.error = 'Failed to load chatrooms'
+        this.error = err.message || 'Failed to load chatrooms'
       } finally {
         this.loading = false
       }

@@ -5,7 +5,6 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { ref, computed, onMounted } from 'vue'
-import { $fetch } from 'ofetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import AppSheet from '~/components/BaseSheet.vue'
@@ -35,6 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'vue-sonner'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
+import { useHttpClient } from '~/composables/useHttpClient'
 import { KB_UPDATE } from '~/lib/consts'
 import { getStatusLabel } from '~/lib/utils'
 
@@ -53,6 +53,7 @@ interface FileData {
 const userStore = useUserStore()
 const liveUpdateStore = useLiveUpdateStore()
 const appStore = useApplicationsStore()
+const { httpGet, httpDelete, httpPut } = useHttpClient()
 
 const selectedApp = computed(() => appStore.selectedApplication)
 const appDetails = ref<any>({})
@@ -65,20 +66,16 @@ const editingRow = ref<FileData | null>(null)
 async function loadKB() {
   try {
     isLoading.value = true
-    const token = userStore.getToken
-    if (!token.value || !selectedApp.value?.uuid) {
-      throw new Error('Missing token or application UUID')
+    if (!selectedApp.value?.uuid) {
+      throw new Error('Missing application UUID')
     }
-    appDetails.value = await $fetch(
-      `http://localhost:8000/api/applications/${selectedApp.value.uuid}/knowledge-bases/`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Token ${token.value}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    ).then(res => res.application || {})
+
+    const response = await httpGet<{ application: Application }>(
+      `applications/${selectedApp.value.uuid}/knowledge-bases/`
+    )
+
+    appDetails.value = response.application || {}
+
   } catch (err: any) {
     console.error('Fetch error:', err)
     toast.error(`Failed to load knowledge base: ${err?.message || 'Unknown error'}`)
@@ -86,7 +83,6 @@ async function loadKB() {
     isLoading.value = false
   }
 }
-
 onMounted(loadKB)
 
 const data = computed<FileData[]>(() => {
@@ -135,18 +131,16 @@ const table = useVueTable({
 })
 
 async function handleDelete(id: string) {
+  const userStore = useUserStore()
   try {
-    const token = userStore.getToken
-    if (!token.value || !selectedApp.value?.uuid) {
+    if (!userStore.getToken?.value || !selectedApp.value?.uuid) {
       throw new Error('Missing token or application UUID')
     }
-    await $fetch(
-      `http://localhost:8000/api/applications/${selectedApp.value.uuid}/knowledge-bases/${id}/`,
-      {
-        method: 'DELETE',
-        headers: { Authorization: `Token ${token.value}` },
-      }
+
+    await httpDelete(
+      `/applications/${selectedApp.value.uuid}/knowledge-bases/${id}/`
     )
+
     toast.success('Knowledge base deleted successfully.')
     await loadKB()
   } catch (err: any) {
@@ -154,7 +148,6 @@ async function handleDelete(id: string) {
     toast.error(`Failed to delete knowledge base: ${err?.message || 'Unknown error'}`)
   }
 }
-
 function openEditSheet(row: FileData) {
   editingRow.value = { ...row }
   isEditSheetOpen.value = true
@@ -167,23 +160,24 @@ function closeEditSheet() {
 
 async function handleUpdate() {
   if (!editingRow.value || !selectedApp.value?.uuid) return
+
+  const userStore = useUserStore()
+
   try {
     isLoading.value = true
-    const token = userStore.getToken
-    await $fetch(
-      `http://localhost:8000/api/applications/${selectedApp.value.uuid}/knowledge-bases/${editingRow.value.id}/`,
+
+    if (!userStore.getToken?.value) {
+      throw new Error('Authentication token missing')
+    }
+
+    await httpPut(
+      `/applications/${selectedApp.value.uuid}/knowledge-bases/${editingRow.value.id}/`,
       {
-        method: 'PUT',
-        headers: {
-          Authorization: `Token ${token.value}`,
-          'Content-Type': 'application/json',
-        },
-        body: {
-          metadata: { content: editingRow.value.metaDataContent },
-          path: editingRow.value.fileName,
-        },
+        metadata: { content: editingRow.value.metaDataContent },
+        path: editingRow.value.fileName,
       }
     )
+
     toast.success('Knowledge base updated successfully.')
     closeEditSheet()
     await loadKB()
