@@ -1,19 +1,21 @@
 import uuid
 from django.db import (models)
 
+class KBStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending'
+    UPLOADING = 'uploading', 'Uploading'
+    EXTRACTING = 'extracting', 'Extracting'
+    PROCESSING = 'processing', 'Processing'
+    PROCESSED = 'processed', 'Processed'
+    REPROCESSING = 'reprocessing', 'Reprocessing'
+    FAILED = 'failed', 'Failed'
+    COMPLETED = 'completed', 'Completed'
+
 class KnowledgeBase(models.Model):
     SOURCE_CHOICES = [
         ('url', 'URL'),
         ('file', 'File'),
         ('text', 'Text')
-    ]
-
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('extracting', 'Extracting'),
-        ('processing', 'Processing'),
-        ('processed', 'Processed'),
-        ('reprocessing', 'Reprocessing'),
     ]
 
     id = models.AutoField(primary_key=True)
@@ -25,8 +27,8 @@ class KnowledgeBase(models.Model):
 
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default='pending',
+        choices=KBStatus.choices,
+        default=KBStatus.PENDING,
         help_text="Processing status of the knowledge base item."
     )
 

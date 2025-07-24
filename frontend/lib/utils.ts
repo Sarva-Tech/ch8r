@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { STATUS_LABELS, type StatusType } from '~/lib/consts'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -17,4 +18,8 @@ export function getErrorMessage(error: unknown): string {
     return e.data?.message || e.data?.detail || e.message || e.statusMessage || 'API request failed'
   }
   return 'Unknown error'
+}
+
+export function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status as StatusType] || ''
 }

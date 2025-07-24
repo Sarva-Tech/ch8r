@@ -1,9 +1,12 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+from core.consts import LIVE_UPDATES_PREFIX
+
+
 class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         self.client_id = self.scope['url_route']['kwargs']['client_id']
-        self.group_name = f"live_{self.client_id}"
+        self.group_name = f"{LIVE_UPDATES_PREFIX}_{self.client_id}"
 
         if not self.client_id:
             await self.close()
@@ -24,9 +27,8 @@ class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
             "data": event["message"],
         })
 
-    # TODO: Send KB updates
-    # async def send_kb_updates(self, event):
-    #     await self.send_json({
-    #         "type": "kb_updates",
-    #         "data": event["data"],
-    #     })
+    async def send_kb_updates(self, event):
+        await self.send_json({
+            "type": "kb_updates",
+            "data": event["data"],
+        })

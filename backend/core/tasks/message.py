@@ -6,6 +6,8 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db.models import Q
+
+from core.consts import LIVE_UPDATES_PREFIX
 from core.models import IngestedChunk
 from core.models.message import Message
 from langchain.chat_models import init_chat_model
@@ -51,7 +53,7 @@ def generate_bot_response(message_id, app_uuid):
     )
 
     for participant_id in participants:
-        group_name = f"live_{participant_id}"
+        group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
         try:
             async_to_sync(channel_layer.group_send)(
                 group_name,

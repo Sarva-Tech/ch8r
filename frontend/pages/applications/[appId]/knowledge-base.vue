@@ -35,17 +35,23 @@ import {
 import { toast } from 'vue-sonner'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
 import { useHttpClient } from '~/composables/useHttpClient'
+import { KB_UPDATE } from '~/lib/consts'
+import { getStatusLabel } from '~/lib/utils'
 
 interface FileData {
   id: string
+  uuid: string
   fileType: string
   content: string
   fileName: string
   metaDataContent?: string
   owner: { username: string; email: string }
+  status: string,
   applicationName: string
 }
 
+const userStore = useUserStore()
+const liveUpdateStore = useLiveUpdateStore()
 const appStore = useApplicationsStore()
 const { httpGet, httpDelete, httpPut } = useHttpClient()
 
@@ -81,15 +87,9 @@ onMounted(loadKB)
 
 const data = computed<FileData[]>(() => {
   return (appDetails.value.knowledge_base || []).map((item: any) => {
-    const rawContent = item.metadata?.content || item.path.split('/').pop() || item.path
     const isText = item.source_type.toLowerCase() === 'text'
-    const trimmedContent =
-      isText && typeof rawContent === 'string' && rawContent.length > 40
-        ? `${rawContent.slice(0, 20)}...${rawContent.slice(-20)}`
-        : rawContent
-
     return {
-      id: item.uuid,
+      uuid: item.uuid,
       fileType: isText
         ? 'text'
         : item.source_type.toLowerCase() === 'image'
@@ -102,13 +102,14 @@ const data = computed<FileData[]>(() => {
                 ? 'image'
                 : 'file',
       fileName: item.path.split('/').pop() || '',
-      content: trimmedContent,
+      content: item.path,
       metaDataContent: item.metadata?.content,
       owner: {
         username: appDetails.value.owner?.username || 'N/A',
         email: appDetails.value.owner?.email || 'N/A',
       },
       applicationName: appDetails.value.name || 'N/A',
+      status: item?.status
     }
   })
 })
@@ -117,6 +118,7 @@ const columnHelper = createColumnHelper<FileData>()
 const columns = [
   columnHelper.display({ id: 'expander', header: '' }),
   columnHelper.accessor('content', { header: 'Content' }),
+  columnHelper.accessor('status', { header: 'Status' }),
   columnHelper.display({ id: 'actions', header: 'Actions' }),
 ]
 
@@ -186,6 +188,23 @@ async function handleUpdate() {
     isLoading.value = false
   }
 }
+
+const unsubscribe = liveUpdateStore.subscribe((msg) => {
+  if (msg.type === KB_UPDATE) {
+    const { uuid, status, content } = msg.data
+    const kb = appDetails.value.knowledge_base?.find((item) => item.uuid === uuid)
+    if (kb) {
+      kb.status = status
+
+      if (!kb.metadata) kb.metadata = {}
+      kb.metadata.content = content
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  unsubscribe()
+})
 </script>
 
 <template>
@@ -241,6 +260,9 @@ async function handleUpdate() {
                   <File v-else class="mr-2 w-4 h-4" />
                   <span class="truncate max-w-[300px]">{{ row.original.content }}</span>
                 </div>
+                <div v-else-if="cell.column.id === 'status'" class="flex items-center">
+                  {{ getStatusLabel(row.original.status) }}
+                </div>
                 <DropdownMenu v-else-if="cell.column.id === 'actions'">
                   <DropdownMenuTrigger as-child>
                     <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
@@ -260,18 +282,18 @@ async function handleUpdate() {
             </TableRow>
             <TableRow v-if="manualExpanded[row.id]" data-expanded="true">
               <TableCell :colspan="columns.length">
-                <div class="bg-muted rounded-xl shadow-inner border p-2 space-y-4">
-                  <div class="flex gap-6">
-                    <div class="text-muted-foreground font-medium w-32">Owner</div>
-                    <div>{{ row.original.owner.username }} ({{ row.original.owner.email }})</div>
-                  </div>
-                  <div class="flex gap-6">
-                    <div class="text-muted-foreground font-medium w-32">File Type</div>
-                    <div class="capitalize">{{ row.original.fileType }}</div>
-                  </div>
+                <div class="bg-muted shadow-inner border p-2 space-y-4">
+<!--                  <div class="flex gap-6">-->
+<!--                    <div class="text-muted-foreground font-medium w-32">Owner</div>-->
+<!--                    <div>{{ row.original.owner.username }} ({{ row.original.owner.email }})</div>-->
+<!--                  </div>-->
+<!--                  <div class="flex gap-6">-->
+<!--                    <div class="text-muted-foreground font-medium w-32">File Type</div>-->
+<!--                    <div class="capitalize">{{ row.original.fileType }}</div>-->
+<!--                  </div>-->
                   <div>
-                    <div class="text-muted-foreground font-medium mb-1">Full Content</div>
-                    <div class="whitespace-pre-wrap break-words max-h-64 overflow-y-auto p-2 rounded border text-sm leading-relaxed">
+<!--                    <div class="text-muted-foreground font-medium mb-1">Full Content</div>-->
+                    <div class="whitespace-pre-wrap break-words max-h-64 overflow-y-auto p-2 text-sm leading-relaxed">
                       {{ row.original?.metaDataContent || 'No content available' }}
                     </div>
                   </div>

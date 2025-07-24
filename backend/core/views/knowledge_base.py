@@ -5,19 +5,18 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from core.models import KnowledgeBase, Application
-from core.serializers import (
-    KnowledgeBaseItemListSerializer,
-    KnowledgeBaseViewSerializer,
-    ApplicationViewSerializer
-)
+from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
+from django.core.files.storage import default_storage
+from core.permissions import HasAPIKeyPermission
 from core.services.kb_utils import create_kb_records
 from core.services.kb_utils import parse_kb_from_request
+
 from core.tasks import process_kb
 
 
 class KnowledgeBaseViewSet(viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.none()
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
     parser_classes = [MultiPartParser, FormParser]
     lookup_field = 'uuid'
 
