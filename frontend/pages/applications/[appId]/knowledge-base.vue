@@ -198,7 +198,6 @@ async function handleUpdate() {
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
   if (msg.type === KB_UPDATE) {
     const { uuid, status, content } = msg.data
-    console.log(content)
     const kb = appDetails.value.knowledge_base?.find((item) => item.uuid === uuid)
     if (kb) {
       kb.status = status
