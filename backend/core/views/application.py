@@ -49,6 +49,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
 
 class ApplicationChatRoomsPreviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, application_uuid):
         try:
             application = Application.objects.get(uuid=application_uuid)

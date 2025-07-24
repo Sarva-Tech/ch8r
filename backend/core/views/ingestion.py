@@ -1,14 +1,17 @@
 from rest_framework.views import APIView
+from rest_framework import permissions
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from core.models import Application
 from sentence_transformers import SentenceTransformer
 
+from core.permissions import HasAPIKeyPermission
 from core.services import ingest_kb
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 class IngestApplicationKBView(APIView):
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
     def post(self, request, application_uuid):
         app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
         kbs = app.knowledge_bases.filter(status='pending')

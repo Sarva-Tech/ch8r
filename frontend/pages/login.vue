@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import GoogleIcon from '@/components/icons/GoogleIcon.vue'
 import { useHttpClient } from '~/composables/useHttpClient'
 
+const config = useRuntimeConfig()
+
 definePageMeta({
   layout: 'public',
   middleware: ['redirect-if-authenticated'],
@@ -43,7 +45,7 @@ const handleLogin = async () => {
     const cookie = useCookie('auth_token')
     cookie.value = response.token
 
-    const user = await $fetch<User>('/me/', {
+    const user = await $fetch<User>(`${config.public.apiBaseUrl}/me/`, {
       headers: {
         Authorization: `Token ${response.token}`,
       },
@@ -66,16 +68,24 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr from-background to-muted px-4">
-    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card">
+  <div
+    class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr from-background to-muted px-4"
+  >
+    <div
+      class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card"
+    >
       <header class="mb-6 sm:mb-8 text-center">
         <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Welcome Back!</h1>
-        <p class="text-sm sm:text-base">Sign in to continue to your dashboard</p>
+        <p class="text-sm sm:text-base">
+          Sign in to continue to your dashboard
+        </p>
       </header>
 
       <form class="space-y-5 sm:space-y-6" @submit.prevent="handleLogin">
         <div>
-          <Label for="email" class="block text-sm font-medium mb-1">Email</Label>
+          <Label for="email" class="block text-sm font-medium mb-1"
+            >Email</Label
+          >
           <Input
             id="email"
             v-model="email"
@@ -88,7 +98,9 @@ const handleLogin = async () => {
         </div>
 
         <div class="relative">
-          <Label for="password" class="block text-sm font-medium mb-1">Password</Label>
+          <Label for="password" class="block text-sm font-medium mb-1"
+            >Password</Label
+          >
           <Input
             id="password"
             v-model="password"
