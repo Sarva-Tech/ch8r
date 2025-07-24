@@ -10,7 +10,6 @@ import {
 } from 'lucide-vue-next'
 import AppSheet from '~/components/BaseSheet.vue'
 import { toast } from 'vue-sonner'
-import { getErrorMessage } from '~/lib/utils'
 import { ref, computed } from 'vue'
 import { Input } from '@/components/ui/input'
 import { useKBDraftStore } from '~/stores/kbDraft'
@@ -46,10 +45,8 @@ const selectedApplication = computed(
 const chatrooms = computed(() => chatroomStore.chatrooms)
 const loading = computed(() => applicationsStore.loading)
 
-// Application creation
 const appName = ref('')
 
-// Knowledge base
 const kbDraft = useKBDraftStore()
 const selectedSourceValue = ref('file')
 const textInput = ref('')
@@ -78,22 +75,30 @@ const addURL = () => {
 const handleFileUpload = (files: File[]) => {
   kbDraft.setFiles(files)
 }
-
-const handleSubmit = () => {
-  // Handle both application creation and knowledge items here
-  if (appName.value.trim()) {
-    // In a real app, you would call your API here
-    setTimeout(() => {
-      toast.success(`Created application: ${appName.value}`)
-      appName.value = ''
-    }, 1000)
+const handleSubmit = async () => {
+  if (!appName.value.trim()) {
+    toast.error('Application name is required')
+    return
   }
 
-  // Knowledge items are already in the draft store
-  if (kbDraft.items.length > 0) {
-    toast.success(`Added ${kbDraft.items.length} items to knowledge base`)
+  try {
+    const applicationsStore = useApplicationsStore()
+    const newApp = await applicationsStore.createApplicationWithKB(appName.value, kbDraft.items)
+
+    if (newApp) {
+      await selectAppAndNavigate(newApp)
+      toast.success(`Application "${newApp?.name}" created successfully`)
+      appName.value = ''
+      kbDraft.clear()
+    } else {
+      toast.error(applicationsStore.error || 'Failed to create application')
+    }
+  } catch (err: any) {
+    toast.error(err.message || 'Something went wrong')
+    console.error('Failed to create application:', err)
   }
 }
+
 async function initNewChat() {
   if (selectedApplication.value) {
     await selectChatroomAndNavigate(selectedApplication.value, DUMMY_NEW_CHATROOM)
@@ -139,10 +144,9 @@ async function initNewChat() {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-
         <AppSheet
-          title="Create Application & Add Knowledge"
-          submit-text="Save All"
+          title="Create Application"
+          submit-text="Create"
           cancel-text="Cancel"
           :on-submit="handleSubmit"
           :loading="loading"
@@ -155,12 +159,11 @@ async function initNewChat() {
             </button>
           </template>
 
-          <!-- Application Creation Section -->
-          <div class="space-y-4 mb-6 pb-6 border-b">
-            <h3 class="font-medium">Create New Application</h3>
+          <div class="space-y-4">
             <div class="space-y-2">
-              <Label for="name" class="text-sm font-medium text-gray-900">
+              <Label for="name" class="text-sm font-medium  flex items-center gap-1">
                 Application Name
+                <span class="text-xs text-muted-foreground italic ml-1">Required</span>
               </Label>
               <Input
                 id="name"
@@ -170,10 +173,7 @@ async function initNewChat() {
               />
             </div>
           </div>
-
-          <!-- Knowledge Base Section -->
-          <div class="space-y-4">
-            <h3 class="font-medium">Add to Knowledge Base</h3>
+          <div class="space-y-4 mt-4">
             <SourceSelector v-model="selectedSourceValue" :sources="sources" />
 
             <div class="space-y-2">

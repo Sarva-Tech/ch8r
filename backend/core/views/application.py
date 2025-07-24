@@ -7,7 +7,9 @@ from rest_framework.views import APIView
 from core.models import Application, ChatRoom, Message
 from core.serializers import ApplicationCreateSerializer, ApplicationViewSerializer
 from core.serializers.chatroom import ChatRoomPreviewSerializer
-
+from core.services.kb_utils import parse_kb_from_request
+from core.services.kb_utils import create_kb_records
+from core.tasks import process_kb
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.none()
@@ -26,6 +28,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         create_serializer = self.get_serializer(data=request.data)
         create_serializer.is_valid(raise_exception=True)
         app_instance = create_serializer.save(owner=request.user)
+
+        parsed_kb_items = parse_kb_from_request(request)
+
+        if parsed_kb_items:
+            created_kbs = create_kb_records(app_instance, parsed_kb_items)
+
+            process_kb.delay([kb.id for kb in created_kbs])
 
         view_serializer = ApplicationViewSerializer(app_instance, context={'request': request})
         return Response(view_serializer.data, status=status.HTTP_201_CREATED)
@@ -46,7 +55,6 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Application.objects.filter(owner=self.request.user)
-
 
 class ApplicationChatRoomsPreviewView(APIView):
     def get(self, request, application_uuid):
