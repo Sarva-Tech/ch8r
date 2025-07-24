@@ -41,3 +41,25 @@ export const KB_SOURCES = [
 ]
 
 export const NEW_MESSAGE_UPDATE = 'message'
+export const KB_UPDATE = 'kb_updates'
+
+export type StatusType =
+  | 'pending'
+  | 'uploading'
+  | 'extracting'
+  | 'processing'
+  | 'processed'
+  | 'reprocessing'
+  | 'failed'
+  | 'completed'
+
+export const STATUS_LABELS: Record<StatusType, string> = {
+  pending: 'Pending',
+  uploading: 'Uploading',
+  extracting: 'Extracting',
+  processing: 'Processing',
+  processed: 'Processed',
+  reprocessing: 'Reprocessing',
+  failed: 'Failed',
+  completed: 'Completed',
+}
