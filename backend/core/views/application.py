@@ -57,6 +57,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return Application.objects.filter(owner=self.request.user)
 
 class ApplicationChatRoomsPreviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
     def get(self, request, application_uuid):
         try:
             application = Application.objects.get(uuid=application_uuid)

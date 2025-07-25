@@ -55,7 +55,6 @@ def process_kb_item(kb):
         kb.save()
         send_kb_update(kb, kb.status)
 
-
 @shared_task
 def process_kb(kb_ids):
     kb_items = KnowledgeBase.objects.filter(id__in=kb_ids).select_related('application__owner')

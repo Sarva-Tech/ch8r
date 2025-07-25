@@ -2,16 +2,15 @@
   <div class="space-y-2">
     <Label for="for_text" class="text-sm font-medium">Text</Label>
     <Textarea
-      :model-value="modelValue"
+      v-model="localText"
       :placeholder="placeholder"
       class="max-h-100 overflow-y-auto resize-none"
-      @update:model-value="$emit('update:modelValue', $event)"
     />
     <div class="flex justify-end">
       <Button
         variant="secondary"
+        :disabled="!localText.trim()"
         @click="handleAdd"
-        :disabled="!modelValue.trim()"
       >
         Add Text
       </Button>
@@ -20,23 +19,23 @@
 </template>
 
 <script setup lang="ts">
-import { Textarea } from '~/components/ui/textarea'
-import { Label } from '~/components/ui/label'
-import { Button } from '~/components/ui/button'
+import { ref } from 'vue'
+import { useKBDraftStore } from '~/stores/kbDraft'
 
-const props = defineProps<{
-  modelValue: string
-  placeholder?: string
-}>()
+const props = defineProps({
+  placeholder: {
+    type: String,
+    default: 'Enter your text here'
+  }
+})
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  'add': []
-}>()
+const localText = ref('')
+const kbDraft = useKBDraftStore()
 
 const handleAdd = () => {
-  if (props.modelValue.trim()) {
-    emit('add')
+  if (localText.value.trim()) {
+    kbDraft.addText(localText.value.trim())
+    localText.value = ''
   }
 }
 </script>

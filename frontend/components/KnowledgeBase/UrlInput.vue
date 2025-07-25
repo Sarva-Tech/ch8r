@@ -5,11 +5,10 @@
     </Label>
     <div class="flex gap-2">
       <Input
-        :model-value="modelValue"
+        v-model="localUrl"
         :placeholder="placeholder"
         class="flex-1"
         @keyup.enter="handleAdd"
-        @update:model-value="emit('update:modelValue', $event)"
       />
       <Button
         variant="secondary"
@@ -26,28 +25,22 @@
 </template>
 
 <script setup lang="ts">
-import { Input } from '~/components/ui/input'
-import { Button } from '~/components/ui/button'
-import { Label } from '~/components/ui/label'
-import { computed, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { useKBDraftStore } from '~/stores/kbDraft'
 
 const props = withDefaults(defineProps<{
-  modelValue: string
   placeholder?: string
 }>(), {
   placeholder: 'https://example.com'
 })
 
-const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  'add': [value: string]
-}>()
-
+const localUrl = ref('')
 const errorMessage = ref('')
+const kbDraft = useKBDraftStore()
 
 const isValidUrl = computed(() => {
   try {
-    new URL(props.modelValue)
+    new URL(localUrl.value)
     return true
   } catch {
     return false
@@ -61,7 +54,7 @@ const handleAdd = () => {
   }
 
   errorMessage.value = ''
-  emit('add', props.modelValue)
-  emit('update:modelValue', '')
+  kbDraft.addUrl(localUrl.value)
+  localUrl.value = ''
 }
 </script>

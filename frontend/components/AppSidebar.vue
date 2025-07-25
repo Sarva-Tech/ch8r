@@ -14,7 +14,7 @@ import { ref, computed } from 'vue'
 import { Input } from '@/components/ui/input'
 import { useKBDraftStore } from '~/stores/kbDraft'
 import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
-import FileUpload from '~/components/KnowledgeBase/FileUpload.vue'
+import FileUpload from '~/components/FileUpload.vue'
 import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
 import TextInput from '~/components/KnowledgeBase/TextInput.vue'
 import Draft from '~/components/KnowledgeBase/Draft.vue'
@@ -49,8 +49,6 @@ const appName = ref('')
 
 const kbDraft = useKBDraftStore()
 const selectedSourceValue = ref('file')
-const textInput = ref('')
-const urlInput = ref('')
 
 const sources = KB_SOURCES
 const selectedSource = computed(() => sources.find((s) => s.value === selectedSourceValue.value))
@@ -58,23 +56,6 @@ const isFile = computed(() => selectedSourceValue.value === 'file')
 const isUrl = computed(() => selectedSourceValue.value === 'url')
 const isText = computed(() => selectedSourceValue.value === 'text')
 
-const addText = () => {
-  if (textInput.value.trim()) {
-    kbDraft.addText(textInput.value.trim())
-    textInput.value = ''
-  }
-}
-
-const addURL = () => {
-  if (urlInput.value.trim()) {
-    kbDraft.addUrl(urlInput.value.trim())
-    urlInput.value = ''
-  }
-}
-
-const handleFileUpload = (files: File[]) => {
-  kbDraft.setFiles(files)
-}
 const handleSubmit = async () => {
   if (!appName.value.trim()) {
     toast.error('Application name is required')
@@ -83,7 +64,7 @@ const handleSubmit = async () => {
 
   try {
     const applicationsStore = useApplicationsStore()
-    const newApp = await applicationsStore.createApplicationWithKB(appName.value, kbDraft.items)
+    const newApp = await applicationsStore.createApplicationWithKB(appName.value)
 
     if (newApp) {
       await selectAppAndNavigate(newApp)
@@ -178,26 +159,13 @@ async function initNewChat() {
 
             <div class="space-y-2">
               <div v-if="isFile" class="space-y-2">
-                <Label for="upload_files" class="text-sm font-medium">
-                  Upload Files
-                </Label>
-                <FileUpload
-                  :max-files="1"
-                  @update:files="handleFileUpload"
-                />
-              </div>
-
-              <UrlInput
-                v-if="isUrl"
-                v-model="urlInput"
-                @add="addURL"
-              />
-
-              <TextInput
-                v-if="isText"
-                v-model="textInput"
-                @add="addText"
-              />
+              <Label for="upload_files" class="text-sm font-medium">
+                Upload Files
+              </Label>
+              <FileUpload @update:files="kbDraft.setFiles" />
+            </div>
+              <UrlInput v-if="isUrl" />
+              <TextInput v-if="isText" />
             </div>
 
             <div class="space-y-2">

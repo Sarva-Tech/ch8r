@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
+import { useKBDraftStore } from '~/stores/kbDraft'
 
 export interface KnowledgeBaseItem {
   id: number;
@@ -17,6 +18,7 @@ export type Application = {
   owner: User
   knowledge_base: KnowledgeBaseItem[]
 } | undefined
+
 
 
 export const useApplicationsStore = defineStore('applications', {
@@ -48,10 +50,12 @@ export const useApplicationsStore = defineStore('applications', {
       }
     },
 
-    async createApplicationWithKB(name: string, kbItems: any[]): Promise<Application | null> {
+    async createApplicationWithKB(name: string): Promise<Application | null> {
       const { httpPostForm } = useHttpClient()
       this.loading = true
       this.error = null
+      const kbDraft = useKBDraftStore()
+      const kbItems = kbDraft.items;
 
       try {
         const formData = new FormData()

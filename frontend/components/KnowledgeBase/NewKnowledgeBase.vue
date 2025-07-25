@@ -14,23 +14,10 @@
           <Label for="upload_files" class="text-sm font-medium">
             Upload Files
           </Label>
-          <FileUpload
-            :max-files="1"
-            @update:files="handleFileUpload"
-          />
+          <FileUpload @update:files="kbDraft.setFiles" />
         </div>
-
-        <UrlInput
-          v-if="isUrl"
-          v-model="urlInput"
-          @add="addURL"
-        />
-
-        <TextInput
-          v-if="isText"
-          v-model="textInput"
-          @add="addText"
-        />
+        <UrlInput v-if="isUrl" />
+        <TextInput v-if="isText" />
       </div>
       <div class="space-y-2">
         <Draft
@@ -46,7 +33,7 @@
 <script setup lang="ts">
 import { Button } from '~/components/ui/button'
 import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
-import FileUpload from '~/components/KnowledgeBase/FileUpload.vue'
+import FileUpload from '~/components/FileUpload.vue'
 import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
 import TextInput from '~/components/KnowledgeBase/TextInput.vue'
 import BaseSheet from '~/components/BaseSheet.vue'
@@ -68,28 +55,9 @@ const isFile = computed(() => selectedSourceValue.value === 'file')
 const isUrl = computed(() => selectedSourceValue.value === 'url')
 const isText = computed(() => selectedSourceValue.value === 'text')
 
-const textInput = ref('')
-const urlInput = ref('')
-
-const handleFileUpload = (files: File[]) => {
-  kbDraft.setFiles(files)
-}
 const kbDraft = useKBDraftStore()
 const emit = defineEmits(['knowledgeAdded'])
 
-const addText = () => {
-  if (textInput.value.trim()) {
-    kbDraft.addText(textInput.value.trim())
-    textInput.value = ''
-  }
-}
-
-const addURL = () => {
-  if (urlInput.value.trim()) {
-    kbDraft.addUrl(urlInput.value.trim())
-    urlInput.value = ''
-  }
-}
 
 async function uploadAndProcess() {
   const formData = new FormData()

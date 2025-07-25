@@ -1,7 +1,6 @@
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from core.permissions import HasAPIKeyPermission
 from core.models.application import Application
@@ -11,7 +10,7 @@ from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDe
 
 
 class ChatRoomMessagesView(APIView):
-    permission_classes = [IsAuthenticated | HasAPIKeyPermission]
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
 
     def get(self, request, application_uuid, chatroom_uuid):
         application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
@@ -23,6 +22,7 @@ class ChatRoomMessagesView(APIView):
 
 
 class ChatRoomDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
     def get(self, request, chatroom_uuid):
         try:
             chatroom = ChatRoom.objects.prefetch_related('messages', 'participants').get(uuid=chatroom_uuid)
