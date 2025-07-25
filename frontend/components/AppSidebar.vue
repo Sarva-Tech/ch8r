@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import {
   AppWindow,
   ChevronsUpDown,
@@ -10,10 +9,15 @@ import {
   Plus,
 } from 'lucide-vue-next'
 import AppSheet from '~/components/BaseSheet.vue'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from 'vue-sonner'
-import { getErrorMessage } from '~/lib/utils'
+import { ref, computed } from 'vue'
+import { Input } from '@/components/ui/input'
+import { useKBDraftStore } from '~/stores/kbDraft'
+import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
+import FileUpload from '~/components/FileUpload.vue'
+import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
+import TextInput from '~/components/KnowledgeBase/TextInput.vue'
+import Draft from '~/components/KnowledgeBase/Draft.vue'
 
 import {
   Sidebar,
@@ -24,7 +28,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { DUMMY_NEW_CHATROOM } from '~/lib/consts'
+import { DUMMY_NEW_CHATROOM, KB_SOURCES } from '~/lib/consts'
 import { useNavigation } from '~/composables/useNavigation'
 const { isMobile } = useSidebar()
 
@@ -42,21 +46,37 @@ const chatrooms = computed(() => chatroomStore.chatrooms)
 const loading = computed(() => applicationsStore.loading)
 
 const appName = ref('')
-const handleCreate = async () => {
-  if (!appName.value.trim()) return
+
+const kbDraft = useKBDraftStore()
+const selectedSourceValue = ref('file')
+
+const sources = KB_SOURCES
+const selectedSource = computed(() => sources.find((s) => s.value === selectedSourceValue.value))
+const isFile = computed(() => selectedSourceValue.value === 'file')
+const isUrl = computed(() => selectedSourceValue.value === 'url')
+const isText = computed(() => selectedSourceValue.value === 'text')
+
+const handleSubmit = async () => {
+  if (!appName.value.trim()) {
+    toast.error('Application name is required')
+    return
+  }
 
   try {
-    const newApp = await applicationsStore.createApplication(appName.value)
+    const applicationsStore = useApplicationsStore()
+    const newApp = await applicationsStore.createApplicationWithKB(appName.value)
+
     if (newApp) {
-      appName.value = ''
-      toast.success('Application created successfully!')
       await selectAppAndNavigate(newApp)
+      toast.success(`Application "${newApp?.name}" created successfully`)
+      appName.value = ''
+      kbDraft.clear()
     } else {
-      toast.error('Failed to create application')
+      toast.error(applicationsStore.error || 'Failed to create application')
     }
-  } catch (error) {
-    const message = getErrorMessage(error)
-    toast.error(message || 'Failed to create application')
+  } catch (err: any) {
+    toast.error(err.message || 'Something went wrong')
+    console.error('Failed to create application:', err)
   }
 }
 
@@ -105,12 +125,11 @@ async function initNewChat() {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-
         <AppSheet
           title="Create Application"
-          submit-text="Save"
+          submit-text="Create"
           cancel-text="Cancel"
-          :on-submit="handleCreate"
+          :on-submit="handleSubmit"
           :loading="loading"
         >
           <template #trigger>
@@ -120,16 +139,43 @@ async function initNewChat() {
               <Plus class="w-4 h-4" />
             </button>
           </template>
-          <div class="space-y-2">
-            <Label for="name" class="text-sm font-medium text-gray-900"
-              >Application Name</Label
-            >
-            <Input
-              id="name"
-              v-model="appName"
-              placeholder="Application name"
-              class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
-            />
+
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <Label for="name" class="text-sm font-medium  flex items-center gap-1">
+                Application Name
+                <span class="text-xs text-muted-foreground italic ml-1">Required</span>
+              </Label>
+              <Input
+                id="name"
+                v-model="appName"
+                placeholder="Application name"
+                class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
+              />
+            </div>
+          </div>
+          <div class="space-y-4 mt-4">
+            <SourceSelector v-model="selectedSourceValue" :sources="sources" />
+
+            <div class="space-y-2">
+              <div v-if="isFile" class="space-y-2">
+              <Label for="upload_files" class="text-sm font-medium">
+                Upload Files
+              </Label>
+              <FileUpload @update:files="kbDraft.setFiles" />
+            </div>
+              <UrlInput v-if="isUrl" />
+              <TextInput v-if="isText" />
+            </div>
+
+            <div class="space-y-2">
+              <Draft
+                v-for="item in kbDraft.items"
+                :key="item.id"
+                :item="item"
+                @remove="kbDraft.remove"
+              />
+            </div>
           </div>
         </AppSheet>
       </div>
