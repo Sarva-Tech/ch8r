@@ -37,7 +37,7 @@ import FileUpload from '~/components/FileUpload.vue'
 import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
 import TextInput from '~/components/KnowledgeBase/TextInput.vue'
 import BaseSheet from '~/components/BaseSheet.vue'
-import Draft from '~/components/KnowledgeBase/Draft'
+import Draft from '~/components/KnowledgeBase/Draft.vue'
 import { KB_SOURCES } from '~/lib/consts'
 import { computed } from 'vue'
 
