@@ -18,7 +18,6 @@ def send_kb_update(kb, status):
         "id": str(kb.id),
         "uuid": str(kb.uuid),
         "status": status,
-        "content": getattr(kb.metadata, "content", "") or "",
     }
 
     async_to_sync(channel_layer.group_send)(
@@ -31,15 +30,18 @@ def send_kb_update(kb, status):
 
 def process_kb_item(kb):
     if kb.source_type == 'file':
-        kb.status = KBStatus.EXTRACTING
-        kb.save()
-        send_kb_update(kb, kb.status)
+        is_modified = (kb.metadata or {}).get("is_modified_by_user", False)
 
-        content = extract_text_from_file(kb.path)
+        if not is_modified:
+            kb.status = KBStatus.EXTRACTING
+            kb.save()
+            send_kb_update(kb, kb.status)
 
-        kb.metadata = kb.metadata or {}
-        kb.metadata['content'] = content
-        kb.save()
+            content = extract_text_from_file(kb.path)
+
+            kb.metadata = kb.metadata or {}
+            kb.metadata['content'] = content
+            kb.save()
 
     if kb.source_type in ['file', 'text']:
         app = kb.application
@@ -49,7 +51,6 @@ def process_kb_item(kb):
         send_kb_update(kb, kb.status)
 
         ingest_kb(kb, app)
-
 
         kb.status = KBStatus.PROCESSED
         kb.save()

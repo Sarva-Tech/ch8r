@@ -1,12 +1,12 @@
 from qdrant_client.http.exceptions import UnexpectedResponse
-
+import logging
 from core.models import IngestedChunk
 from sentence_transformers import SentenceTransformer
 from core.qdrant import qdrant, COLLECTION_NAME
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 import uuid
 
-
+logger = logging.getLogger(__name__)
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
@@ -49,11 +49,25 @@ def get_chunks(query_text, app_uuid, top_k=5):
 
 def ingest_kb(kb, app):
     content = kb.metadata.get('content', '')
+
     if not content:
         return
 
     chunks = chunk_text(content)
     embeddings = embed_text(chunks)
+
+    existing_chunks = IngestedChunk.objects.filter(knowledge_base=kb)
+    qdrant_ids = [str(chunk.uuid) for chunk in existing_chunks]
+    existing_chunks.delete()
+
+    try:
+        if qdrant_ids:
+            qdrant.delete(
+                collection_name=COLLECTION_NAME,
+                points=qdrant_ids
+            )
+    except Exception as e:
+        logger.warning(f"Failed to delete vectors from Qdrant: {e}")
 
     for i, (chunk, vector) in enumerate(zip(chunks, embeddings)):
         chunk_uuid = uuid.uuid4()
@@ -76,3 +90,15 @@ def ingest_kb(kb, app):
                 }
             }]
         )
+
+def delete_vectors_from_qdrant(ids):
+    if not ids:
+        return
+
+    try:
+        qdrant.delete(
+            collection_name=COLLECTION_NAME,
+            points=ids
+        )
+    except Exception as e:
+        logger.warning(f"Failed to delete vectors from Qdrant: {e}")

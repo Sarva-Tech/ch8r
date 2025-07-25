@@ -17,9 +17,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  FileText,
-  File,
-  Image,
   Trash,
   Pencil,
   MoreVertical,
@@ -35,94 +32,58 @@ import {
 import { toast } from 'vue-sonner'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
 import { useHttpClient } from '~/composables/useHttpClient'
-import { KB_UPDATE } from '~/lib/consts'
+import { DEFAULT_KB_SOURCE, KB_SOURCES, KB_UPDATE, type StatusType } from '~/lib/consts'
 import { getStatusLabel } from '~/lib/utils'
 
-interface FileData {
-  id: string
+const sources = KB_SOURCES
+
+type TableRow = {
   uuid: string
-  fileType: string
-  content: string
-  fileName: string
-  metaDataContent?: string
-  owner: { username: string; email: string }
-  status: string,
-  applicationName: string
+  sourceType: string
+  path: string
+  content?: string
+  status: StatusType
 }
 
-const userStore = useUserStore()
 const liveUpdateStore = useLiveUpdateStore()
 const appStore = useApplicationsStore()
-const { httpGet, httpDelete, httpPut } = useHttpClient()
+const { httpDelete, httpPut } = useHttpClient()
+const kbStore = useKnowledgeBaseStore()
 
 const selectedApp = computed(() => appStore.selectedApplication)
-const appDetails = ref<any>({})
+const kbs = computed(() => kbStore.kbs)
 const isLoading = ref(false)
 const manualExpanded = ref<Record<string, boolean>>({})
 
 const isEditSheetOpen = ref(false)
-const editingRow = ref<FileData | null>(null)
+const editingRow = ref<KnowledgeBaseItem | null>(null)
 
-async function loadKB() {
-  try {
-    isLoading.value = true
-    if (!selectedApp.value?.uuid) {
-      throw new Error('Missing application UUID')
-    }
-
-    const response = await httpGet<{ application: Application }>(
-      `applications/${selectedApp.value.uuid}/knowledge-bases/`
-    )
-
-    appDetails.value = response.application || {}
-
-  } catch (err: any) {
-    console.error('Fetch error:', err)
-    toast.error(`Failed to load knowledge base: ${err?.message || 'Unknown error'}`)
-  } finally {
-    isLoading.value = false
-  }
+const selectedSource = (value: string) => {
+  const source = sources.find(source => source.value === value)
+  return source?.icon || DEFAULT_KB_SOURCE.icon
 }
-onMounted(loadKB)
 
-const data = computed<FileData[]>(() => {
-  return (appDetails.value.knowledge_base || []).map((item: any) => {
-    const isText = item.source_type.toLowerCase() === 'text'
+const data = computed<TableRow[]>(() => {
+  return (kbs.value || []).map((item: KnowledgeBaseItem) => {
     return {
       uuid: item.uuid,
-      fileType: isText
-        ? 'text'
-        : item.source_type.toLowerCase() === 'image'
-          ? 'image'
-          : item.path.endsWith('.pdf')
-            ? 'pdf'
-            : item.path.match(/\.(doc|docx)$/i)
-              ? 'doc'
-              : item.path.match(/\.(jpg|jpeg|png|gif)$/i)
-                ? 'image'
-                : 'file',
-      fileName: item.path.split('/').pop() || '',
-      content: item.path,
-      metaDataContent: item.metadata?.content,
-      owner: {
-        username: appDetails.value.owner?.username || 'N/A',
-        email: appDetails.value.owner?.email || 'N/A',
-      },
-      applicationName: appDetails.value.name || 'N/A',
-      status: item?.status
+      sourceType: item.source_type,
+      path: item.path,
+      content: item.metadata?.content ?? '',
+      status: item.status,
     }
   })
 })
 
-const columnHelper = createColumnHelper<FileData>()
+const columnHelper = createColumnHelper<TableRow>()
 const columns = [
   columnHelper.display({ id: 'expander', header: '' }),
-  columnHelper.accessor('content', { header: 'Content' }),
+  columnHelper.accessor('path', { header: 'File' }),
   columnHelper.accessor('status', { header: 'Status' }),
   columnHelper.display({ id: 'actions', header: 'Actions' }),
 ]
 
-const table = useVueTable({
+const table = useVueTable<TableRow>({
   get data() {
     return data.value
   },
@@ -131,24 +92,22 @@ const table = useVueTable({
 })
 
 async function handleDelete(id: string) {
-  const userStore = useUserStore()
+  if (!selectedApp.value) return
   try {
-    if (!userStore.getToken?.value || !selectedApp.value?.uuid) {
-      throw new Error('Missing token or application UUID')
-    }
-
     await httpDelete(
-      `/applications/${selectedApp.value.uuid}/knowledge-bases/${id}/`
+      `/applications/${selectedApp.value.uuid}/knowledge-bases/${id}/`,
     )
-
     toast.success('Knowledge base deleted successfully.')
+
     await loadKB()
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Delete error:', err)
-    toast.error(`Failed to delete knowledge base: ${err?.message || 'Unknown error'}`)
+    toast.error(
+      `Failed to delete knowledge base: ${err?.message || 'Unknown error'}`,
+    )
   }
 }
-function openEditSheet(row: FileData) {
+function openEditSheet(row: KnowledgeBaseItem) {
   editingRow.value = { ...row }
   isEditSheetOpen.value = true
 }
@@ -161,27 +120,21 @@ function closeEditSheet() {
 async function handleUpdate() {
   if (!editingRow.value || !selectedApp.value?.uuid) return
 
-  const userStore = useUserStore()
-
   try {
     isLoading.value = true
-
-    if (!userStore.getToken?.value) {
-      throw new Error('Authentication token missing')
-    }
 
     await httpPut(
       `/applications/${selectedApp.value.uuid}/knowledge-bases/${editingRow.value.id}/`,
       {
         metadata: { content: editingRow.value.metaDataContent },
-        path: editingRow.value.fileName,
-      }
+        path: editingRow.value.path,
+      },
     )
 
     toast.success('Knowledge base updated successfully.')
     closeEditSheet()
     await loadKB()
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Update error:', err)
     toast.error(`Failed to update: ${err?.message || 'Unknown error'}`)
   } finally {
@@ -192,16 +145,11 @@ async function handleUpdate() {
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
   if (msg.type === KB_UPDATE) {
     const { uuid, status, content } = msg.data
-    const kb = appDetails.value.knowledge_base?.find((item) => item.uuid === uuid)
-    if (kb) {
-      kb.status = status
-
-      if (!kb.metadata) kb.metadata = {}
-      kb.metadata.content = content
-    }
+    kbStore.updateStatus(uuid, status, content)
   }
 })
 
+onMounted(() => { kbStore.load() })
 onBeforeUnmount(() => {
   unsubscribe()
 })
@@ -213,17 +161,23 @@ onBeforeUnmount(() => {
       <div class="flex gap-2 items-center py-4">
         <Input class="max-w-sm" placeholder="Filter content..." />
         <div class="ml-auto">
-          <NewKnowledgeBase @knowledge-added="loadKB"/>
+          <NewKnowledgeBase />
         </div>
       </div>
 
       <div v-if="isLoading" class="text-center py-8">Loading...</div>
-      <div v-else-if="!table.getRowModel().rows?.length" class="text-center py-8">
+      <div
+        v-else-if="!table.getRowModel().rows?.length"
+        class="text-center py-8"
+      >
         No results.
       </div>
       <Table v-else class="rounded-md border">
         <TableHeader>
-          <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+          <TableRow
+            v-for="headerGroup in table.getHeaderGroups()"
+            :key="headerGroup.id"
+          >
             <TableHead
               v-for="header in headerGroup.headers"
               :key="header.id"
@@ -248,19 +202,32 @@ onBeforeUnmount(() => {
                 <div
                   v-if="cell.column.id === 'expander'"
                   class="p-1 rounded focus:outline-none"
-                  :aria-label="manualExpanded[row.id] ? 'Collapse row' : 'Expand row'"
-                  @click.stop.prevent="manualExpanded[row.id] = !manualExpanded[row.id]"
+                  :aria-label="
+                    manualExpanded[row.id] ? 'Collapse row' : 'Expand row'
+                  "
+                  @click.stop.prevent="
+                    manualExpanded[row.id] = !manualExpanded[row.id]
+                  "
                 >
                   <ChevronDown v-if="manualExpanded[row.id]" class="w-4 h-4" />
                   <ChevronRight v-else class="w-4 h-4" />
                 </div>
-                <div v-else-if="cell.column.id === 'content'" class="flex items-center">
-                  <FileText v-if="row.original.fileType === 'text'" class="mr-2 w-4 h-4" />
-                  <Image v-else-if="row.original.fileType === 'image'" class="mr-2 w-4 h-4" />
-                  <File v-else class="mr-2 w-4 h-4" />
-                  <span class="truncate max-w-[300px]">{{ row.original.content }}</span>
+                <div
+                  v-else-if="cell.column.id === 'path'"
+                  class="flex items-center space-x-2"
+                >
+                  <component
+                    :is="selectedSource(row.original.sourceType)"
+                    class="w-4 h-4"
+                  />
+                  <span class="truncate max-w-[300px]">{{
+                    row.original.path
+                  }}</span>
                 </div>
-                <div v-else-if="cell.column.id === 'status'" class="flex items-center">
+                <div
+                  v-else-if="cell.column.id === 'status'"
+                  class="flex items-center"
+                >
                   {{ getStatusLabel(row.original.status) }}
                 </div>
                 <DropdownMenu v-else-if="cell.column.id === 'actions'">
@@ -273,7 +240,10 @@ onBeforeUnmount(() => {
                     <DropdownMenuItem @click="openEditSheet(row.original)">
                       <Pencil class="mr-2 h-4 w-4" /> Edit
                     </DropdownMenuItem>
-                    <DropdownMenuItem class="text-red-600" @click="handleDelete(row.original.id)">
+                    <DropdownMenuItem
+                      class="text-red-600"
+                      @click="handleDelete(row.original.id)"
+                    >
                       <Trash class="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -283,18 +253,13 @@ onBeforeUnmount(() => {
             <TableRow v-if="manualExpanded[row.id]" data-expanded="true">
               <TableCell :colspan="columns.length">
                 <div class="bg-muted shadow-inner border p-2 space-y-4">
-<!--                  <div class="flex gap-6">-->
-<!--                    <div class="text-muted-foreground font-medium w-32">Owner</div>-->
-<!--                    <div>{{ row.original.owner.username }} ({{ row.original.owner.email }})</div>-->
-<!--                  </div>-->
-<!--                  <div class="flex gap-6">-->
-<!--                    <div class="text-muted-foreground font-medium w-32">File Type</div>-->
-<!--                    <div class="capitalize">{{ row.original.fileType }}</div>-->
-<!--                  </div>-->
                   <div>
-<!--                    <div class="text-muted-foreground font-medium mb-1">Full Content</div>-->
-                    <div class="whitespace-pre-wrap break-words max-h-64 overflow-y-auto p-2 text-sm leading-relaxed">
-                      {{ row.original?.metaDataContent || 'No content available' }}
+                    <div
+                      class="whitespace-pre-wrap break-words max-h-64 overflow-y-auto p-2 text-sm leading-relaxed"
+                    >
+                      {{
+                        row.original?.content || 'No content available'
+                      }}
                     </div>
                   </div>
                 </div>
@@ -312,7 +277,9 @@ onBeforeUnmount(() => {
         :on-submit="handleUpdate"
         :loading="isLoading"
       >
-        <div class="flex flex-col h-full max-h-[calc(100vh-150px)] overflow-auto">
+        <div
+          class="flex flex-col h-full max-h-[calc(100vh-150px)] overflow-auto"
+        >
           <Label for="content" class="text-sm font-medium mb-2">Content</Label>
           <textarea
             id="content"

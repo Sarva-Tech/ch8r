@@ -1,16 +1,18 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-
-from core.models import KnowledgeBase, Application
+from core.models import KnowledgeBase, Application, IngestedChunk
 from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from django.core.files.storage import default_storage
 from core.permissions import HasAPIKeyPermission
+from core.services.ingestion import delete_vectors_from_qdrant
 
 from core.tasks import process_kb
+import logging
 
+logger = logging.getLogger(__name__)
 
 class KnowledgeBaseViewSet(viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.none()
@@ -119,7 +121,8 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
             kb_ids = [kb.id for kb in created_kbs]
             process_kb.delay(kb_ids)
 
-            return Response({"message": "Knowledge base files added."}, status=status.HTTP_201_CREATED)
+            serialized_kbs = KnowledgeBaseViewSerializer(created_kbs, many=True)
+            return Response({"kbs": serialized_kbs.data}, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,7 +130,20 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         raise MethodNotAllowed("PUT")
 
     def partial_update(self, request, *args, **kwargs):
-        raise MethodNotAllowed("PATCH")
+        kb = self.get_object()
+        content = request.data.get("content")
+
+        if content is None:
+            raise ValidationError({"content": "This field is required."})
+
+        kb.metadata = kb.metadata or {}
+        kb.metadata["content"] = content
+        kb.metadata["is_modified_by_user"] = True
+        kb.save(update_fields=["metadata"])
+
+        process_kb.delay([kb.id])
+
+        return Response({"detail": "Content updated successfully."})
 
     def destroy(self, request, *args, **kwargs):
         application_uuid = kwargs.get('application_uuid')
@@ -135,6 +151,18 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
         application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
         kb = get_object_or_404(KnowledgeBase, uuid=kb_uuid, application=application)
+
+        chunks = IngestedChunk.objects.filter(knowledge_base=kb)
+        qdrant_ids = [str(chunk.uuid) for chunk in chunks]
+        chunks.delete()
+
+        delete_vectors_from_qdrant(qdrant_ids)
+
+        if kb.source_type == 'file' and kb.path:
+            try:
+                kb.path.delete(save=False)
+            except Exception as e:
+                logger.warning(f"Failed to delete file for KB {kb.uuid}: {e}")
 
         kb.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

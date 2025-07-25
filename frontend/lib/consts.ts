@@ -34,11 +34,13 @@ export const SUPPORTED_FILE_EXTENSIONS_STR = SUPPORTED_FILE_EXTENSIONS
   .map((ext) => ext.id)
   .join(', ')
 
+export type SOURCE_TYPE = 'file' | 'text' | string;
 export const KB_SOURCES = [
   { label: 'File', value: 'file', icon: File },
   // { label: 'URL', value: 'url', icon: Link },
   { label: 'Text', value: 'text', icon: LetterText }
 ]
+export const DEFAULT_KB_SOURCE = KB_SOURCES[0]
 
 export const NEW_MESSAGE_UPDATE = 'message'
 export const KB_UPDATE = 'kb_updates'

@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
+import type { SOURCE_TYPE, StatusType } from '~/lib/consts'
 
 export interface KnowledgeBaseItem {
   id: number;
   uuid: string;
   application_id: number;
   path: string;
-  metadata: Record<string, unknown> | null;
+  metadata: {
+    content: string
+    filename: string
+    [key: string]: unknown
+  }
+  source_type: SOURCE_TYPE
+  status: StatusType
 }
 
 export type Application = {

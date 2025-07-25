@@ -43,6 +43,7 @@ const handleLogin = async () => {
     }
 
     const cookie = useCookie('auth_token')
+    const authUser = useCookie<User>('auth_user')
     cookie.value = response.token
 
     const user = await $fetch<User>(`${config.public.apiBaseUrl}/me/`, {
@@ -52,6 +53,7 @@ const handleLogin = async () => {
     })
 
     userStore.setUser(user)
+    authUser.value = user
     toast.success('Login successful!')
     navigateTo('/')
   } catch (err: never) {
