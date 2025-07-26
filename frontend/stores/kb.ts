@@ -63,22 +63,56 @@ export const useKnowledgeBaseStore = defineStore('kb', {
       }
     },
 
-    updateStatus(uuid: string, status: StatusType, content: string) {
+    updateStatus(uuid: string, status: StatusType) {
       const kb = this.kbs.find(item => item.uuid === uuid)
       if (!kb) return
 
       kb.status = status
+    },
 
-      if (!kb.metadata) {
-        kb.metadata = { content: '', filename: '' }
+    async update(id: string, content: string) {
+      const appStore = useApplicationsStore()
+      const app = appStore.selectedApplication
+      if (!app) return
+
+      this.loading = true
+
+      try {
+        const { httpPatch } = useHttpClient()
+        const response = await httpPatch(
+          `/applications/${app.uuid}/knowledge-bases/${id}/`, { content }
+        )
+        const updatedKB = this.kbs.find(kb => kb.uuid === id)
+        if (updatedKB) {
+          Object.assign(updatedKB, response)
+        }
       }
-      kb.metadata.content = content
+      catch (err: unknown) {
+        console.error('Delete error:', err)
+      } finally {
+        this.loading = false
+      }
     },
 
-    async updateKb() {
-    },
+    async delete(id: string) {
+      const appStore = useApplicationsStore()
+      const app = appStore.selectedApplication
+      if (!app) return
 
-    async deleteKb() {
+      this.loading = true
+
+      try {
+        const { httpDelete } = useHttpClient()
+        await httpDelete(
+          `/applications/${app.uuid}/knowledge-bases/${id}/`,
+        )
+        this.kbs = this.kbs.filter((kb) => kb.uuid !== id)
+      }
+      catch (err: unknown) {
+        console.error('Delete error:', err)
+      } finally {
+        this.loading = false
+      }
     },
   },
 })

@@ -18,21 +18,19 @@ def create_kb_records(application, items):
                     path=filename,
                     status="pending",
                     metadata={
-                        'filename': filename,
                         'content': ""
                     }
                 ))
 
         elif item_type == 'text':
             text_value = item.get('value', '')
-            path = f"text://{text_value[:50]}"
+            path = format_text_uri(text_value)
             records.append(KnowledgeBase(
                 application=application,
                 source_type="text",
                 path=path,
                 status="pending",
                 metadata={
-                    'filename': path,
                     'content': text_value
                 }
             ))
@@ -84,3 +82,6 @@ def parse_kb_from_request(request):
         index += 1
 
     return parsed_items
+
+def format_text_uri(text_value: str) -> str:
+    return f"text://{text_value[:50]}"

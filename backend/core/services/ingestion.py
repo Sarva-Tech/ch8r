@@ -3,7 +3,7 @@ import logging
 from core.models import IngestedChunk
 from sentence_transformers import SentenceTransformer
 from core.qdrant import qdrant, COLLECTION_NAME
-from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue, PointIdsList
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,7 @@ def delete_vectors_from_qdrant(ids):
     try:
         qdrant.delete(
             collection_name=COLLECTION_NAME,
-            points=ids
+            points_selector=PointIdsList(points=ids)
         )
     except Exception as e:
         logger.warning(f"Failed to delete vectors from Qdrant: {e}")

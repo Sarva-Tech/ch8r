@@ -1,13 +1,14 @@
+from django.core.files.storage import default_storage
 from rest_framework import viewsets, permissions, status
 from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from core.models import KnowledgeBase, Application, IngestedChunk
 from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from core.permissions import HasAPIKeyPermission
 from core.services.ingestion import delete_vectors_from_qdrant
-from core.services.kb_utils import create_kb_records, parse_kb_from_request
+from core.services.kb_utils import create_kb_records, parse_kb_from_request, format_text_uri
 
 from core.tasks import process_kb
 import logging
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 class KnowledgeBaseViewSet(viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.none()
     permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = 'uuid'
 
     def get_serializer_class(self):
@@ -74,14 +75,20 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         if content is None:
             raise ValidationError({"content": "This field is required."})
 
+        fields_to_update = ["metadata"]
         kb.metadata = kb.metadata or {}
         kb.metadata["content"] = content
         kb.metadata["is_modified_by_user"] = True
-        kb.save(update_fields=["metadata"])
+
+        if kb.source_type == 'text':
+            kb.path = format_text_uri(content)
+            fields_to_update.append("path")
+
+        kb.save(update_fields=fields_to_update)
 
         process_kb.delay([kb.id])
 
-        return Response({"detail": "Content updated successfully."})
+        return Response(KnowledgeBaseViewSerializer(kb).data)
 
     def destroy(self, request, *args, **kwargs):
         application_uuid = kwargs.get('application_uuid')
@@ -98,7 +105,7 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
         if kb.source_type == 'file' and kb.path:
             try:
-                kb.path.delete(save=False)
+                default_storage.delete(kb.path)
             except Exception as e:
                 logger.warning(f"Failed to delete file for KB {kb.uuid}: {e}")
 

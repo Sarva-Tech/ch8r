@@ -6,8 +6,6 @@ import {
 } from '@tanstack/vue-table'
 import { ref, computed, onMounted } from 'vue'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import AppSheet from '~/components/BaseSheet.vue'
 import {
   Table,
   TableBody,
@@ -18,10 +16,9 @@ import {
 } from '@/components/ui/table'
 import {
   Trash,
-  Pencil,
   MoreVertical,
   ChevronDown,
-  ChevronRight,
+  ChevronRight, Pencil
 } from 'lucide-vue-next'
 import {
   DropdownMenu,
@@ -29,41 +26,29 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { toast } from 'vue-sonner'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
-import { useHttpClient } from '~/composables/useHttpClient'
-import { DEFAULT_KB_SOURCE, KB_SOURCES, KB_UPDATE, type StatusType } from '~/lib/consts'
+import UpdateKnowledgeBase from '~/components/KnowledgeBase/UpdateKnowledgeBase.vue'
+import { DEFAULT_KB_SOURCE, KB_SOURCES, KB_UPDATE  } from '~/lib/consts'
 import { getStatusLabel } from '~/lib/utils'
+import type { KBTableRow } from '~/lib/types'
+
+const updateKBRef = ref<InstanceType<typeof UpdateKnowledgeBase> | null>(null)
 
 const sources = KB_SOURCES
 
-type TableRow = {
-  uuid: string
-  sourceType: string
-  path: string
-  content?: string
-  status: StatusType
-}
-
 const liveUpdateStore = useLiveUpdateStore()
-const appStore = useApplicationsStore()
-const { httpDelete, httpPut } = useHttpClient()
 const kbStore = useKnowledgeBaseStore()
 
-const selectedApp = computed(() => appStore.selectedApplication)
 const kbs = computed(() => kbStore.kbs)
 const isLoading = ref(false)
 const manualExpanded = ref<Record<string, boolean>>({})
-
-const isEditSheetOpen = ref(false)
-const editingRow = ref<KnowledgeBaseItem | null>(null)
 
 const selectedSource = (value: string) => {
   const source = sources.find(source => source.value === value)
   return source?.icon || DEFAULT_KB_SOURCE.icon
 }
 
-const data = computed<TableRow[]>(() => {
+const data = computed<KBTableRow[]>(() => {
   return (kbs.value || []).map((item: KnowledgeBaseItem) => {
     return {
       uuid: item.uuid,
@@ -75,7 +60,7 @@ const data = computed<TableRow[]>(() => {
   })
 })
 
-const columnHelper = createColumnHelper<TableRow>()
+const columnHelper = createColumnHelper<KBTableRow>()
 const columns = [
   columnHelper.display({ id: 'expander', header: '' }),
   columnHelper.accessor('path', { header: 'File' }),
@@ -83,7 +68,7 @@ const columns = [
   columnHelper.display({ id: 'actions', header: 'Actions' }),
 ]
 
-const table = useVueTable<TableRow>({
+const table = useVueTable<KBTableRow>({
   get data() {
     return data.value
   },
@@ -91,63 +76,16 @@ const table = useVueTable<TableRow>({
   getCoreRowModel: getCoreRowModel(),
 })
 
-async function handleDelete(id: string) {
-  if (!selectedApp.value) return
-  try {
-    await httpDelete(
-      `/applications/${selectedApp.value.uuid}/knowledge-bases/${id}/`,
-    )
-    toast.success('Knowledge base deleted successfully.')
-
-    await loadKB()
-  } catch (err: unknown) {
-    console.error('Delete error:', err)
-    toast.error(
-      `Failed to delete knowledge base: ${err?.message || 'Unknown error'}`,
-    )
-  }
-}
-function openEditSheet(row: KnowledgeBaseItem) {
-  editingRow.value = { ...row }
-  isEditSheetOpen.value = true
-}
-
-function closeEditSheet() {
-  isEditSheetOpen.value = false
-  editingRow.value = null
-}
-
-async function handleUpdate() {
-  if (!editingRow.value || !selectedApp.value?.uuid) return
-
-  try {
-    isLoading.value = true
-
-    await httpPut(
-      `/applications/${selectedApp.value.uuid}/knowledge-bases/${editingRow.value.id}/`,
-      {
-        metadata: { content: editingRow.value.metaDataContent },
-        path: editingRow.value.path,
-      },
-    )
-
-    toast.success('Knowledge base updated successfully.')
-    closeEditSheet()
-    await loadKB()
-  } catch (err: unknown) {
-    console.error('Update error:', err)
-    toast.error(`Failed to update: ${err?.message || 'Unknown error'}`)
-  } finally {
-    isLoading.value = false
-  }
-}
-
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
   if (msg.type === KB_UPDATE) {
-    const { uuid, status, content } = msg.data
-    kbStore.updateStatus(uuid, status, content)
+    const { uuid, status } = msg.data
+    kbStore.updateStatus(uuid, status)
   }
 })
+
+function openUpdateKB(kb: KBTableRow) {
+  updateKBRef.value?.openSheet(kb)
+}
 
 onMounted(() => { kbStore.load() })
 onBeforeUnmount(() => {
@@ -159,7 +97,6 @@ onBeforeUnmount(() => {
   <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
     <div class="w-full space-y-4">
       <div class="flex gap-2 items-center py-4">
-        <Input class="max-w-sm" placeholder="Filter content..." />
         <div class="ml-auto">
           <NewKnowledgeBase />
         </div>
@@ -170,7 +107,7 @@ onBeforeUnmount(() => {
         v-else-if="!table.getRowModel().rows?.length"
         class="text-center py-8"
       >
-        No results.
+        Your knowledge base is empty.
       </div>
       <Table v-else class="rounded-md border">
         <TableHeader>
@@ -237,12 +174,12 @@ onBeforeUnmount(() => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem @click="openEditSheet(row.original)">
-                      <Pencil class="mr-2 h-4 w-4" /> Edit
+                    <DropdownMenuItem @click="openUpdateKB(row.original)">
+                      <Pencil class="mr-2 h-4 w-4" /> Update
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       class="text-red-600"
-                      @click="handleDelete(row.original.id)"
+                      @click="kbStore.delete(row.original.uuid)"
                     >
                       <Trash class="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
@@ -268,27 +205,8 @@ onBeforeUnmount(() => {
           </template>
         </TableBody>
       </Table>
-      <AppSheet
-        v-if="editingRow"
-        v-model:open="isEditSheetOpen"
-        title="Edit Knowledge Base"
-        submit-text="Save"
-        cancel-text="Cancel"
-        :on-submit="handleUpdate"
-        :loading="isLoading"
-      >
-        <div
-          class="flex flex-col h-full max-h-[calc(100vh-150px)] overflow-auto"
-        >
-          <Label for="content" class="text-sm font-medium mb-2">Content</Label>
-          <textarea
-            id="content"
-            v-model="editingRow.metaDataContent"
-            class="min-h-[400px] resize-none w-full rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2 flex-1"
-          />
-        </div>
-      </AppSheet>
     </div>
+    <UpdateKnowledgeBase ref="updateKBRef" />
   </div>
 </template>
 

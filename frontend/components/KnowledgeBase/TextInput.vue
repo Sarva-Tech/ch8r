@@ -22,7 +22,7 @@
 import { ref } from 'vue'
 import { useKBDraftStore } from '~/stores/kbDraft'
 
-const props = defineProps({
+defineProps({
   placeholder: {
     type: String,
     default: 'Enter your text here'

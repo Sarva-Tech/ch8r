@@ -9,6 +9,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { ref, computed } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -17,16 +18,37 @@ const props = withDefaults(
     cancelText?: string
     onSubmit?: () => void | Promise<void>
     loading?: boolean
+    open?: boolean
   }>(),
   {
     submitText: 'Save',
     cancelText: 'Cancel',
+    open: undefined,
   }
 )
+
+const emit = defineEmits(['update:open'])
+
+const internalOpen = ref(false)
+
+const isControlled = computed(() => props.open !== undefined)
+
+const sheetOpen = computed({
+  get() {
+    return isControlled.value ? props.open! : internalOpen.value
+  },
+  set(value: boolean) {
+    if (isControlled.value) {
+      emit('update:open', value)
+    } else {
+      internalOpen.value = value
+    }
+  },
+})
 </script>
 
 <template>
-  <Sheet>
+  <Sheet :open="sheetOpen" @update:open="val => sheetOpen = val">
     <SheetTrigger as-child>
       <slot name="trigger" />
     </SheetTrigger>
@@ -37,9 +59,8 @@ const props = withDefaults(
       </SheetHeader>
 
       <div
-        class=
-          "mx-4 flex flex-col h-full max-h-[calc(100vh-150px)]
-           overflow-x-hidden overflow-y-auto"
+        class="mx-4 flex flex-col h-full max-h-[calc(100vh-150px)]
+         overflow-x-hidden overflow-y-auto"
       >
         <slot />
       </div>
