@@ -1,17 +1,30 @@
+from fastembed import SparseTextEmbedding
 from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
 from core.models import IngestedChunk
 from sentence_transformers import SentenceTransformer
 from core.qdrant import qdrant, COLLECTION_NAME
-from qdrant_client.http.models import Filter, FieldCondition, MatchValue, PointIdsList
+from qdrant_client.http.models import PointIdsList
+from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, MatchValue as ModelsMatchValue
+from qdrant_client.models import Prefetch, SparseVector
 import uuid
 
 logger = logging.getLogger(__name__)
 model = SentenceTransformer("all-MiniLM-L6-v2")
-
+sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
 
 def embed_text(text_chunks: list[str]) -> list[list[float]]:
+    # Dense embeddings
     return model.encode(text_chunks).tolist()
+def embed_sparse(text_chunks: list[str]) -> list:
+    # Sparse embeddings
+    sparse_embeddings = list(sparse_model.embed(text_chunks))
+    return [
+        SparseVector(
+            indices=embedding.indices.tolist(),
+            values=embedding.values.tolist()
+        ) for embedding in sparse_embeddings
+    ]
 
 def chunk_text(text: str, chunk_size=300, overlap=50) -> list[str]:
     chunks = []
@@ -23,26 +36,48 @@ def chunk_text(text: str, chunk_size=300, overlap=50) -> list[str]:
     return chunks
 
 def get_chunks(query_text, app_uuid, top_k=5):
-    query_vector = model.encode(query_text).tolist()
+    dense_query = model.encode(query_text).tolist()
+    sparse_embedding = list(sparse_model.embed([query_text]))[0]
+    sparse_query = SparseVector(
+        indices=sparse_embedding.indices.tolist(),
+        values=sparse_embedding.values.tolist()
+    )
 
     try:
         search_result = qdrant.query_points(
             collection_name=COLLECTION_NAME,
-            query=query_vector,
+            prefetch=[
+                Prefetch(
+                    query=dense_query,
+                    using="dense",
+                    limit=top_k * 2,
+                    filter=ModelsFilter(
+                        must=[ModelsFieldCondition(key="app_id", match=ModelsMatchValue(value=str(app_uuid)))]
+                    )
+                ),
+                Prefetch(
+                    query=sparse_query,
+                    using="sparse",
+                    limit=top_k * 2,
+                    filter=ModelsFilter(
+                        must=[ModelsFieldCondition(key="app_id", match=ModelsMatchValue(value=str(app_uuid)))]
+                    )
+                )
+            ],
+            query=dense_query,
+            using="dense",
             limit=top_k,
-            query_filter=Filter(
-                must=[FieldCondition(key="app_id", match=MatchValue(value=str(app_uuid)))]
-            ),
             with_payload=True
         )
     except UnexpectedResponse as e:
         print("Qdrant query failed:", str(e))
         return "No context available."
 
-
-    chunk_uuids = [point.id for point in search_result.points if point.score >= 0.5]
+    chunk_uuids = [point.id for point in search_result.points if point.score >= 0.3]
 
     chunks = IngestedChunk.objects.filter(uuid__in=chunk_uuids).order_by('chunk_index')
+    for idx, chunk in enumerate(chunks):
+        print(f"Document {idx + 1} - document:\n{chunk.content}\n{'-' * 40}")
     context = "\n".join([chunk.content for chunk in chunks])
 
     return context
@@ -54,7 +89,8 @@ def ingest_kb(kb, app):
         return
 
     chunks = chunk_text(content)
-    embeddings = embed_text(chunks)
+    dense_embeddings = embed_text(chunks)
+    sparse_embeddings = embed_sparse(chunks)
 
     existing_chunks = IngestedChunk.objects.filter(knowledge_base=kb)
     qdrant_ids = [str(chunk.uuid) for chunk in existing_chunks]
@@ -69,7 +105,7 @@ def ingest_kb(kb, app):
     except Exception as e:
         logger.warning(f"Failed to delete vectors from Qdrant: {e}")
 
-    for i, (chunk, vector) in enumerate(zip(chunks, embeddings)):
+    for i, (chunk, dense_vector, sparse_vector) in enumerate(zip(chunks, dense_embeddings, sparse_embeddings)):
         chunk_uuid = uuid.uuid4()
         IngestedChunk.objects.create(
             uuid=chunk_uuid,
@@ -82,7 +118,10 @@ def ingest_kb(kb, app):
             collection_name=COLLECTION_NAME,
             points=[{
                 "id": str(chunk_uuid),
-                "vector": vector,
+                "vector": {
+                    "dense": dense_vector,
+                    "sparse": sparse_vector
+                },
                 "payload": {
                     "kb_id": str(kb.uuid),
                     "app_id": str(app.uuid),

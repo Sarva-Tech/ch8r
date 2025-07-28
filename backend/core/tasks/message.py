@@ -6,11 +6,14 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db.models import Q
+from jinja2 import Template
 
 from core.consts import LIVE_UPDATES_PREFIX
-from core.models import IngestedChunk
+from core.models import IngestedChunk, Application
 from core.models.message import Message
 from langchain.chat_models import init_chat_model
+
+from core.prompts.customer_support import CUSTOMER_SUPPORT_PROMPT_TEMPLATE
 from core.serializers.message import ViewMessageSerializer
 from core.services import get_chunks
 
@@ -21,6 +24,7 @@ AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001"
 
 @shared_task
 def generate_bot_response(message_id, app_uuid):
+    app = Application.objects.get(uuid=app_uuid)
     user_message = Message.objects.get(id=message_id)
     chatroom = user_message.chatroom
     question = user_message.message
@@ -31,12 +35,17 @@ def generate_bot_response(message_id, app_uuid):
 
     if has_chunks:
         context = get_chunks(question, app_uuid, top_k=5)
-        prompt = f"Based on the context:\n{context}\n\nAnswer the user query:\n{question}"
+        template = Template(CUSTOMER_SUPPORT_PROMPT_TEMPLATE)
+        prompt = template.render(
+            product_name=app.name,
+            context=context,
+            user_query=question
+        )
     else:
         print("No ingested chunks found for this application.")
         prompt = f"Answer the user query:\n{question}"
 
-    model = init_chat_model("gemini-2.0-flash", model_provider="google_genai", api_key=GEMINI_API_KEY)
+    model = init_chat_model("gemini-2.5-pro", model_provider="google_genai", api_key=GEMINI_API_KEY)
     llm_response = model.invoke(prompt)
 
     bot_message = Message.objects.create(
