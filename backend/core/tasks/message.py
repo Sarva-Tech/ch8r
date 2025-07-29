@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 
@@ -6,16 +7,16 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db.models import Q
-from jinja2 import Template
 
 from core.consts import LIVE_UPDATES_PREFIX
 from core.models import IngestedChunk, Application
 from core.models.message import Message
 from langchain.chat_models import init_chat_model
 
-from core.prompts.customer_support import CUSTOMER_SUPPORT_PROMPT_TEMPLATE
 from core.serializers.message import ViewMessageSerializer
 from core.services import get_chunks
+from core.services.template_loader import TemplateLoader
+from core.utils import parse_llm_response
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +34,68 @@ def generate_bot_response(message_id, app_uuid):
         knowledge_base__application__uuid=app_uuid
     ).exists()
 
+    messages = chatroom.messages.order_by("created_at")
+    chat_history_entries = []
+    for msg in messages:
+        if msg.sender_identifier.startswith("agent_llm"):
+            sender = "AI Agent"
+        elif msg.sender_identifier.startswith("reg_"):
+            sender = "Human Agent"
+        elif msg.sender_identifier.startswith("anon_"):
+            sender = "User"
+        else:
+            sender = "Unknown"
+
+        chat_history_entries.append(f"{sender}: {msg.message}")
+
+    chat_history = "\n".join(chat_history_entries)
+
     if has_chunks:
         context = get_chunks(question, app_uuid, top_k=5)
-        template = Template(CUSTOMER_SUPPORT_PROMPT_TEMPLATE)
-        prompt = template.render(
-            product_name=app.name,
-            context=context,
-            user_query=question
-        )
     else:
-        print("No ingested chunks found for this application.")
-        prompt = f"Answer the user query:\n{question}"
+        context = "NO_CONTEXT"
 
+    prompt_context = {
+        "product_name": app.name,
+        "product_type": 'Software as a Service (SaaS)',
+        "tone": "friendly and professional",
+        "context": context,
+        "chat_history": chat_history,
+        "user_query": question,
+    }
+
+    prompt = TemplateLoader.render_template('customer_support.j2', prompt_context)
+    print(':::DEBUG Prompt:::', prompt)
     model = init_chat_model("gemini-2.5-pro", model_provider="google_genai", api_key=GEMINI_API_KEY)
     llm_response = model.invoke(prompt)
+
+    try:
+        llm_response_data = parse_llm_response(llm_response.content)
+
+        answer = llm_response_data.get("answer", "").strip()
+        status = llm_response_data.get("status", "ERROR").strip()
+        escalation = llm_response_data.get("escalation", False)
+        reason = llm_response_data.get("reason_for_escalation", "").strip()
+
+        metadata = {
+            "status": status,
+            "escalation": escalation,
+            "reason_for_escalation": reason,
+        }
+
+    except json.JSONDecodeError:
+        answer = llm_response.content.strip()
+        metadata = {
+            "status": "ERROR",
+            "escalation": True,
+            "reason_for_escalation": "Malformed LLM response",
+        }
 
     bot_message = Message.objects.create(
         chatroom=chatroom,
         sender_identifier=AGENT_IDENTIFIER,
-        message=llm_response.content,
+        message=answer,
+        metadata=metadata,
     )
 
     channel_layer = get_channel_layer()

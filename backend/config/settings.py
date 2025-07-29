@@ -143,3 +143,5 @@ CELERY_TASK_SERIALIZER = 'json'
 
 MEDIA_ROOT = BASE_DIR / "uploads"
 MEDIA_URL = "/uploads/"
+
+JINJA_TEMPLATE_DIR = BASE_DIR / "templates"
