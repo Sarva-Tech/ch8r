@@ -6,3 +6,5 @@ from .chatroom import ChatRoomMessagesView
 from .ingestion import IngestApplicationKBView
 from .widget import WidgetView
 from .generate_api_key import GenerateAPIKeyView
+from .notification_profile import NotificationProfileViewSet
+from .app_notification_profile import AppNotificationProfileCreateView
