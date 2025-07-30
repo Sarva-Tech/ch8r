@@ -144,6 +144,9 @@ CELERY_TASK_SERIALIZER = 'json'
 MEDIA_ROOT = BASE_DIR / "uploads"
 MEDIA_URL = "/uploads/"
 
+JINJA_TEMPLATE_DIR = BASE_DIR / "templates"
+
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'localhost'
 EMAIL_PORT = 1025
