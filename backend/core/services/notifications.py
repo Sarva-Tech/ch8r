@@ -1,8 +1,9 @@
-from core.models import AppNotificationProfile
 from core.prompts import render_template
 from core.tasks.notification import send_notification_task
 
 def find_channels(application):
+    from core.models import AppNotificationProfile
+
     return [
         app_profile.notification_profile
         for app_profile in AppNotificationProfile.objects.select_related("notification_profile").filter(application=application)

@@ -134,6 +134,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+SECRET_ENCRYPTION_KEY = os.getenv('SECRET_ENCRYPTION_KEY')
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
