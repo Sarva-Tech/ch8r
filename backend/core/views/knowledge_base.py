@@ -61,13 +61,6 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
             created_kbs = create_kb_records(application, items)
 
             process_kb.delay([kb.id for kb in created_kbs])
-
-            context = {
-                "app": application,
-                "count": len(created_kbs),
-            }
-            notify_users(application,KB_UPLOAD_TEMPLATE, context)
-
             serialized_kbs = KnowledgeBaseViewSerializer(created_kbs, many=True)
             return Response({"kbs": serialized_kbs.data}, status=status.HTTP_201_CREATED)
 

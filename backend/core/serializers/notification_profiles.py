@@ -2,7 +2,7 @@ from rest_framework import serializers
 from core.models import NotificationProfile
 
 class NotificationProfileSerializer(serializers.ModelSerializer):
-    config = serializers.DictField()
+    config = serializers.DictField(write_only=True)
 
     class Meta:
         model = NotificationProfile
@@ -24,8 +24,3 @@ class NotificationProfileSerializer(serializers.ModelSerializer):
             instance.config = config
         instance.save()
         return instance
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['config'] = instance.config
-        return data
