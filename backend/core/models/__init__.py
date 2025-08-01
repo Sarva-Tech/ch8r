@@ -6,3 +6,4 @@ from .message import Message
 from .ingestion import IngestedChunk
 from .application_widget_token import ApplicationWidgetToken
 from .application_api_key import ApplicationAPIKey
+from .toolset import Integration
