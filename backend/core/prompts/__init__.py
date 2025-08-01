@@ -1,1 +1,1 @@
-from .notification_templates import render_template, SMART_ESCALATION_TEMPLATE, KB_UPLOAD_TEMPLATE
+from .notification_templates import render_template, SMART_ESCALATION_TEMPLATE

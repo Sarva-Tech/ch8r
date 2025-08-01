@@ -5,12 +5,10 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from core.models import KnowledgeBase, Application, IngestedChunk
-from core.prompts import KB_UPLOAD_TEMPLATE
 from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from core.permissions import HasAPIKeyPermission
 from core.services.ingestion import delete_vectors_from_qdrant
 from core.services.kb_utils import create_kb_records, parse_kb_from_request, format_text_uri
-from core.services.notifications import notify_users
 
 from core.tasks import process_kb
 import logging
