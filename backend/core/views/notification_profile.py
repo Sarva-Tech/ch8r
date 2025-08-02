@@ -1,13 +1,12 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
 from core.models import NotificationProfile
 from core.serializers import NotificationProfileSerializer
-from rest_framework.permissions import IsAuthenticated
 
 class NotificationProfileViewSet(viewsets.ModelViewSet):
     queryset = NotificationProfile.objects.all()
     serializer_class = NotificationProfileSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
