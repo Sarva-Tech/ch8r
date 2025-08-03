@@ -112,7 +112,6 @@ rsa==4.9.1
 safetensors==0.5.3
 scikit-learn==1.7.0
 scipy==1.15.3
-sentence-transformers==5.0.0
 service-identity==24.2.0
 setuptools==80.9.0
 six==1.17.0
