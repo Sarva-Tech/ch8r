@@ -7,3 +7,11 @@ export type KBTableRow = {
   content?: string
   status: StatusType
 }
+
+export type APIKeyTableRow = {
+  name: string
+  read: boolean
+  write: boolean
+  delete: boolean
+  created: string
+}
