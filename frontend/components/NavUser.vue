@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import {
-  BadgeCheck,
-  Bell,
   ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
+  LogOut
 } from 'lucide-vue-next'
 
 import {
@@ -16,7 +12,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -28,16 +23,18 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { getGravatarUrl } from '~/lib/avatar'
+import { useLogout } from '~/composables/useLogout'
 
-const props = defineProps<{
+defineProps<{
   user: {
     name: string
     email: string
-    avatar: string
   }
 }>()
 
 const { isMobile } = useSidebar()
+const { logout } = useLogout()
 </script>
 
 <template>
@@ -46,12 +43,12 @@ const { isMobile } = useSidebar()
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <SidebarMenuButton
-            size="lg"
-            class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            size="sm"
+            class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground p-4"
           >
-            <Avatar class="h-8 w-8 rounded-lg">
-              <AvatarImage :src="user.avatar" :alt="user.name" />
-              <AvatarFallback class="rounded-lg">
+            <Avatar class="h-5 w-5 rounded-md">
+              <AvatarImage :src="getGravatarUrl(user.email)" :alt="user.name" />
+              <AvatarFallback class="rounded-md">
                 CN
               </AvatarFallback>
             </Avatar>
@@ -70,8 +67,8 @@ const { isMobile } = useSidebar()
         >
           <DropdownMenuLabel class="p-0 font-normal">
             <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-              <Avatar class="h-8 w-8 rounded-lg">
-                <AvatarImage :src="user.avatar" :alt="user.name" />
+              <Avatar class="h-5 w-5 rounded-md">
+                <AvatarImage :src="getGravatarUrl(user.email)" :alt="user.name" />
                 <AvatarFallback class="rounded-lg">
                   CN
                 </AvatarFallback>
@@ -83,30 +80,8 @@ const { isMobile } = useSidebar()
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Sparkles />
-              Upgrade to Pro
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <BadgeCheck />
-              Account
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <CreditCard />
-              Billing
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Bell />
-              Notifications
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <LogOut />
+          <DropdownMenuItem class="text-destructive group" @click="logout">
+            <LogOut class="text-destructive group-hover:text-destructive-foreground"/>
             Log out
           </DropdownMenuItem>
         </DropdownMenuContent>

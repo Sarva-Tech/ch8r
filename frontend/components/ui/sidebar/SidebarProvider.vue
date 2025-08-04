@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { useEventListener, useMediaQuery, useVModel } from '@vueuse/core'
 import { TooltipProvider } from 'reka-ui'
-import { computed, type HTMLAttributes, type Ref, ref } from 'vue'
+import { computed,   ref } from 'vue'
+import type { HTMLAttributes, Ref } from 'vue';
 import { cn } from '@/lib/utils'
 import { provideSidebarContext, SIDEBAR_COOKIE_MAX_AGE, SIDEBAR_COOKIE_NAME, SIDEBAR_KEYBOARD_SHORTCUT, SIDEBAR_WIDTH } from './utils'
 import ThemePopover from '~/components/ThemePopover.vue'
 import { SidebarInset, SidebarTrigger } from '~/components/ui/sidebar/index'
-import { Separator } from '~/components/ui/separator'
-import { LogOut } from 'lucide-vue-next'
-import { Button } from '@/components/ui/button'
-import { useLogout } from '@/composables/useLogout'
+import { useUserStore } from '~/stores/user'
 
 const props = withDefaults(defineProps<{
   defaultOpen?: boolean
@@ -32,8 +30,13 @@ const open = useVModel(props, 'open', emits, {
   passive: (props.open === undefined) as false,
 }) as Ref<boolean>
 
+const userStore = useUserStore()
+const user = userStore.getUser
+
+
 function setOpen(value: boolean) {
-  document.cookie = `${SIDEBAR_COOKIE_NAME}=${open.value}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+  open.value = value
+  document.cookie = `${SIDEBAR_COOKIE_NAME}=${value}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
 }
 
 function setOpenMobile(value: boolean) {
@@ -51,15 +54,11 @@ useEventListener('keydown', (event: KeyboardEvent) => {
   }
 })
 
-// We add a state so that we can do data-state="expanded" or "collapsed".
-// This makes it easier to style the sidebar with Tailwind classes.
 const state = computed(() => open.value ? 'expanded' : 'collapsed')
 
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem'
 )
-const { logout } = useLogout()
-
 
 provideSidebarContext({
   state,
@@ -91,12 +90,7 @@ provideSidebarContext({
           <SidebarTrigger class="-ml-1" />
           <div class="flex items-center gap-2">
             <ThemePopover />
-<!--            <div-->
-<!--              class="hover:text-destructive text-muted-foreground transition-colors p-2"-->
-<!--              @click="logout"-->
-<!--            >-->
-<!--              <LogOut class="w-5 h-5" />-->
-<!--            </div>-->
+            <NavUser :user="user" />
           </div>
         </header>
 
