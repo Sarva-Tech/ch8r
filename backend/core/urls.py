@@ -3,7 +3,9 @@ from rest_framework.authtoken.views import obtain_auth_token
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
-from core.views import UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView, MeView, WidgetView, GenerateAPIKeyView
+from core.views import UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView, MeView, WidgetView, \
+    GenerateAPIKeyView, \
+    AppNotificationProfileCreateView, NotificationProfileViewSet
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
 from core.views.chatroom import ChatRoomDetailView
 from core.views.message import SendMessageView
@@ -11,6 +13,8 @@ from core.views.ingestion import IngestApplicationKBView
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
+router.register(r'notification-profiles', NotificationProfileViewSet)
+
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')
 nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='application-knowledge-bases')
 
@@ -43,4 +47,7 @@ urlpatterns = [
 
     path('', include(router.urls)),
     path('', include(nested_router.urls)),
+
+    path('app-notification-profiles/', AppNotificationProfileCreateView.as_view()),
+
 ]
