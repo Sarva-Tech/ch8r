@@ -91,6 +91,10 @@ onMounted(() => { kbStore.load() })
 onBeforeUnmount(() => {
   unsubscribe()
 })
+
+function deleteRow(uuid: string) {
+  kbStore.delete(uuid)
+}
 </script>
 
 <template>
@@ -109,102 +113,13 @@ onBeforeUnmount(() => {
       >
         Your knowledge base is empty.
       </div>
-      <Table v-else class="rounded-md border">
-        <TableHeader>
-          <TableRow
-            v-for="headerGroup in table.getHeaderGroups()"
-            :key="headerGroup.id"
-          >
-            <TableHead
-              v-for="header in headerGroup.headers"
-              :key="header.id"
-              class="font-bold"
-              :class="{
-                'w-[50px]': header.id === 'expander',
-                'w-[100px] text-right': header.id === 'actions',
-              }"
-            >
-              {{ header.column.columnDef.header }}
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <template v-for="row in table.getRowModel().rows" :key="row.id">
-            <TableRow>
-              <TableCell
-                v-for="cell in row.getVisibleCells()"
-                :key="cell.id"
-                :class="{ 'text-right': cell.column.id === 'actions' }"
-              >
-                <div
-                  v-if="cell.column.id === 'expander'"
-                  class="p-1 rounded focus:outline-none"
-                  :aria-label="
-                    manualExpanded[row.id] ? 'Collapse row' : 'Expand row'
-                  "
-                  @click.stop.prevent="
-                    manualExpanded[row.id] = !manualExpanded[row.id]
-                  "
-                >
-                  <ChevronDown v-if="manualExpanded[row.id]" class="w-4 h-4" />
-                  <ChevronRight v-else class="w-4 h-4" />
-                </div>
-                <div
-                  v-else-if="cell.column.id === 'path'"
-                  class="flex items-center space-x-2"
-                >
-                  <component
-                    :is="selectedSource(row.original.sourceType)"
-                    class="w-4 h-4"
-                  />
-                  <span class="truncate max-w-[300px]">{{
-                    row.original.path
-                  }}</span>
-                </div>
-                <div
-                  v-else-if="cell.column.id === 'status'"
-                  class="flex items-center"
-                >
-                  {{ getStatusLabel(row.original.status) }}
-                </div>
-                <DropdownMenu v-else-if="cell.column.id === 'actions'">
-                  <DropdownMenuTrigger as-child>
-                    <Button variant="ghost" size="sm" class="h-8 w-8 p-0">
-                      <MoreVertical class="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem @click="openUpdateKB(row.original)">
-                      <Pencil class="mr-2 h-4 w-4" /> Update
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      class="text-red-600"
-                      @click="kbStore.delete(row.original.uuid)"
-                    >
-                      <Trash class="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-            <TableRow v-if="manualExpanded[row.id]" data-expanded="true">
-              <TableCell :colspan="columns.length">
-                <div class="bg-muted shadow-inner border p-2 space-y-4">
-                  <div>
-                    <div
-                      class="whitespace-pre-wrap break-words max-h-64 overflow-y-auto p-2 text-sm leading-relaxed"
-                    >
-                      {{
-                        row.original?.content || 'No content available'
-                      }}
-                    </div>
-                  </div>
-                </div>
-              </TableCell>
-            </TableRow>
-          </template>
-        </TableBody>
-      </Table>
+      <Ch8rTable
+          v-else
+          :data="data"
+          :columns="columns"
+          :update-fn="openUpdateKB"
+          :delete-fn="deleteRow"
+      />
     </div>
     <UpdateKnowledgeBase ref="updateKBRef" />
   </div>
