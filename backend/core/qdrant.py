@@ -38,7 +38,7 @@ def init_qdrant():
         qdrant.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config={
-                "dense": VectorParams(size=384, distance=Distance.COSINE),
+                "dense": VectorParams(size=3072, distance=Distance.COSINE),
             },
             sparse_vectors_config={
                 "sparse": SparseVectorParams()

@@ -2,22 +2,36 @@ from fastembed import SparseTextEmbedding
 from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
 from core.models import IngestedChunk
-from sentence_transformers import SentenceTransformer
 from core.qdrant import qdrant, COLLECTION_NAME
 from qdrant_client.http.models import PointIdsList
-from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, MatchValue as ModelsMatchValue
+from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, \
+    MatchValue as ModelsMatchValue
 from qdrant_client.models import Prefetch, SparseVector
 import uuid
 
+from google import genai
+from google.genai import types
+
 logger = logging.getLogger(__name__)
-model = SentenceTransformer("all-MiniLM-L6-v2")
+
+client = genai.Client()
+GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001"
+
 sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
 
-def embed_text(text_chunks: list[str]) -> list[list[float]]:
-    # Dense embeddings
-    return model.encode(text_chunks).tolist()
+
+def embed_text(text_chunks: list[str], task_type: str) -> list[list[float]]:
+    embeddings = client.models.embed_content(
+        model=GEMINI_EMBEDDING_MODEL,
+        contents=text_chunks,
+        config=types.EmbedContentConfig(
+            task_type=task_type,
+        ),
+    )
+    return [embedding.values for embedding in embeddings.embeddings]
+
+
 def embed_sparse(text_chunks: list[str]) -> list:
-    # Sparse embeddings
     sparse_embeddings = list(sparse_model.embed(text_chunks))
     return [
         SparseVector(
@@ -36,7 +50,8 @@ def chunk_text(text: str, chunk_size=300, overlap=50) -> list[str]:
     return chunks
 
 def get_chunks(query_text, app_uuid, top_k=5):
-    dense_query = model.encode(query_text).tolist()
+    dense_query = embed_text(text_chunks=[query_text], task_type="RETRIEVAL_QUERY")[0]
+
     sparse_embedding = list(sparse_model.embed([query_text]))[0]
     sparse_query = SparseVector(
         indices=sparse_embedding.indices.tolist(),
@@ -89,7 +104,9 @@ def ingest_kb(kb, app):
         return
 
     chunks = chunk_text(content)
-    dense_embeddings = embed_text(chunks)
+
+    dense_embeddings = embed_text(text_chunks=chunks, task_type="RETRIEVAL_DOCUMENT")
+
     sparse_embeddings = embed_sparse(chunks)
 
     existing_chunks = IngestedChunk.objects.filter(knowledge_base=kb)

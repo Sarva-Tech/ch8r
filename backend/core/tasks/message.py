@@ -61,18 +61,26 @@ def generate_bot_response(message_id, app_uuid):
     else:
         context = "NO_CONTEXT"
 
+    tools = get_tools_for_app(app)
+    tools_description = []
+    for tool in tools:
+        for func in tool.function_declarations:
+            tools_description.append({
+                "name": func.name,
+                "description": func.description
+            })
+
     prompt_context = {
         "product_name": app.name,
         "product_type": 'Software as a Service (SaaS)',
         "tone": "friendly and professional",
         "context": context,
         "chat_history": chat_history,
+        "pms_tools": tools_description,
     }
 
     system_instruction = TemplateLoader.render_template('customer_support.j2', prompt_context)
     print(':::DEBUG System Instruction:::', system_instruction)
-
-    tools = get_tools_for_app(app)
 
     initial_response = client.models.generate_content(
         model="gemini-2.5-flash",
