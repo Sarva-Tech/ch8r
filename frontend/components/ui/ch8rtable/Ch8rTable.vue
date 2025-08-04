@@ -97,7 +97,7 @@ const props = defineProps({
     required: true
   },
   updateFn: {
-    type: Function as PropType<(kb: any) => void>,
+    type: Function as PropType<(param: any) => void>,
     required: true
   },
   deleteFn: {
