@@ -19,11 +19,13 @@ const props = withDefaults(
     onSubmit?: () => void | Promise<void>
     loading?: boolean
     open?: boolean
+    disabled?: boolean
   }>(),
   {
     submitText: 'Save',
     cancelText: 'Cancel',
     open: undefined,
+    disabled: false,
   }
 )
 
@@ -76,7 +78,7 @@ const sheetOpen = computed({
           <SheetClose as-child>
             <Button
               type="button"
-              :disabled="props.loading"
+              :disabled="props.disabled || props.loading"
               @click="props.onSubmit?.()"
             >
               <template v-if="props.loading">Saving...</template>
