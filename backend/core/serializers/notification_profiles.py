@@ -5,22 +5,22 @@ from core.services.encryption import encrypt_dict
 
 
 class NotificationProfileSerializer(serializers.ModelSerializer):
-    config = serializers.JSONField(binary=True)  # Critical change for JSONB
+    config = serializers.JSONField(write_only=True)
 
     class Meta:
         model = NotificationProfile
-        fields = ['id', 'type', 'config', 'created_at', 'name']
+        fields = ['id', 'uuid','type', 'config', 'created_at', 'name']
         read_only_fields = ['id', 'created_at']
 
     def create(self, validated_data):
         config = validated_data.pop('config', {})
         instance = NotificationProfile(**validated_data)
-        instance._config = encrypt_dict(config)  # Your existing encryption
+        instance._config = encrypt_dict(config)
         instance.save()
         return instance
 
 class BulkNotificationProfileSerializer(serializers.ModelSerializer):
-    config = serializers.JSONField()
+    config = serializers.JSONField(write_only=True)
 
     class Meta:
         model = NotificationProfile
@@ -29,7 +29,6 @@ class BulkNotificationProfileSerializer(serializers.ModelSerializer):
 def create(self, validated_data):
     encrypted_config = validated_data.get('config')
 
-    # Defensive: if config is string (sometimes might be), parse it
     if isinstance(encrypted_config, str):
         try:
             encrypted_config = json.loads(encrypted_config)
@@ -49,7 +48,6 @@ def create(self, validated_data):
             except Exception as e:
                 raise serializers.ValidationError(f"Failed to decrypt '{key}': {str(e)}")
         else:
-            # If value is not string, you can decide to keep or reject
             decrypted_config[key] = value
 
     encrypted_config_dict = encrypt_dict(decrypted_config)

@@ -47,7 +47,7 @@
                       <DropdownMenuItem @click="updateFn(row.original)">
                         <Pencil class="mr-2 h-4 w-4" /> Update
                       </DropdownMenuItem>
-                      <DropdownMenuItem class="text-red-600" @click="deleteFn(row.original.uuid)">
+                      <DropdownMenuItem class="text-red-600" @click="deleteFn(row.original.id ?? row.original.uuid)">
                         <Trash class="mr-2 h-4 w-4" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -103,7 +103,7 @@ const props = defineProps({
     required: true
   },
   deleteFn: {
-    type: Function as PropType<(uuid: string) => void>,
+    type: Function as PropType<(identifier: string | number) => void>,
     required: true
   },
   expandable: {

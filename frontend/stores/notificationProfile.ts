@@ -17,7 +17,10 @@ type NotificationProfile = {
   created_at?: string
 }
 
-type BulkNotificationProfile = Omit<NotificationProfile, 'id' | 'uuid' | 'created_at'>
+type BulkNotificationProfile = Omit<
+  NotificationProfile,
+  'id' | 'uuid' | 'created_at'
+>
 
 type ApiResponse = {
   status: string
@@ -25,7 +28,6 @@ type ApiResponse = {
   count: number
   data?: NotificationProfile[]
 }
-
 export const useNotificationProfileStore = defineStore('notificationProfiles', {
   state: () => ({
     profiles: [] as NotificationProfile[],
@@ -45,12 +47,49 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
 
       try {
         const payload = this.createProfilesPayload(profiles)
-        const res = await httpPost<ApiResponse>('/notification-profiles/bulk-upload/', payload)
+        const res = await httpPost<ApiResponse>(
+          '/notification-profiles/bulk-upload/',
+          payload,
+        )
         return res
       } catch (err) {
         this.error = 'Failed to create notification profiles'
         console.error(err)
         throw err
+      } finally {
+        this.loading = false
+      }
+    },
+    async fetchNotificationProfiles() {
+      const { httpGet } = useHttpClient()
+      this.loading = true
+      this.error = null
+
+      try {
+        const res = await httpGet<ApiResponse>('/notification-profiles/')
+        this.profiles = Array.isArray(res) ? [...res] : []
+        console.log(this.profiles, "profiles")
+      } catch (err: any) {
+        this.error = err?.message || 'Failed to fetch notification profiles'
+        this.profiles = []
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+    async delete(id: number | string) {
+
+      this.loading = true
+
+      try {
+        const { httpDelete } = useHttpClient()
+        await httpDelete(
+          `/notification-profiles/${id}/`,
+        )
+        this.profiles = this.profiles.filter((profile) => profile.id !== id)
+      }
+      catch (err: unknown) {
+        console.error('Delete error:', err)
       } finally {
         this.loading = false
       }
