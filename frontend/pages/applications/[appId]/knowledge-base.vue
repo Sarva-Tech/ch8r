@@ -119,6 +119,7 @@ function deleteRow(uuid: string) {
           :columns="columns"
           :update-fn="openUpdateKB"
           :delete-fn="deleteRow"
+          :expandable="true"
       />
     </div>
     <UpdateKnowledgeBase ref="updateKBRef" />

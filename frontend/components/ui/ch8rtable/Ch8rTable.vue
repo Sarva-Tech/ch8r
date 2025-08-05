@@ -29,8 +29,10 @@
               :aria-label="manualExpanded[row.id] ? 'Collapse row' : 'Expand row'"
               @click.stop.prevent="toggleRowExpansion(row.id)"
             >
+              <div v-if="expandable">
               <ChevronDown v-if="manualExpanded[row.id]" class="w-4 h-4" />
               <ChevronRight v-else class="w-4 h-4" />
+              </div>
             </div>
             <div v-else>
               <template v-if="cell.column.id !== 'expander'">
@@ -103,6 +105,10 @@ const props = defineProps({
   deleteFn: {
     type: Function as PropType<(uuid: string) => void>,
     required: true
+  },
+  expandable: {
+    type: Boolean as PropType<boolean>,
+    default: false
   }
 })
 
