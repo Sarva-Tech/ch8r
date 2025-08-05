@@ -46,7 +46,6 @@ urlpatterns = [
 
     path('applications/<uuid:application_uuid>/ingests/', IngestApplicationKBView.as_view(), name='application-ingest'),
 
-    # Bulk upload endpoint
     path('notification-profiles/bulk-upload/',
          NotificationProfileViewSet.as_view({'post': 'bulk_upload'}),
          name='notificationprofile-bulk-upload'),
