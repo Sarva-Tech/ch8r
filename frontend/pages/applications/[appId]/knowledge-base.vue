@@ -5,31 +5,9 @@ import {
   useVueTable,
 } from '@tanstack/vue-table'
 import { ref, computed, onMounted } from 'vue'
-import { Button } from '@/components/ui/button'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Trash,
-  MoreVertical,
-  ChevronDown,
-  ChevronRight, Pencil
-} from 'lucide-vue-next'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
 import UpdateKnowledgeBase from '~/components/KnowledgeBase/UpdateKnowledgeBase.vue'
 import { DEFAULT_KB_SOURCE, KB_SOURCES, KB_UPDATE  } from '~/lib/consts'
-import { getStatusLabel } from '~/lib/utils'
 import type { KBTableRow } from '~/lib/types'
 
 const updateKBRef = ref<InstanceType<typeof UpdateKnowledgeBase> | null>(null)

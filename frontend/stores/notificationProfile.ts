@@ -8,7 +8,7 @@ type NotificationConfig = {
   webhookUrl?: string
 }
 
-type NotificationProfile = {
+export type NotificationProfile = {
   id?: number
   uuid?: string
   name: string
@@ -47,11 +47,10 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
 
       try {
         const payload = this.createProfilesPayload(profiles)
-        const res = await httpPost<ApiResponse>(
+        return await httpPost<ApiResponse>(
           '/notification-profiles/bulk-upload/',
           payload,
         )
-        return res
       } catch (err) {
         this.error = 'Failed to create notification profiles'
         console.error(err)
@@ -68,7 +67,6 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
       try {
         const res = await httpGet<ApiResponse>('/notification-profiles/')
         this.profiles = Array.isArray(res) ? [...res] : []
-        console.log(this.profiles, "profiles")
       } catch (err: any) {
         this.error = err?.message || 'Failed to fetch notification profiles'
         this.profiles = []
@@ -78,21 +76,52 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
       }
     },
     async delete(id: number | string) {
-
       this.loading = true
 
       try {
         const { httpDelete } = useHttpClient()
-        await httpDelete(
-          `/notification-profiles/${id}/`,
-        )
+        await httpDelete(`/notification-profiles/${id}/`)
         this.profiles = this.profiles.filter((profile) => profile.id !== id)
-      }
-      catch (err: unknown) {
+      } catch (err: unknown) {
         console.error('Delete error:', err)
       } finally {
         this.loading = false
       }
     },
+    async updateNotificationProfile(updatedProfile: Partial<NotificationProfile>) {
+      const { httpPatch } = useHttpClient()
+      this.loading = true
+      this.error = null
+
+      try {
+        const payload: Partial<NotificationProfile> = {}
+
+        if (updatedProfile.name !== undefined) {
+          payload.name = updatedProfile.name
+        }
+        if (updatedProfile.type !== undefined) {
+          payload.type = updatedProfile.type
+        }
+        if (updatedProfile.config !== undefined) {
+          payload.config = updatedProfile.config
+        }
+        const response = await httpPatch<NotificationProfile>(
+          `/notification-profiles/${updatedProfile.id}/`,
+          payload
+        )
+        const index = this.profiles.findIndex(p => p.id === updatedProfile.id)
+        if (index !== -1) {
+          this.profiles[index] = { ...this.profiles[index], ...response }
+        }
+
+        return response
+      } catch (err) {
+        this.error = 'Failed to update notification profile'
+        console.error(err)
+        throw err
+      } finally {
+        this.loading = false
+      }
+    }
   },
 })

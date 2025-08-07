@@ -26,6 +26,7 @@
         :expandable="false"
       />
     </div>
+    <UpdateNotificationProfiles ref="updateNotification" />
   </div>
 </template>
 
@@ -37,8 +38,13 @@ import NotificationProfileForm from '~/components/notification/NotificationProfi
 import { useNotificationProfileStore } from '~/stores/notificationProfile'
 import { useNotificationDraftStore } from '~/stores/notificationProfileDraft'
 import { toast } from 'vue-sonner'
-import { encryptWithPublicKey, PUBLIC_KEY } from '~/utils/encryption'
+import UpdateNotificationProfiles from '~/components/notification/UpdateNotificationProfile.vue'
+import { encryptWithPublicKey } from '~/utils/encryption'
 import type { ColumnDef } from '@tanstack/vue-table'
+
+
+const updateNotification = ref<InstanceType<typeof UpdateNotificationProfiles> | null>(null)
+
 
 const notificationProfileStore = useNotificationProfileStore()
 const notificationDraftStore = useNotificationDraftStore()
@@ -58,7 +64,7 @@ onMounted(async () => {
 })
 
 const handleEdit = (profile: any) => {
-  console.log('Edit clicked:', profile)
+  updateNotification.value?.openSheet(profile)
 }
 
 const handleDelete = (identifier: number | string) => {
@@ -90,14 +96,14 @@ const handleSubmit = async () => {
         name: item.profileName,
         type: 'discord' as const,
         config: {
-          webhookUrl: encryptWithPublicKey(item.value, PUBLIC_KEY),
+          webhookUrl: encryptWithPublicKey(item.value),
         },
       })),
       ...notificationDraftStore.slackItems.map((item) => ({
         name: item.profileName,
         type: 'slack' as const,
         config: {
-          webhookUrl: encryptWithPublicKey(item.value, PUBLIC_KEY),
+          webhookUrl: encryptWithPublicKey(item.value),
         },
       })),
       ...notificationDraftStore.emailItems.map((item) => ({
