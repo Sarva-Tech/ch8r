@@ -30,11 +30,24 @@ class NotificationProfileViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 instances = serializer.save()
 
-            return Response({
-                "status": "success",
-                "message": f"Created {len(instances)} notifications",
-                "count": len(instances)
-            }, status=status.HTTP_201_CREATED)
+            response_data = []
+            for instance in instances:
+                config = instance.config or {}
+
+                if 'webhookUrl' in config:
+                    config = {}
+
+                profile_data = {
+                    "id": instance.id,
+                    "uuid": str(instance.uuid),
+                    "type": instance.type,
+                    "config": config,
+                    "created_at": instance.created_at.isoformat(),
+                    "name": instance.name
+                }
+                response_data.append(profile_data)
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response({

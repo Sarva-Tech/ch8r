@@ -47,18 +47,23 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
 
       try {
         const payload = this.createProfilesPayload(profiles)
-        return await httpPost<ApiResponse>(
+        const response = await httpPost<ApiResponse>(
           '/notification-profiles/bulk-upload/',
           payload,
         )
+        if (Array.isArray(response)) {
+          this.profiles = [...this.profiles, ...response]
+        }
+
+        return response
       } catch (err) {
         this.error = 'Failed to create notification profiles'
-        console.error(err)
         throw err
       } finally {
         this.loading = false
       }
     },
+
     async fetchNotificationProfiles() {
       const { httpGet } = useHttpClient()
       this.loading = true
@@ -88,7 +93,9 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
         this.loading = false
       }
     },
-    async updateNotificationProfile(updatedProfile: Partial<NotificationProfile>) {
+    async updateNotificationProfile(
+      updatedProfile: Partial<NotificationProfile>,
+    ) {
       const { httpPatch } = useHttpClient()
       this.loading = true
       this.error = null
@@ -105,16 +112,10 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
         if (updatedProfile.config !== undefined) {
           payload.config = updatedProfile.config
         }
-        const response = await httpPatch<NotificationProfile>(
+        return await httpPatch<NotificationProfile>(
           `/notification-profiles/${updatedProfile.id}/`,
-          payload
+          payload,
         )
-        const index = this.profiles.findIndex(p => p.id === updatedProfile.id)
-        if (index !== -1) {
-          this.profiles[index] = { ...this.profiles[index], ...response }
-        }
-
-        return response
       } catch (err) {
         this.error = 'Failed to update notification profile'
         console.error(err)
@@ -122,6 +123,6 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
       } finally {
         this.loading = false
       }
-    }
+    },
   },
 })

@@ -35,8 +35,6 @@ import { computed, onMounted, ref } from 'vue'
 import BaseSheet from '~/components/BaseSheet.vue'
 import { Button } from '~/components/ui/button'
 import NotificationProfileForm from '~/components/notification/NotificationProfileForm.vue'
-import { useNotificationProfileStore } from '~/stores/notificationProfile'
-import { useNotificationDraftStore } from '~/stores/notificationProfileDraft'
 import { toast } from 'vue-sonner'
 import UpdateNotificationProfiles from '~/components/notification/UpdateNotificationProfile.vue'
 import { encryptWithPublicKey } from '~/utils/encryption'
@@ -68,7 +66,6 @@ const handleEdit = (profile: any) => {
 }
 
 const handleDelete = (identifier: number | string) => {
-  console.log('Deleting profile with ID or UUID:', identifier)
   notificationProfileStore.delete(identifier)
 }
 
