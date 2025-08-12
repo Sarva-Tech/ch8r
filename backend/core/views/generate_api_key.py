@@ -3,12 +3,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from core.serializers import APIKeySerializer
-from core.models import ApplicationAPIKey
+from core.models import ApplicationAPIKey, Application
 
 class GenerateAPIKeyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request, *args, **kwargs):
         serializer = APIKeySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             api_key_instance, raw_api_key = serializer.save()
@@ -22,7 +22,7 @@ class GenerateAPIKeyView(APIView):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, api_key_id=None):
+    def delete(self, request, api_key_id=None, *args, **kwargs):
         if api_key_id is None:
             return Response({"detail": "API key ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -37,8 +37,16 @@ class GenerateAPIKeyView(APIView):
         api_key_instance.delete()
         return Response({"detail": "API key deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
-    def get(self, request):
-        api_keys = ApplicationAPIKey.objects.filter(owner=request.user)
+    def get(self, request, application_uuid=None):
+        if application_uuid is None:
+            return Response({"error": "application_uuid is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            application = Application.objects.get(uuid=application_uuid)
+        except Application.DoesNotExist:
+            return Response({"error": "Application not found with the provided UUID"}, status=status.HTTP_404_NOT_FOUND)
+
+        api_keys = ApplicationAPIKey.objects.filter(owner=request.user, application=application)
 
         if not api_keys:
             return Response([], status=status.HTTP_200_OK)

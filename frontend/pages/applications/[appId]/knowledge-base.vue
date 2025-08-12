@@ -19,12 +19,6 @@ const kbStore = useKnowledgeBaseStore()
 
 const kbs = computed(() => kbStore.kbs)
 const isLoading = ref(false)
-const manualExpanded = ref<Record<string, boolean>>({})
-
-const selectedSource = (value: string) => {
-  const source = sources.find(source => source.value === value)
-  return source?.icon || DEFAULT_KB_SOURCE.icon
-}
 
 const data = computed<KBTableRow[]>(() => {
   return (kbs.value || []).map((item: KnowledgeBaseItem) => {
