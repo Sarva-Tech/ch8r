@@ -53,7 +53,7 @@
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <span v-else>{{ cell.getValue() }}</span>
+                <span v-else class="flex"><component :is="cell.getValue()?.icon" v-if="cell.getValue()?.icon" class="w-4 h-4 mr-1"/>{{ cell.getValue()?.value || cell.getValue() }}</span>
               </template>
             </div>
           </TableCell>
