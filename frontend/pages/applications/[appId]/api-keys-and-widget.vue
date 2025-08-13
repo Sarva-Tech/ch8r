@@ -12,7 +12,6 @@ import type { APIKeyItem } from '~/stores/apiKey'
 const apiKeyStore = useAPIKeyStore()
 
 const apiKeys = computed(() => apiKeyStore.apiKeys)
-const isLoading = ref(false)
 
 const data = computed<APIKeyTableRow[]>(() => {
   return (apiKeys.value || []).map((item: APIKeyItem) => {
@@ -59,7 +58,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-if="isLoading" class="text-center py-8">Loading...</div>
+      <div v-if="apiKeyStore.loading" class="text-center py-8">Loading...</div>
       <div
         v-else-if="!table.getRowModel().rows?.length"
         class="text-center py-8"
