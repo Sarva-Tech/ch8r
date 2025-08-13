@@ -4,7 +4,7 @@ import {
   getCoreRowModel,
   useVueTable,
 } from '@tanstack/vue-table'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import type { APIKeyTableRow } from '~/lib/types'
 import NewApiKey from '~/components/ApiKey/NewApiKey.vue'
 import type { APIKeyItem } from '~/stores/apiKey'
