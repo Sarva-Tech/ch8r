@@ -1,5 +1,5 @@
 <template>
-  <BaseSheet
+  <SlideOver
     title="Create Api Key"
     submit-text="Create"
     :on-submit="createApiKey"
@@ -24,12 +24,12 @@
         </div>
       </div>
     </div>
-  </BaseSheet>
+  </SlideOver>
 </template>
 <script setup lang="ts">
 import { Button } from '~/components/ui/button'
 import { MultiSelectComboBox } from '~/components/ui/multiselectcombobox'
-import BaseSheet from '~/components/BaseSheet.vue'
+import SlideOver from '~/components/SlideOver.vue'
 
 const apiKeyName = ref('')
 

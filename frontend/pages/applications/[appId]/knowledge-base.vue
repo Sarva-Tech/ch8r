@@ -7,12 +7,10 @@ import {
 import { ref, computed, onMounted } from 'vue'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
 import UpdateKnowledgeBase from '~/components/KnowledgeBase/UpdateKnowledgeBase.vue'
-import { DEFAULT_KB_SOURCE, KB_SOURCES, KB_UPDATE  } from '~/lib/consts'
+import { KB_UPDATE  } from '~/lib/consts'
 import type { KBTableRow } from '~/lib/types'
 
 const updateKBRef = ref<InstanceType<typeof UpdateKnowledgeBase> | null>(null)
-
-const sources = KB_SOURCES
 
 const liveUpdateStore = useLiveUpdateStore()
 const kbStore = useKnowledgeBaseStore()
@@ -85,13 +83,13 @@ function deleteRow(uuid: string) {
       >
         Your knowledge base is empty.
       </div>
-      <Ch8rTable
-          v-else
-          :data="data"
-          :columns="columns"
-          :update-fn="openUpdateKB"
-          :delete-fn="deleteRow"
-          :expandable="true"
+      <C8Table
+        v-else
+        :data="data"
+        :columns="columns"
+        :update-fn="openUpdateKB"
+        :delete-fn="deleteRow"
+        :expandable="true"
       />
     </div>
     <UpdateKnowledgeBase ref="updateKBRef" />

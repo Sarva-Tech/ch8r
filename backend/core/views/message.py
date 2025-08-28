@@ -1,5 +1,6 @@
 import os
 
+from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,6 +18,8 @@ from core.serializers.message import CreateMessageSerializer, ViewMessageSeriali
 from core.tasks import generate_bot_response
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.permissions import HasAPIKeyPermission
+
+from openai import OpenAI
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")

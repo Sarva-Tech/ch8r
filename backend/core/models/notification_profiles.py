@@ -26,6 +26,6 @@ class NotificationProfile(models.Model):
 
     @config.setter
     def config(self, value):
-        from core.services.encryption import encrypt_dict
-        self._config = encrypt_dict(value or {})
+        from core.services.encryption import encrypt
+        self._config = encrypt(value or {})
 

@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useVueTable, getCoreRowModel } from '@tanstack/vue-table'
-import { Button } from '@/components/ui/button'
+import { Button } from '~/components/ui/button'
 import { ChevronDown, ChevronRight, MoreVertical, Pencil, Trash } from 'lucide-vue-next'
 import {
   Table,
@@ -86,24 +86,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+} from '~/components/ui/table'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '~/components/ui/dropdown-menu'
 
 const props = defineProps({
   data: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<unknown[]>,
     required: true
   },
   columns: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<unknown[]>,
     required: true
   },
   updateFn: {
-    type: Function as PropType<(param: any) => void>,
+    type: Function as PropType<(param: unknown) => void>,
     required: false
   },
   deleteFn: {
-    type: Function as PropType<(identifier: any) => void>,
+    type: Function as PropType<(identifier: unknown) => void>,
     required: true
   },
   expandable: {
@@ -113,7 +113,7 @@ const props = defineProps({
 })
 
 const manualExpanded = ref<Record<string, boolean>>({})
-const table = useVueTable<any>({
+const table = useVueTable<unknown>({
   get data() {
     return props.data
   },

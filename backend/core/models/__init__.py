@@ -6,6 +6,9 @@ from .message import Message
 from .ingestion import IngestedChunk
 from .application_widget_token import ApplicationWidgetToken
 from .application_api_key import ApplicationAPIKey
-from .toolset import Integration
+from .integration import Integration
 from .notification_profiles import NotificationProfile
 from .app_notification_profile import AppNotificationProfile
+from .llm_model import LLMModel
+from .app_model import AppModel
+from .app_integration import AppIntegration

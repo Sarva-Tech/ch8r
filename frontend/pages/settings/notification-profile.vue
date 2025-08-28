@@ -3,7 +3,7 @@
     <div class="overflow-y-auto pt-[72px] pb-[120px] p-4">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
-          <BaseSheet
+          <SlideOver
             title="Add Notification profiles"
             :disabled="!notificationDraftStore.hasDrafts"
             :loading="loading"
@@ -14,11 +14,11 @@
             </template>
 
             <NotificationProfileForm ref="notificationForm" />
-          </BaseSheet>
+          </SlideOver>
         </div>
       </div>
 
-      <Ch8rTable
+      <C8Table
         :data="profiles"
         :columns="columns"
         :update-fn="handleEdit"
@@ -32,14 +32,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import BaseSheet from '~/components/BaseSheet.vue'
+import SlideOver from '~/components/SlideOver.vue'
 import { Button } from '~/components/ui/button'
 import NotificationProfileForm from '~/components/notification/NotificationProfileForm.vue'
 import { toast } from 'vue-sonner'
 import UpdateNotificationProfiles from '~/components/notification/UpdateNotificationProfile.vue'
 import { encryptWithPublicKey } from '~/utils/encryption'
 import type { ColumnDef } from '@tanstack/vue-table'
-
 
 const updateNotification = ref<InstanceType<typeof UpdateNotificationProfiles> | null>(null)
 

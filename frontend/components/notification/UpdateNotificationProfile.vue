@@ -1,5 +1,5 @@
 <template>
-  <BaseSheet
+  <SlideOver
     v-model:open="open"
     title="Update Notification Profiles"
     submit-text="Update"
@@ -20,14 +20,14 @@
         </Select>
       </div>
 
-      <CustomInput
+      <C8Input
         v-model="profileName"
         label="Notification Profile Name"
         placeholder="Enter profile name (optional)"
       />
 
       <template v-if="type === 'email'">
-        <CustomInput
+        <C8Input
           v-model="emailValue"
           label="Notification Email"
           placeholder="Enter email"
@@ -35,7 +35,7 @@
       </template>
 
       <template v-else>
-        <CustomInput
+        <C8Input
           v-model="webhookValue"
           label="Webhook URL"
           placeholder="Enter webhook URL (leave empty to keep current)"
@@ -46,12 +46,12 @@
         </p>
       </template>
     </div>
-  </BaseSheet>
+  </SlideOver>
 </template>
 
 <script setup lang="ts">
 import { ref, defineExpose } from 'vue'
-import BaseSheet from '~/components/BaseSheet.vue'
+import SlideOver from '~/components/SlideOver.vue'
 import { useNotificationProfileStore } from '~/stores/notificationProfile'
 import type { NotificationProfile } from '~/stores/notificationProfile';
 import { toast } from 'vue-sonner'

@@ -1,5 +1,5 @@
 <template>
-  <BaseSheet
+  <SlideOver
     title="Add Files to Knowledge Base"
     submit-text="Upload & Process"
     :on-submit="processKB"
@@ -28,7 +28,7 @@
         />
       </div>
     </div>
-  </BaseSheet>
+  </SlideOver>
 </template>
 <script setup lang="ts">
 import { Button } from '~/components/ui/button'
@@ -36,7 +36,7 @@ import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
 import FileUpload from '~/components/FileUpload.vue'
 import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
 import TextInput from '~/components/KnowledgeBase/TextInput.vue'
-import BaseSheet from '~/components/BaseSheet.vue'
+import SlideOver from '~/components/SlideOver.vue'
 import Draft from '~/components/KnowledgeBase/Draft.vue'
 import { KB_SOURCES } from '~/lib/consts'
 import { computed } from 'vue'

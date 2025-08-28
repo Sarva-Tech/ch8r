@@ -21,7 +21,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar'
 import { getGravatarUrl } from '~/lib/avatar'
 import { useLogout } from '~/composables/useLogout'
@@ -33,7 +32,6 @@ defineProps<{
   }
 }>()
 
-const { isMobile } = useSidebar()
 const { logout } = useLogout()
 </script>
 
@@ -61,7 +59,7 @@ const { logout } = useLogout()
         </DropdownMenuTrigger>
         <DropdownMenuContent
           class="w-[--reka-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-          :side="isMobile ? 'bottom' : 'right'"
+          side="bottom"
           align="end"
           :side-offset="4"
         >

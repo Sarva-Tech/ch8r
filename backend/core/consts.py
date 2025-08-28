@@ -1,21 +1,8 @@
-from pydantic import BaseModel, Field
-from enum import Enum
-
 REGISTERED_USER_ID_PREFIX = "reg"
 LIVE_UPDATES_PREFIX = "live"
 
-
-class ResponseStatus(str, Enum):
-    ANSWERED = "ANSWERED"
-    CLARIFICATION_NEEDED = "CLARIFICATION_NEEDED"
-    INSUFFICIENT_INFORMATION = "INSUFFICIENT_INFORMATION"
-    ESCALATED = "ESCALATED"
-    USER_REQUESTED_ESCALATION = "USER_REQUESTED_ESCALATION"
-    POTENTIALLY_IRRELEVANT = "POTENTIALLY_IRRELEVANT"
-
-
-class SupportAgentResponse(BaseModel):
-    answer: str = Field(..., description="The support agent's reply to the user query.")
-    status: ResponseStatus = Field(..., description="The result of the response analysis or next step needed.")
-    escalation: bool = Field(..., description="Indicates whether the query should be escalated to human support.")
-    reason_for_escalation: str = Field(..., description="Optional explanation for escalation. Can be an empty string.")
+AI_ROLE_AI_AGENT="assistant"
+AI_ROLE_HUMAN_AGENT="assistant"
+AI_ROLE_USER="user"
+AI_ROLE_SYSTEM="system"
+AI_ROLE_UNKNOWN="unknown"

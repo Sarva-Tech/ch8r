@@ -1,5 +1,5 @@
 <template>
-  <BaseSheet
+  <SlideOver
     v-model:open="open"
     title="Update Knowledge Base"
     submit-text="Update & Process"
@@ -15,10 +15,10 @@
         />
       </div>
     </div>
-  </BaseSheet>
+  </SlideOver>
 </template>
 <script setup lang="ts">
-import BaseSheet from '~/components/BaseSheet.vue'
+import SlideOver from '~/components/SlideOver.vue'
 import { ref, defineExpose } from 'vue'
 import type { KBTableRow } from '~/lib/types'
 

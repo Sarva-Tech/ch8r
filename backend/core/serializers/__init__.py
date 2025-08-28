@@ -6,3 +6,5 @@ from .message import CreateMessageSerializer, ViewMessageSerializer
 from .api_key import APIKeySerializer
 from .notification_profiles import NotificationProfileSerializer, BulkNotificationProfileSerializer
 from .app_notification_profile import AppNotificationProfileSerializer
+from .llm_model import LLMModelViewSerializer, LLMModelCreateSerializer
+from .app_model import AppModelCreateSerializer, AppModelViewSerializer, ConfigureAppModelSerializer

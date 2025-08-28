@@ -1,8 +1,9 @@
 import { useUserStore } from '~/stores/user'
 import { getErrorMessage } from '~/lib/utils'
+import type { FetchError } from 'ofetch'
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
-type Body = BodyInit | Record<string, any> | null | undefined
+type Body = BodyInit | Record<string, unknown> | null | undefined
 
 export const useHttpClient = () => {
   const config = useRuntimeConfig()
@@ -19,7 +20,7 @@ export const useHttpClient = () => {
       headers = {}
     }: {
       body?: Body
-      params?: Record<string, any>
+      params?: Record<string, unknown>
       auth?: boolean
       headers?: HeadersInit
     } = {}
@@ -46,8 +47,25 @@ export const useHttpClient = () => {
         params,
         headers: normalizedHeaders,
       })
-    } catch (error) {
-      throw new Error(getErrorMessage(error))
+    } catch (error: unknown) {
+      const err = error as FetchError
+
+      const status = err?.response?.status
+      const errors = err?.response?._data
+
+      let message = getErrorMessage(error)
+      if (errors?.errors && Array.isArray(errors.errors)) {
+        message = errors.errors.join(", ")
+      } else if (errors?.detail) {
+        message = errors.detail
+      }
+
+      throw {
+        message,
+        status,
+        errors,
+        original: error,
+      }
     }
   }
 

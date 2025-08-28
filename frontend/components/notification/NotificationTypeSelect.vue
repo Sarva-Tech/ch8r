@@ -1,6 +1,8 @@
 <template>
   <div class="space-y-2">
-    <label class="text-sm font-medium">Select Notification Type</label>
+    <div>
+      <label class="text-sm font-medium">Select Notification Type</label>
+    </div>
     <Select v-model="modelValue" class="w-full">
       <SelectTrigger class="w-full">
         <SelectValue placeholder="Choose type..." />

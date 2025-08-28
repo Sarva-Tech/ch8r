@@ -65,7 +65,7 @@ onMounted(() => {
       >
         Your API keys are empty.
       </div>
-      <Ch8rTable
+      <C8Table
         v-else
         :data="data"
         :columns="columns"

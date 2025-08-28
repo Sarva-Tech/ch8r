@@ -1,5 +1,4 @@
 import json
-import os
 import logging
 
 from celery import shared_task
@@ -7,10 +6,12 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db.models import Q
-from google.genai.types import FunctionResponse, Content, Part
 
-from core.consts import LIVE_UPDATES_PREFIX, SupportAgentResponse
-from core.integrations.utils import get_tools_for_app, execute_tool_call
+from core.consts import LIVE_UPDATES_PREFIX
+from core.integrations import get_app_integrations, execute_tool_call
+from core.llm_client import LLMClient
+from core.llm_client_utils import messages_to_llm_conversation, get_agent_response_schema, add_kb_to_convo, \
+    add_instructions_to_convo
 from core.models import IngestedChunk, Application
 from core.models.message import Message
 
@@ -19,15 +20,9 @@ from core.services import get_chunks
 from core.services.template_loader import TemplateLoader
 from core.utils import parse_llm_response
 
-from google import genai
-from google.genai import types
-
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
-
-client = genai.Client()
 
 @shared_task
 def generate_bot_response(message_id, app_uuid):
@@ -41,141 +36,69 @@ def generate_bot_response(message_id, app_uuid):
     ).exists()
 
     messages = chatroom.messages.order_by("created_at")
-    chat_history_entries = []
-    for msg in messages:
-        if msg.sender_identifier.startswith("agent_llm"):
-            sender = "AI Agent"
-        elif msg.sender_identifier.startswith("reg_"):
-            sender = "Human Agent"
-        elif msg.sender_identifier.startswith("anon_"):
-            sender = "User"
-        else:
-            sender = "Unknown"
-
-        chat_history_entries.append(f"{sender}: {msg.message}")
-
-    chat_history = "\n".join(chat_history_entries)
 
     if has_chunks:
-        context = get_chunks(question, app_uuid, top_k=5)
+        kb_data = get_chunks(question, app_uuid, top_k=5)
     else:
-        context = "NO_CONTEXT"
-
-    tools = get_tools_for_app(app)
-    tools_description = []
-    for tool in tools:
-        for func in tool.function_declarations:
-            tools_description.append({
-                "name": func.name,
-                "description": func.description
-            })
+        kb_data = "NO_CONTEXT"
 
     prompt_context = {
         "product_name": app.name,
         "product_type": 'Software as a Service (SaaS)',
         "tone": "friendly and professional",
-        "context": context,
-        "chat_history": chat_history,
-        "pms_tools": tools_description,
     }
 
     system_instruction = TemplateLoader.render_template('customer_support.j2', prompt_context)
-    print(':::DEBUG System Instruction:::', system_instruction)
 
-    initial_response = client.models.generate_content(
+    # TODO: Refactor to use selected model the app is associated with
+    client = LLMClient(
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        api_key = "EXAMPLE_API_KEY",
+    )
+    conversation = messages_to_llm_conversation(messages)
+    conversation = add_instructions_to_convo(conversation, system_instruction)
+    conversation = add_kb_to_convo(conversation, kb_data)
+
+    response_schema = get_agent_response_schema("support_response")
+
+    tools = get_app_integrations(app)
+    tool_call_response = client.chat(
+        messages=conversation,
         model="gemini-2.5-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            thinking_config=types.ThinkingConfig(thinking_budget=0),
-            tools=tools
-        ),
-        contents=question
+        tools=tools
     )
 
-    llm_response = ""
+    tool_results = {}
 
-    function_calls = [
-        part.function_call
-        for candidate in initial_response.candidates
-        for part in candidate.content.parts
-        if part.function_call
-    ]
+    for choice in tool_call_response.choices:
+        msg = choice.message
+        if msg.tool_calls:
+            for tool_call in msg.tool_calls:
+                tool_name = tool_call.function.name
 
-    if function_calls:
-        function_responses_parts = []
-        for function_call in function_calls:
-            print(f"Executing tool: {function_call.name} with args: {function_call.args}")
-            try:
-                tool_result = execute_tool_call(app, function_call)
-                print('tool result ', tool_result)
-            except Exception as e:
-                print(f"Error executing tool {function_call.name}: {e}")
-                tool_result = {"error": f"Failed to execute tool: {e}"}
-
-            function_responses_parts.append(
-                FunctionResponse(
-                    name=function_call.name,
-                    response=tool_result
+                args = (
+                    json.loads(tool_call.function.arguments)
+                    if isinstance(tool_call.function.arguments, str)
+                    else tool_call.function.arguments
                 )
-            )
 
-        conversation_history_with_tools = []
-        for entry in chat_history_entries:
-            if entry.startswith("AI Agent:"):
-                role = "model"
-                text = entry[len("AI Agent: "):]
-            elif entry.startswith("Human Agent:"):
-                role = "model"
-                text = entry[len("Human Agent: "):]
-            elif entry.startswith("User:"):
-                role = "user"
-                text = entry[len("User: "):]
-            else:
-                role = "user"
-                text = entry
+                tool_results[tool_name] = execute_tool_call(app, tool_name, **args)
 
-            conversation_history_with_tools.append(
-                Content(role=role, parts=[Part(text=text.strip())])
-            )
+                conversation.append({
+                    "role": "assistant",
+                    "type": "function_call_output",
+                    "call_id": tool_call.id,
+                    "content": json.dumps(tool_results[tool_name]),
+                })
 
-        conversation_history_with_tools.append(
-            initial_response.candidates[0].content
-        )
-
-        conversation_history_with_tools.append(
-            Content(role='user', parts=[Part(function_response=fr) for fr in function_responses_parts])
-        )
-
-        final_response_object = client.models.generate_content(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction="Re-write response",
-                response_mime_type="application/json",
-                response_schema=SupportAgentResponse,
-            ),
-            contents=conversation_history_with_tools
-        )
-
-        llm_response = final_response_object.text
-
-    else:
-        conversation_history_without_tools = [
-            *chat_history,
-            types.Content(role='model', parts=initial_response.candidates[0].content.parts)
-        ]
-        final_response_object = client.models.generate_content(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction="Rewrite response",
-                response_mime_type="application/json",
-                response_schema=SupportAgentResponse,
-            ),
-            contents=conversation_history_without_tools
-        )
-        llm_response = final_response_object.text
+    llm_response = client.chat(
+        conversation,
+        model="gemini-2.5-flash",
+        response_schema=response_schema
+    )
 
     try:
-        llm_response_data = parse_llm_response(llm_response)
+        llm_response_data = parse_llm_response(llm_response.choices[0].message.content)
 
         answer = llm_response_data.get("answer", "").strip()
         status = llm_response_data.get("status", "ERROR").strip()

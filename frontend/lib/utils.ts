@@ -1,8 +1,7 @@
 import { clsx } from 'clsx'
 import type {ClassValue} from 'clsx';
 import { twMerge } from 'tailwind-merge'
-import type { StatusType } from '~/lib/consts'
-import { STATUS_LABELS } from '~/lib/consts'
+import type { FormContext } from 'vee-validate'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -17,11 +16,24 @@ export function getErrorMessage(error: unknown): string {
       message?: string
       statusMessage?: string
     }
-    return e.data?.message || e.data?.detail || e.message || e.statusMessage || 'API request failed'
+    return e.data?.message || e.data?.detail || e.message || e.statusMessage || 'Request failed'
   }
   return 'Unknown error'
 }
 
-export function getStatusLabel(status: string): string {
-  return STATUS_LABELS[status as StatusType] || ''
+export function applyBackendErrors(
+  formInstance: FormContext,
+  errors: Record<string, string[] | string> | string
+) {
+  if (typeof errors === 'string') {
+    formInstance.setFieldError('__form__', errors);
+    return;
+  }
+
+  Object.entries(errors).forEach(([field, messages]) => {
+    formInstance.setFieldError(
+      field,
+      Array.isArray(messages) ? messages.join(', ') : messages
+    );
+  });
 }

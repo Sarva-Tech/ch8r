@@ -24,14 +24,16 @@ export type Application = {
   owner_id: number
   owner: User
   knowledge_base: KnowledgeBaseItem[]
+  llm_models: LLMModel[]
 } | undefined
-
 
 
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
     applications: [] as Application[],
     selectedApplication: null as Application | null,
+    selectedTextModel: null as LLMModel | null,
+    selectedEmbeddingModel: null as LLMModel | null,
     error: null as string | null,
     loading: false,
   }),
@@ -48,8 +50,11 @@ export const useApplicationsStore = defineStore('applications', {
 
         if (!this.selectedApplication && this.applications.length > 0) {
           this.selectedApplication = this.applications[0]
+          const models = this.selectedApplication.llm_models
+          this.selectedTextModel = models.find((model) => model.model_type === 'text')
+          this.selectedEmbeddingModel = models.find((model) => model.model_type === 'embedding')
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Fetch error:', err)
         this.error = err?.message || 'Failed to load applications'
       } finally {

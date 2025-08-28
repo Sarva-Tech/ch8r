@@ -1,9 +1,9 @@
 <template>
-  <div class="space-y-4 pt-4">
+  <div class="space-y-4">
     <NotificationTypeSelect v-model="selectedType" />
 
     <div v-if="selectedType" class="space-y-4">
-      <CustomInput
+      <C8Input
         v-model="profileName"
         label="Notification Profile Name"
         placeholder="Enter profile name"
@@ -11,7 +11,7 @@
         :error="profileNameError"
       />
 
-      <CustomInput
+      <C8Input
         v-model="inputValue"
         :label="inputLabel"
         :placeholder="inputPlaceholder"
@@ -42,7 +42,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useNotificationDraftStore } from '~/stores/notificationProfileDraft'
-import CustomInput from '~/components/CustomInput.vue'
+import C8Input from '~/components/C8Input.vue'
 import NotificationTypeSelect from '~/components/notification/NotificationTypeSelect.vue'
 import NotificationItemsList from '~/components/notification/NotificationItemsList.vue'
 

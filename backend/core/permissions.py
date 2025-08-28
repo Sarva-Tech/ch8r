@@ -1,3 +1,4 @@
+from rest_framework import permissions
 from rest_framework.permissions import BasePermission
 from rest_framework.exceptions import AuthenticationFailed
 from core.models import ApplicationAPIKey, Application
@@ -46,3 +47,14 @@ class HasAPIKeyPermission(BasePermission):
             return "delete"
         else:
             raise AuthenticationFailed("Unsupported HTTP method")
+
+class DefaultLLMModelPermission(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        if getattr(obj, "is_default", False):
+            return obj.owner == request.user
+
+        return obj.owner == request.user
+

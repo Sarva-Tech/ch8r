@@ -9,6 +9,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { Loader2 } from "lucide-vue-next"
 import { ref, computed } from 'vue'
 
 const props = withDefaults(
@@ -20,16 +21,22 @@ const props = withDefaults(
     loading?: boolean
     open?: boolean
     disabled?: boolean
+    showSubmit?: boolean
   }>(),
   {
     submitText: 'Save',
     cancelText: 'Cancel',
     open: undefined,
     disabled: false,
+    showSubmit: true
   }
 )
 
 const emit = defineEmits(['update:open'])
+defineExpose({
+  openSlide,
+  closeSlide
+})
 
 const internalOpen = ref(false)
 
@@ -47,6 +54,14 @@ const sheetOpen = computed({
     }
   },
 })
+
+function openSlide() {
+  sheetOpen.value = true
+}
+
+function closeSlide() {
+  sheetOpen.value = false
+}
 </script>
 
 <template>
@@ -75,16 +90,19 @@ const sheetOpen = computed({
             </Button>
           </SheetClose>
 
-          <SheetClose as-child>
             <Button
+              v-if="showSubmit"
               type="button"
               :disabled="props.disabled || props.loading"
               @click="props.onSubmit?.()"
             >
-              <template v-if="props.loading">Saving...</template>
+              <template v-if="props.loading">
+                <Button disabled>
+                  <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+                </Button>
+              </template>
               <template v-else>{{ submitText }}</template>
             </Button>
-          </SheetClose>
         </div>
       </SheetFooter>
     </SheetContent>

@@ -1,8 +1,7 @@
 import json
 from rest_framework import serializers
 from core.models import NotificationProfile
-from core.services import decrypt_with_private_key
-from core.services.encryption import encrypt_dict, decrypt_dict  # Ensure this exists
+from core.services.encryption import encrypt
 
 
 class NotificationProfileSerializer(serializers.ModelSerializer):
@@ -16,7 +15,7 @@ class NotificationProfileSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         config = validated_data.pop('config', {})
         instance = NotificationProfile(**validated_data)
-        instance._config = encrypt_dict(config)
+        instance._config = encrypt(config)
         instance.save()
         return instance
 
@@ -40,6 +39,8 @@ class BulkNotificationProfileSerializer(serializers.ModelSerializer):
         fields = ['name', 'type', 'config']
 
 def create(self, validated_data):
+    from core.services import decrypt_with_private_key
+
     encrypted_config = validated_data.get('config')
 
     if isinstance(encrypted_config, str):
