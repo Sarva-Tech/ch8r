@@ -22,13 +22,17 @@ const props = withDefaults(
     open?: boolean
     disabled?: boolean
     showSubmit?: boolean
+    triggerDialog?: boolean
+    dialogTitle?: string
+    dialogDescription?: string
   }>(),
   {
     submitText: 'Save',
     cancelText: 'Cancel',
     open: undefined,
     disabled: false,
-    showSubmit: true
+    showSubmit: true,
+    triggerDialog: false
   }
 )
 
