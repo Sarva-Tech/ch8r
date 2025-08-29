@@ -21,10 +21,15 @@ def encrypt(data: dict | str) -> str:
     else:
         raise TypeError("Data must be a dict or str")
 
-def decrypt_dict(encrypted: str) -> dict:
+def decrypt(data: str) -> dict | str:
     try:
-        data = json.loads(encrypted)
-        decrypted = {k: fernet.decrypt(v.encode()).decode() for k, v in data.items()}
-        return decrypted
+        obj = json.loads(data)
+        if isinstance(obj, dict):
+            return {k: fernet.decrypt(v.encode()).decode() for k, v in obj.items()}
+    except Exception:
+        pass
+
+    try:
+        return fernet.decrypt(data.encode()).decode()
     except Exception:
         return {}

@@ -31,8 +31,8 @@ class Integration(models.Model):
 
     @property
     def config(self):
-        from core.services.encryption import decrypt_dict
-        return decrypt_dict(self._config)
+        from core.services.encryption import decrypt
+        return decrypt(self._config)
 
     @config.setter
     def config(self, value):

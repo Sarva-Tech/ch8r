@@ -1,7 +1,5 @@
 from django.db import models
 
-from core.models import LLMModel
-
 
 class AppModel(models.Model):
     id = models.AutoField(primary_key=True)
@@ -11,9 +9,9 @@ class AppModel(models.Model):
         related_name="model_configs"
     )
     llm_model = models.ForeignKey(
-        LLMModel,
+        "LLMModel",
         on_delete=models.CASCADE,
-        related_name="application_bindings"
+        related_name="application_configs"
     )
 
     def __str__(self):

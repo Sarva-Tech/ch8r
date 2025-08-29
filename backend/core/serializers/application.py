@@ -21,7 +21,7 @@ class ApplicationViewSerializer(serializers.ModelSerializer):
         fields = ['id', 'uuid', 'name', 'owner_id', 'owner', 'llm_models']
 
     def get_llm_models(self, obj):
-        llm_models = LLMModel.objects.filter(application_bindings__application=obj).distinct()
+        llm_models = LLMModel.objects.filter(application_configs__application=obj).distinct()
         return [
             {
                 "id": m.id,

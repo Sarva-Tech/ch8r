@@ -17,8 +17,9 @@ class LLMModel(models.Model):
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='models')
 
     name = models.CharField(max_length=255, unique=True)
-    api_key = models.CharField(max_length=255, blank=True, null=True)
-    base_url = models.URLField(max_length=500, blank=True, null=True)
+    api_key = models.CharField(max_length=255, blank=False, null=False)
+    api_key_preview = models.CharField(max_length=255, blank=True, null=True)
+    base_url = models.URLField(max_length=500, blank=False, null=False)
     model_name = models.CharField(max_length=255)
 
     model_type = models.CharField(max_length=50, choices=ModelType.choices)
@@ -31,8 +32,8 @@ class LLMModel(models.Model):
 
     @property
     def config(self):
-        from core.services.encryption import decrypt_dict
-        return decrypt_dict(self.api_key)
+        from core.services.encryption import decrypt
+        return decrypt(self.api_key)
 
     @config.setter
     def config(self, value):

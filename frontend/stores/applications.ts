@@ -50,9 +50,9 @@ export const useApplicationsStore = defineStore('applications', {
 
         if (!this.selectedApplication && this.applications.length > 0) {
           this.selectedApplication = this.applications[0]
-          const models = this.selectedApplication.llm_models
-          this.selectedTextModel = models.find((model) => model.model_type === 'text')
-          this.selectedEmbeddingModel = models.find((model) => model.model_type === 'embedding')
+          const models = this.selectedApplication?.llm_models
+          this.selectedTextModel = models?.find((model) => model.model_type === 'text') || null
+          this.selectedEmbeddingModel = models?.find((model) => model.model_type === 'embedding') || null
         }
       } catch (err: unknown) {
         console.error('Fetch error:', err)

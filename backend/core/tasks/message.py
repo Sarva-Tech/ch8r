@@ -12,7 +12,7 @@ from core.integrations import get_app_integrations, execute_tool_call
 from core.llm_client import LLMClient
 from core.llm_client_utils import messages_to_llm_conversation, get_agent_response_schema, add_kb_to_convo, \
     add_instructions_to_convo
-from core.models import IngestedChunk, Application
+from core.models import IngestedChunk, Application, LLMModel
 from core.models.message import Message
 
 from core.serializers.message import ViewMessageSerializer
@@ -50,10 +50,10 @@ def generate_bot_response(message_id, app_uuid):
 
     system_instruction = TemplateLoader.render_template('customer_support.j2', prompt_context)
 
-    # TODO: Refactor to use selected model the app is associated with
+    text_model = app.get_model_by_type(LLMModel.ModelType.TEXT)
     client = LLMClient(
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-        api_key = "EXAMPLE_API_KEY",
+        base_url=text_model.base_url,
+        api_key = text_model.config,
     )
     conversation = messages_to_llm_conversation(messages)
     conversation = add_instructions_to_convo(conversation, system_instruction)
