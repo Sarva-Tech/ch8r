@@ -19,8 +19,8 @@
         </div>
         <div class="space-y-2">
           <MultiSelectComboBox
-              class="w-full"
             v-model="selectedPermissions"
+            class="w-full"
             label="Select Permissions"
             :options="permissions"
             placeholder="Permissions"
@@ -46,7 +46,7 @@
       <DialogHeader>
         <DialogTitle>Sample usage of API Key</DialogTitle>
         <DialogDescription>
-          <div class="bg-gray w-full">
+          <div class="w-full">
             curl -X GET -H 'x-api-key: your-api-key' https://example.com
           </div>
         </DialogDescription>
