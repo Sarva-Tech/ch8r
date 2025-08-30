@@ -6,7 +6,8 @@ export interface APIKeyItem {
   id: number,
   name: string,
   created: string,
-  permissions: string[]
+  permissions: string[],
+  api_key: string
 }
 export const useAPIKeyStore = defineStore('apiKey', {
   state: () => ({
@@ -40,6 +41,7 @@ export const useAPIKeyStore = defineStore('apiKey', {
     async create(content: object) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
+      let apiKey
       if (!app) return
 
       this.loading = true
@@ -50,12 +52,14 @@ export const useAPIKeyStore = defineStore('apiKey', {
           `/applications/${app.uuid}/api-keys/`, content
         )
         this.apiKeys.push(response)
+        apiKey = response.api_key
       }
       catch (err: unknown) {
         console.error('Create error:', err)
       } finally {
         this.loading = false
       }
+      return apiKey
     },
 
     async delete(id: number) {

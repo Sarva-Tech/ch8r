@@ -19,7 +19,7 @@ const data = computed<APIKeyTableRow[]>(() => {
       id: item.id,
       created: item.created,
       name: item.name,
-      permissions: item.permissions?.map(p => p.toUpperCase()).join(", "),
+      permissions: item.permissions?.map(p => p.toUpperCase()).sort().join(", "),
     }
   })
 })
