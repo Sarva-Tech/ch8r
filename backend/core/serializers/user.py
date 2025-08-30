@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from core.models import AccountStatus
 from rest_framework import serializers
 
 class UserViewSerializer(serializers.ModelSerializer):
@@ -19,4 +20,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             email=validated_data.get('email'),
             password=validated_data['password']
         )
+
+        AccountStatus.objects.create(
+            account=user,
+            status='PENDING'
+        )
+
         return user

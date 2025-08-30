@@ -19,6 +19,7 @@ const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
+const openInactiveAccountDialog = ref(false)
 
 const handleLogin = async () => {
   if (loading.value) return
@@ -57,12 +58,16 @@ const handleLogin = async () => {
     toast.success('Login successful!')
     navigateTo('/')
   } catch (err: never) {
-    const message =
-      err?.data?.non_field_errors?.[0] ||
-      err?.data?.detail ||
-      err?.message ||
-      'Login failed. Please try again.'
-    toast.error(message)
+    if (err.status === 403) {
+      openInactiveAccountDialog.value = true;
+    } else {
+      const message =
+          err?.data?.non_field_errors?.[0] ||
+          err?.data?.detail ||
+          err?.message ||
+          'Login failed. Please try again.'
+      toast.error(message)
+    }
   } finally {
     loading.value = false
   }
@@ -150,5 +155,14 @@ const handleLogin = async () => {
         </a>
       </p>
     </div>
+
+    <Dialog v-model:open="openInactiveAccountDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Account Inactive</DialogTitle>
+          <DialogDescription>Your account is inactive. If you have just created the account, please wait until our team verifies your account. For any help, contact our support team.</DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
