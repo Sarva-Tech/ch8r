@@ -1,13 +1,9 @@
-import os
-
-from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.conf import settings
 
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
@@ -16,13 +12,9 @@ from core.models.message import Message
 
 from core.serializers.message import CreateMessageSerializer, ViewMessageSerializer
 from core.tasks import generate_bot_response
+from core.tasks.message import AGENT_IDENTIFIER
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.permissions import HasAPIKeyPermission
-
-from openai import OpenAI
-
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
 
 def generate_chatroom_name(a, b):
     return f"chat:{':'.join(sorted([a, b]))}"

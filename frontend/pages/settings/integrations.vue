@@ -3,55 +3,47 @@
     <div class="w-full space-y-4">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
-          <NewModel />
+          <NewIntegration />
         </div>
       </div>
 
       <C8Table
-        :data="models"
+        :data="integrations"
         :columns="columns"
         :expandable="false"
-        :delete-fn="deleteModel"
+        :delete-fn="deleteIntegration"
       />
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import NewModel from '~/components/Model/NewModel.vue'
 import { toast } from 'vue-sonner'
+import NewIntegration from '~/components/Integration/NewIntegration.vue'
+import { useIntegrationStore } from '~/stores/integration'
 
-const modelStore = useModelStore()
-
+const integrationStore = useIntegrationStore()
 const loading = ref(false)
+
+const integrations = computed(() => integrationStore.integrations)
 
 onMounted(async () => {
   loading.value = true
   try {
-    await modelStore.load()
+    await integrationStore.load()
+    await integrationStore.loadSupportedIntegrations()
   } catch (e: unknown) {
-    toast.error('Failed to load models')
+    toast.error('Failed to load integrations')
   } finally {
     loading.value = false
   }
 })
-const models = computed(() => modelStore.models)
 
 const columns: ColumnDef<never>[] = [
   {
     accessorKey: 'name',
     header: 'Name',
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: 'base_url',
-    header: 'Base URL',
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: 'model_name',
-    header: 'Model',
     cell: (info) => info.getValue(),
   },
   {
@@ -61,5 +53,5 @@ const columns: ColumnDef<never>[] = [
   },
 ]
 
-function deleteModel() {}
+function deleteIntegration() {}
 </script>

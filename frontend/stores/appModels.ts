@@ -10,14 +10,7 @@ export const useAppModelStore = defineStore('appModel', {
   }),
 
   actions: {
-    async load() {
-      const { httpGet } = useHttpClient()
-      const response = await httpGet<LLMModel[]>(`/models/`)
-      this.models = response
-      return response
-    },
-
-    async setModel(llmModelUUID, modelType: LLMModelType) {
+    async setModel(llmModelUUID: string, modelType: LLMModelType) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return
