@@ -7,8 +7,11 @@ from core.serializers import BulkNotificationProfileSerializer, NotificationProf
 
 
 class NotificationProfileViewSet(viewsets.ModelViewSet):
-    queryset = NotificationProfile.objects.all()
+    queryset = NotificationProfile.objects.none()
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return NotificationProfile.objects.filter(owner=self.request.user)
 
     def get_serializer_class(self):
         if self.action == 'bulk_upload':

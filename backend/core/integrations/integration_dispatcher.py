@@ -1,5 +1,5 @@
 from core.models import AppIntegration
-from core.integrations.registry import PROVIDER_TOOLS, TOOL_HANDLERS
+from core.integrations.registry import INTEGRATION_TOOLS, TOOL_HANDLERS
 
 
 def get_app_integrations(application_id):
@@ -10,8 +10,8 @@ def get_app_integrations(application_id):
         integration_type = ai.integration.type
         integration_provider = ai.integration.provider
         key = f"{integration_type}_{integration_provider}"
-        if integration_type in PROVIDER_TOOLS:
-            tools.update(PROVIDER_TOOLS[key])
+        if key in INTEGRATION_TOOLS:
+            tools.update(INTEGRATION_TOOLS[key])
 
     return list(tools.values())
 
