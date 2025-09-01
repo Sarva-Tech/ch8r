@@ -23,29 +23,29 @@
       />
 
       <template v-if="selectedNotificationType">
-        <FormField
-          v-if="selectedNotificationType.value === 'email'"
-          v-slot="{ componentField }"
-          name="config.email"
-        >
-          <FormItem>
-            <FormLabel class="flex items-center">
-              <div>
-                Email Address
-                <RequiredLabel />
-              </div>
-            </FormLabel>
-            <FormControl>
-              <Input
-                v-bind="componentField"
-                type="email"
-                placeholder="user@example.com"
-                @keyup.enter="addToDraft"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+<!--        <FormField-->
+<!--          v-if="selectedNotificationType.value === 'email'"-->
+<!--          v-slot="{ componentField }"-->
+<!--          name="config.email"-->
+<!--        >-->
+<!--          <FormItem>-->
+<!--            <FormLabel class="flex items-center">-->
+<!--              <div>-->
+<!--                Email Address-->
+<!--                <RequiredLabel />-->
+<!--              </div>-->
+<!--            </FormLabel>-->
+<!--            <FormControl>-->
+<!--              <Input-->
+<!--                v-bind="componentField"-->
+<!--                type="email"-->
+<!--                placeholder="user@example.com"-->
+<!--                @keyup.enter="addToDraft"-->
+<!--              />-->
+<!--            </FormControl>-->
+<!--            <FormMessage />-->
+<!--          </FormItem>-->
+<!--        </FormField>-->
 
         <FormField
           v-if="selectedNotificationType.value !== 'email'"
@@ -110,7 +110,7 @@ const notificationProfileStore = useNotificationProfileStore()
 const draftStore = useNotificationDraftStore()
 
 const notificationTypes = [
-  { label: 'Email', value: 'email' },
+  // { label: 'Email', value: 'email' },
   { label: 'Slack', value: 'slack' },
   { label: 'Discord', value: 'discord' },
 ]
