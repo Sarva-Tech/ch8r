@@ -18,6 +18,7 @@
           <Input id="name" v-model="apiKeyName"/>
         </div>
         <div class="space-y-2">
+          <Label class="mt-4">Permission</Label>
           <MultiSelectComboBox
             v-model="selectedPermissions"
             class="w-full"
@@ -62,6 +63,7 @@
 import {Button} from '~/components/ui/button'
 import {MultiSelectComboBox} from '~/components/ui/multiselectcombobox'
 import SlideOver from '~/components/SlideOver.vue'
+import { Label } from '~/components/ui/label'
 
 const apiKeyName = ref('')
 

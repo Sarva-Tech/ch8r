@@ -53,10 +53,8 @@ export const useNotificationDraftStore = defineStore('notificationDraft', {
         throw new Error('Profile name is required')
       }
 
-      // Remove existing items of the same type
       this.items = this.items.filter(item => item.type !== type)
 
-      // Add new items
       const newItems = values
         .filter(value => value.trim())
         .map(value => ({
