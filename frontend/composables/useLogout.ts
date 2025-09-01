@@ -14,7 +14,11 @@ export function useLogout() {
     clearCookie('auth_token')
     clearCookie('auth_user')
 
-    router.push('/login')
+    if (router) {
+      router.push('/login')
+    } else {
+      window.location = '/login'
+    }
   }
 
   return {

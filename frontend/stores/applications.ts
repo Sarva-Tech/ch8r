@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
 import type { SOURCE_TYPE, StatusType } from '~/lib/consts'
 import { useKBDraftStore } from '~/stores/kbDraft'
+import { useLogout } from '~/composables/useLogout'
+
 
 export interface KnowledgeBaseItem {
   id: number;
@@ -57,6 +59,10 @@ export const useApplicationsStore = defineStore('applications', {
       } catch (err: unknown) {
         console.error('Fetch error:', err)
         this.error = err?.message || 'Failed to load applications'
+
+        if (err?.status === 403) {
+          useLogout().logout()
+        }
       } finally {
         this.loading = false
       }

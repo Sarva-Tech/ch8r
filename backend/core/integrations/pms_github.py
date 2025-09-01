@@ -17,6 +17,27 @@ PMS_GITHUB_TOOLS = {
                 "required": ["query"]
             }
         }
+    },
+    "create_github_issue": {
+        "type": "function",
+        "function": {
+            "name": "create_github_issue",
+            "description": "Call this function to create a new GitHub issue for a bug, feature request, or task. Provide a title and optional description for the issue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "The title of the GitHub issue. Example: 'Fix login bug', 'Add bulk import feature'."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Optional detailed description of the issue."
+                    }
+                },
+                "required": ["title"]
+            }
+        }
     }
 }
 

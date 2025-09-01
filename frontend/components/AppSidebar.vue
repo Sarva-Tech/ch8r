@@ -12,7 +12,8 @@ import {
   Bell,
   Box,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Puzzle
 } from 'lucide-vue-next'
 import SlideOver from '~/components/SlideOver.vue'
 import { toast } from 'vue-sonner'
@@ -205,6 +206,25 @@ async function initNewChat() {
                 <span>Models</span>
               </NuxtLink>
             </SidebarMenuButton>
+
+            <SidebarMenuButton
+              :class="[
+                'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                activeMenu === 'integrations'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : '',
+              ]"
+            >
+              <NuxtLink
+                to="/settings/integrations"
+                class="flex items-center gap-2 w-full"
+                @click="activeMenu = 'integrations'"
+              >
+                <Puzzle class="size-4" />
+                <span>Integrations</span>
+              </NuxtLink>
+            </SidebarMenuButton>
+
 
             <SidebarMenuButton
               :class="[
