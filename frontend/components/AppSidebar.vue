@@ -379,7 +379,7 @@ async function initNewChat() {
         />
       </div>
 
-      <AdvancedSettings />
+<!--      <AdvancedSettings />-->
     </div>
   </SlideOver>
 

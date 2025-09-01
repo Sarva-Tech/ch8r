@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 
-export type NotificationType = 'discord' | 'slack' | 'email'
-
 export interface NotificationDraftItem {
   id: string
   type: NotificationType
