@@ -159,8 +159,8 @@ const handleLogin = async () => {
     <Dialog v-model:open="openInactiveAccountDialog">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Account Inactive</DialogTitle>
-          <DialogDescription>Your account is inactive. If you have just created the account, please wait until our team verifies your account. For any help, contact our support team.</DialogDescription>
+          <DialogTitle>Account Approval Pending</DialogTitle>
+          <DialogDescription>Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries.</DialogDescription>
         </DialogHeader>
       </DialogContent>
     </Dialog>
