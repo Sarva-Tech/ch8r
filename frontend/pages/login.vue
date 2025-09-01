@@ -137,15 +137,15 @@ const handleLogin = async () => {
           <span v-else>Sign In</span>
         </Button>
 
-        <Button
-          variant="outline"
-          class="w-full flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"
-          type="button"
-          @click="() => toast.info('Google login not implemented')"
-        >
-          <GoogleIcon />
-          Login with Google
-        </Button>
+<!--        <Button-->
+<!--          variant="outline"-->
+<!--          class="w-full flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"-->
+<!--          type="button"-->
+<!--          @click="() => toast.info('Google login not implemented')"-->
+<!--        >-->
+<!--          <GoogleIcon />-->
+<!--          Login with Google-->
+<!--        </Button>-->
       </form>
 
       <p class="mt-6 sm:mt-8 text-center text-sm">

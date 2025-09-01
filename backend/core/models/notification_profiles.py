@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.contrib.auth.models import User
 
 class NotificationProfile(models.Model):
     TYPE_CHOICES = [
@@ -14,6 +15,7 @@ class NotificationProfile(models.Model):
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     _config = models.TextField(db_column="config")
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_profiles')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

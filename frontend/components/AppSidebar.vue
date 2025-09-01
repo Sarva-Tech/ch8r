@@ -378,6 +378,8 @@ async function initNewChat() {
           @remove="kbDraft.remove"
         />
       </div>
+
+<!--      <AdvancedSettings />-->
     </div>
   </SlideOver>
 

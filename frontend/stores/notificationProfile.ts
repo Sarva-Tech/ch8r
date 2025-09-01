@@ -1,14 +1,18 @@
 import { defineStore } from 'pinia'
-import { useHttpClient } from '~/composables/useHttpClient'
+import { useHttpClient } from '@/composables/useHttpClient'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
+import { applyBackendErrors } from '~/lib/utils'
 
-type NotificationType = 'email' | 'slack' | 'discord'
+export type NotificationType = 'email' | 'slack' | 'discord'
 
-type NotificationConfig = {
+export type NotificationConfig = {
   email?: string
   webhookUrl?: string
 }
 
-export type NotificationProfile = {
+export interface NotificationProfile {
   id?: number
   uuid?: string
   name: string
@@ -17,112 +21,146 @@ export type NotificationProfile = {
   created_at?: string
 }
 
-type BulkNotificationProfile = Omit<
-  NotificationProfile,
-  'id' | 'uuid' | 'created_at'
->
+const schema = z.object({
+  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
+  type: z.string().nonempty({ message: 'Required' }).min(1).max(255),
+  config: z
+    .object({
+      email: z
+        .string()
+        .email({ message: 'Invalid email' })
+        .optional()
+        .or(z.literal('')),
+      webhookUrl: z
+        .string()
+        .url({ message: 'Invalid URL' })
+        .optional()
+        .or(z.literal('')),
+    })
+    .refine((data) => data.email || data.webhookUrl, {
+      message: 'Either email or webhook URL is required',
+    }),
+})
 
-type ApiResponse = {
-  status: string
-  message: string
-  count: number
-  data?: NotificationProfile[]
-}
+type FormValues = z.infer<typeof schema>
+const typedSchema = toTypedSchema(schema)
+
 export const useNotificationProfileStore = defineStore('notificationProfiles', {
   state: () => ({
+    form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
     profiles: [] as NotificationProfile[],
     loading: false,
     error: null as string | null,
   }),
 
   actions: {
-    createProfilesPayload(profiles: BulkNotificationProfile[]) {
+    initForm() {
+      if (!this.form) {
+        this.form = useForm<FormValues>({
+          validationSchema: typedSchema,
+          initialValues: {
+            name: '',
+            type: '',
+            config: {
+              email: '',
+              webhookUrl: '',
+            },
+          },
+        })
+      }
+      return this.form
+    },
+
+    getFormInstance() {
+      return this.initForm()
+    },
+
+    setBackendErrors(errors: Record<string, string[] | string>) {
+      const formInstance = this.getFormInstance()
+      if (!formInstance) return
+
+      applyBackendErrors(formInstance, errors)
+    },
+
+    createProfilesPayload(profiles: NotificationProfile[]) {
       return profiles.map(({ name, type, config }) => ({ name, type, config }))
     },
 
-    async createBulkNotificationProfiles(profiles: BulkNotificationProfile[]) {
-      const { httpPost } = useHttpClient()
-      this.loading = true
-      this.error = null
-
-      try {
-        const payload = this.createProfilesPayload(profiles)
-        const response = await httpPost<ApiResponse>(
-          '/notification-profiles/bulk-upload/',
-          payload,
-        )
-        if (Array.isArray(response)) {
-          this.profiles = [...this.profiles, ...response]
-        }
-
-        return response
-      } catch (err) {
-        this.error = 'Failed to create notification profiles'
-        throw err
-      } finally {
-        this.loading = false
-      }
+    async load() {
+      const { httpGet } = useHttpClient()
+      const res = await httpGet<NotificationProfile>('/notification-profiles/')
+      this.profiles = Array.isArray(res) ? [...res] : []
+      return this.profiles
     },
 
-    async fetchNotificationProfiles() {
-      const { httpGet } = useHttpClient()
-      this.loading = true
-      this.error = null
+    async create() {
+      if (!this.form) return
 
-      try {
-        const res = await httpGet<ApiResponse>('/notification-profiles/')
-        this.profiles = Array.isArray(res) ? [...res] : []
-      } catch (err: any) {
-        this.error = err?.message || 'Failed to fetch notification profiles'
-        this.profiles = []
-        throw err
-      } finally {
-        this.loading = false
+      const { values } = this.form
+
+      const { httpPost } = useHttpClient()
+      const cleanConfig: NotificationConfig = {}
+      if (values.config.email) cleanConfig.email = values.config.email
+      if (values.config.webhookUrl)
+        cleanConfig.webhookUrl = values.config.webhookUrl
+
+      const response = await httpPost<NotificationProfile>(
+        '/notification-profiles/',
+        {
+          name: values.name,
+          type: values.type as NotificationType,
+          config: cleanConfig,
+        },
+      )
+
+      this.profiles = [...this.profiles, response]
+      return response
+    },
+    async createBulkNotificationProfiles(profiles: NotificationProfile[]) {
+      const { httpPost } = useHttpClient()
+      const payload = this.createProfilesPayload(profiles)
+
+      const response = await httpPost<NotificationProfile>(
+        '/notification-profiles/bulk-upload/',
+        payload,
+      )
+      if (Array.isArray(response)) {
+        this.profiles = [...this.profiles, ...response]
       }
+      return response
     },
     async delete(id: number | string) {
-      this.loading = true
-
-      try {
-        const { httpDelete } = useHttpClient()
-        await httpDelete(`/notification-profiles/${id}/`)
-        this.profiles = this.profiles.filter((profile) => profile.id !== id)
-      } catch (err: unknown) {
-        console.error('Delete error:', err)
-      } finally {
-        this.loading = false
-      }
+      const { httpDelete } = useHttpClient()
+      await httpDelete(`/notification-profiles/${id}/`)
+      this.profiles = this.profiles.filter((profile) => profile.id !== id)
     },
-    async updateNotificationProfile(
+
+    async update(
+      id: number | string,
       updatedProfile: Partial<NotificationProfile>,
     ) {
       const { httpPatch } = useHttpClient()
-      this.loading = true
-      this.error = null
 
-      try {
-        const payload: Partial<NotificationProfile> = {}
+      const payload: Partial<NotificationProfile> = {}
 
-        if (updatedProfile.name !== undefined) {
-          payload.name = updatedProfile.name
-        }
-        if (updatedProfile.type !== undefined) {
-          payload.type = updatedProfile.type
-        }
-        if (updatedProfile.config !== undefined) {
-          payload.config = updatedProfile.config
-        }
-        return await httpPatch<NotificationProfile>(
-          `/notification-profiles/${updatedProfile.id}/`,
-          payload,
-        )
-      } catch (err) {
-        this.error = 'Failed to update notification profile'
-        console.error(err)
-        throw err
-      } finally {
-        this.loading = false
+      if (updatedProfile.name !== undefined) {
+        payload.name = updatedProfile.name
       }
+      if (updatedProfile.type !== undefined) {
+        payload.type = updatedProfile.type
+      }
+      if (updatedProfile.config !== undefined) {
+        payload.config = updatedProfile.config
+      }
+      const response = await httpPatch<NotificationProfile>(
+        `/notification-profiles/${id}/`,
+        payload,
+      )
+      const index = this.profiles.findIndex((profile) => profile.id === id)
+      if (index !== -1) {
+        this.profiles[index] = { ...this.profiles[index], ...response }
+      }
+      return response
     },
   },
 })
