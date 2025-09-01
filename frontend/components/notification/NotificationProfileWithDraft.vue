@@ -23,30 +23,29 @@
       />
 
       <template v-if="selectedNotificationType">
-<!--        commented email for now-->
-<!--        <FormField-->
-<!--          v-if="selectedNotificationType.value === 'email'"-->
-<!--          v-slot="{ componentField }"-->
-<!--          name="config.email"-->
-<!--        >-->
-<!--          <FormItem>-->
-<!--            <FormLabel class="flex items-center">-->
-<!--              <div>-->
-<!--                Email Address-->
-<!--                <RequiredLabel />-->
-<!--              </div>-->
-<!--            </FormLabel>-->
-<!--            <FormControl>-->
-<!--              <Input-->
-<!--                v-bind="componentField"-->
-<!--                type="email"-->
-<!--                placeholder="user@example.com"-->
-<!--                @keyup.enter="addToDraft"-->
-<!--              />-->
-<!--            </FormControl>-->
-<!--            <FormMessage />-->
-<!--          </FormItem>-->
-<!--        </FormField>-->
+        <FormField
+          v-if="selectedNotificationType.value === 'email'"
+          v-slot="{ componentField }"
+          name="config.email"
+        >
+          <FormItem>
+            <FormLabel class="flex items-center">
+              <div>
+                Email Address
+                <RequiredLabel />
+              </div>
+            </FormLabel>
+            <FormControl>
+              <Input
+                v-bind="componentField"
+                type="email"
+                placeholder="user@example.com"
+                @keyup.enter="addToDraft"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
 
         <FormField
           v-if="selectedNotificationType.value !== 'email'"
@@ -105,7 +104,7 @@ import RequiredLabel from '~/components/RequiredLabel.vue'
 import NotificationItemsList from '~/components/notification/NotificationItemsList.vue'
 import { useNotificationProfileStore } from '~/stores/notificationProfile'
 import { useNotificationDraftStore } from '~/stores/notificationProfileDraft'
-import type { NotificationType } from '~/stores/notificationProfileDraft'
+import type { NotificationType } from '~/stores/notificationProfile'
 
 const notificationProfileStore = useNotificationProfileStore()
 const draftStore = useNotificationDraftStore()
