@@ -137,15 +137,15 @@ const handleLogin = async () => {
           <span v-else>Sign In</span>
         </Button>
 
-        <Button
-          variant="outline"
-          class="w-full flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"
-          type="button"
-          @click="() => toast.info('Google login not implemented')"
-        >
-          <GoogleIcon />
-          Login with Google
-        </Button>
+<!--        <Button-->
+<!--          variant="outline"-->
+<!--          class="w-full flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"-->
+<!--          type="button"-->
+<!--          @click="() => toast.info('Google login not implemented')"-->
+<!--        >-->
+<!--          <GoogleIcon />-->
+<!--          Login with Google-->
+<!--        </Button>-->
       </form>
 
       <p class="mt-6 sm:mt-8 text-center text-sm">
@@ -159,8 +159,8 @@ const handleLogin = async () => {
     <Dialog v-model:open="openInactiveAccountDialog">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Account Inactive</DialogTitle>
-          <DialogDescription>Your account is inactive. If you have just created the account, please wait until our team verifies your account. For any help, contact our support team.</DialogDescription>
+          <DialogTitle>Account Approval Pending</DialogTitle>
+          <DialogDescription>Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries.</DialogDescription>
         </DialogHeader>
       </DialogContent>
     </Dialog>
