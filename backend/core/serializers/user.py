@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from core.models import AccountStatus
 from rest_framework import serializers
+import requests
+import os
 
 class UserViewSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,4 +28,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             status='PENDING'
         )
 
+        self.send_discord_notification("A new user has registered: " + user.email)
         return user
+
+    def send_discord_notification(self, message):
+        webhook_url = os.getenv('DISCORD_SIGNUP_WEBHOOK_URL')
+        payload = {
+            "content": message
+        }
+        response = requests.post(webhook_url, json=payload)
+        response.raise_for_status()
