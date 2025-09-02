@@ -21,7 +21,7 @@ export const useLiveUpdateStore = defineStore('liveUpdate', () => {
     clientId.value = id
 
     const wsProtocol = location.protocol === 'https:' ? 'wss://' : 'ws://'
-    const wsUrl = `${wsProtocol}localhost:8000/ws/updates/${userStore.userIdentifier}/`
+    const wsUrl = `${wsProtocol}api.ch8r.com/ws/updates/${userStore.userIdentifier}/`
 
     socket.value = new WebSocket(wsUrl)
 
