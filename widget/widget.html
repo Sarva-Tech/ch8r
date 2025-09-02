@@ -258,7 +258,7 @@
       }
 
       const wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
-      const wsUrl = `${wsProtocol}localhost:8000/ws/updates/${window.CH8R_CONFIG.sender_identifier}/`;
+      const wsUrl = `${wsProtocol}api.ch8r.com/ws/updates/${window.CH8R_CONFIG.sender_identifier}/`;
 
       socket = new WebSocket(wsUrl);
 
@@ -420,7 +420,7 @@
     });
 
     async function sendMessageToAPI(msg) {
-      const api_url = `http://localhost:8000/api/applications`;
+      const api_url = `https://api.ch8r.com/api/applications`;
       const config = window.CH8R_CONFIG || {};
       const { token, app_uuid, sender_identifier } = config;
       const chatroomKey = `ch8r_chatroom_${sender_identifier}`;
