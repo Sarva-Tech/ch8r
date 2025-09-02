@@ -17,7 +17,7 @@ import {
 } from 'lucide-vue-next'
 import SlideOver from '~/components/SlideOver.vue'
 import { toast } from 'vue-sonner'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Input } from '@/components/ui/input'
 import { useKBDraftStore } from '~/stores/kbDraft'
 import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
@@ -41,16 +41,64 @@ import { useNavigation } from '~/composables/useNavigation'
 import { DropdownMenuItem, DropdownMenuSeparator } from '~/components/ui/dropdown-menu'
 import { Button } from '~/components/ui/button'
 import ConfigureApp from '~/components/App/ConfigureApp.vue'
+import { useRoute } from 'vue-router'
 
 const newAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const configureAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 
-const settingsExpanded = ref(false)
-const toggleSettings = () => {
-  settingsExpanded.value = !settingsExpanded.value
+const activeMenu = ref('')
+const route = useRoute()
+
+const settingsExpanded = ref(localStorage.getItem('settingsExpanded') === 'true')
+
+function setActiveMenu(uuid: string) {
+  activeMenu.value = uuid
+  localStorage.setItem('activeMenu', uuid)
 }
 
-const activeMenu = ref('')
+const toggleSettings = () => {
+  settingsExpanded.value = !settingsExpanded.value
+  localStorage.setItem('settingsExpanded', settingsExpanded.value.toString())
+}
+
+onMounted(() => {
+  const savedActiveMenu = localStorage.getItem('activeMenu')
+  if (savedActiveMenu) {
+    activeMenu.value = savedActiveMenu
+  }
+
+  const savedSettingsExpanded = localStorage.getItem('settingsExpanded')
+  if (savedSettingsExpanded !== null) {
+    settingsExpanded.value = savedSettingsExpanded === 'true'
+  }
+})
+
+watch(() => route.path, (newPath) => {
+  const uuidMatch = newPath.match(/\/applications\/[^/]+\/(?:messages|knowledge-base|api-keys-and-widget)\/([^/]+)/)
+  if (uuidMatch && uuidMatch[1]) {
+    setActiveMenu(uuidMatch[1])
+  }
+
+  if (newPath.includes('/messages/new_chat')) {
+    setActiveMenu('newChat')
+  }
+
+  if (newPath.startsWith('/settings/')) {
+    const settingType = newPath.split('/')[2]
+    setActiveMenu(settingType)
+
+    if (!settingsExpanded.value) {
+      settingsExpanded.value = true
+      localStorage.setItem('settingsExpanded', 'true')
+    }
+  }
+
+  if (newPath.includes('/knowledge-base') && !newPath.match(/\/knowledge-base\/[^/]+$/)) {
+    setActiveMenu('knowledge-base')
+  } else if (newPath.includes('/api-keys-and-widget') && !newPath.match(/\/api-keys-and-widget\/[^/]+$/)) {
+    setActiveMenu('api-keys')
+  }
+}, { immediate: true })
 
 const { isMobile } = useSidebar()
 const applicationsStore = useApplicationsStore()
@@ -99,17 +147,10 @@ const handleSubmit = async () => {
   }
 }
 
-function setActiveMenu(uuid: string) {
-  activeMenu.value = uuid
-}
-
 async function initNewChat() {
-  activeMenu.value = 'newChat'
+  setActiveMenu('newChat')
   if (selectedApplication.value) {
-    await selectChatroomAndNavigate(
-      selectedApplication.value,
-      DUMMY_NEW_CHATROOM,
-    )
+    await navigateTo(`/applications/${selectedApplication.value.uuid}/messages/new_chat`)
   }
 }
 </script>
@@ -178,6 +219,7 @@ async function initNewChat() {
       <SidebarGroup class="p-0 m-0">
         <SidebarGroupContent class="space-y-1">
           <SidebarMenuButton
+            data-settings-button
             class="flex items-center justify-between text-sm"
             @click="toggleSettings"
           >
@@ -188,7 +230,7 @@ async function initNewChat() {
             <ChevronUp v-if="settingsExpanded" class="size-4" />
             <ChevronDown v-else class="size-4" />
           </SidebarMenuButton>
-          <div v-if="settingsExpanded" class="flex flex-col space-y-1">
+          <div v-if="settingsExpanded" data-settings-menu class="flex flex-col space-y-1">
             <SidebarMenuButton
               :class="[
                 'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -200,7 +242,7 @@ async function initNewChat() {
               <NuxtLink
                 to="/settings/models"
                 class="flex items-center gap-2 w-full"
-                @click="activeMenu = 'models'"
+                @click="setActiveMenu('models')"
               >
                 <Box class="size-4" />
                 <span>Models</span>
@@ -218,18 +260,17 @@ async function initNewChat() {
               <NuxtLink
                 to="/settings/integrations"
                 class="flex items-center gap-2 w-full"
-                @click="activeMenu = 'integrations'"
+                @click="setActiveMenu('integrations')"
               >
                 <Puzzle class="size-4" />
                 <span>Integrations</span>
               </NuxtLink>
             </SidebarMenuButton>
 
-
             <SidebarMenuButton
               :class="[
                 'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                activeMenu === 'notification'
+                activeMenu === 'notification-profile'
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                   : '',
               ]"
@@ -237,7 +278,7 @@ async function initNewChat() {
               <NuxtLink
                 to="/settings/notification-profile"
                 class="flex items-center gap-2 w-full"
-                @click="activeMenu = 'notification'"
+                @click="setActiveMenu('notification-profile')"
               >
                 <Bell class="size-4" />
                 <span>Notification Profile</span>
@@ -251,7 +292,7 @@ async function initNewChat() {
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                 : '',
             ]"
-            @click="activeMenu = 'knowledge-base'"
+            @click="setActiveMenu('knowledge-base')"
           >
             <NuxtLink
               :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
@@ -268,7 +309,7 @@ async function initNewChat() {
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                 : '',
             ]"
-            @click="activeMenu = 'api-keys'"
+            @click="setActiveMenu('api-keys')"
           >
             <NuxtLink
               :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
@@ -378,6 +419,8 @@ async function initNewChat() {
           @remove="kbDraft.remove"
         />
       </div>
+
+<!--      <AdvancedSettings />-->
     </div>
   </SlideOver>
 
