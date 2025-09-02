@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
 import type { LLMModel, LLMModelType } from '~/stores/model'
 
-
 export const useAppModelStore = defineStore('appModel', {
   state: () => ({
     textModel: null as LLMModel | null,

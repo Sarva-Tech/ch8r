@@ -1,0 +1,11 @@
+TOKEN=$1
+REPO="Sarva-Tech/ch8r"
+TITLE="This is demo title"
+DESCRIPTION="This is Demo description"
+
+curl -X POST "https://api.github.com/repos/$REPO/issues" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  -d "$(jq -n --arg title "$TITLE" --arg body "$DESCRIPTION" '{title: $title, body: $body}')"
+

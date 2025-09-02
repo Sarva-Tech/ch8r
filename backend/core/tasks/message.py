@@ -62,12 +62,14 @@ def generate_bot_response(message_id, app_uuid):
     response_schema = get_agent_response_schema("support_response")
 
     tools = get_app_integrations(app)
+    logger.info("Tools: %s ", tools)
     tool_call_response = client.chat(
         messages=conversation,
         model="gemini-2.5-flash",
         tools=tools
     )
 
+    logger.info("Tool_call_response: %s", tool_call_response)
     tool_results = {}
 
     for choice in tool_call_response.choices:
@@ -83,6 +85,7 @@ def generate_bot_response(message_id, app_uuid):
                 )
 
                 tool_results[tool_name] = execute_tool_call(app, tool_name, **args)
+                logger.info(f"Tool: {tool_name}, Result: {tool_results[tool_name]}")
 
                 conversation.append({
                     "role": "assistant",
@@ -99,6 +102,9 @@ def generate_bot_response(message_id, app_uuid):
 
     try:
         llm_response_data = parse_llm_response(llm_response.choices[0].message.content)
+
+        logger.info("Final LLM Response:\n%s", json.dumps(llm_response_data, indent=2))
+
 
         answer = llm_response_data.get("answer", "").strip()
         status = llm_response_data.get("status", "ERROR").strip()

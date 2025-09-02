@@ -15,6 +15,10 @@ class AccountStatusMiddleware(MiddlewareMixin):
         if request.method != 'OPTIONS' and request.path.startswith('/api/') and request.path not in self.EXCLUDED_PATHS:
             auth_header = request.headers.get('Authorization')
             token_key = auth_header.split(' ')[1]
+
+            if token_key.startswith('widget_'):
+                return None
+
             token = Token.objects.get(key=token_key)
             account_status = AccountStatus.objects.filter(account__email=token.user).first()
 

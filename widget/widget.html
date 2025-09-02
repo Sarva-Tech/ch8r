@@ -257,8 +257,8 @@
         socket.close();
       }
 
-        const wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
-        const wsUrl = `${wsProtocol}localhost:8000/ws/chat/${chatroom_uuid}/`;
+      const wsProtocol = location.protocol === "https:" ? "wss://" : "ws://";
+      const wsUrl = `${wsProtocol}localhost:8000/ws/updates/${window.CH8R_CONFIG.sender_identifier}/`;
 
       socket = new WebSocket(wsUrl);
 
@@ -268,11 +268,10 @@
       };
 
       socket.onmessage = (event) => {
-        console.log('message received..', event.data)
         try {
           const data = JSON.parse(event.data);
-          if (data.message) {
-            addMessage(data.message, "agent");
+          if (data.data.message) {
+            addMessage(data.data.message, "agent");
           }
         } catch (e) {
           console.error("Invalid WS message", e);
@@ -369,13 +368,8 @@
 
       const config = window.CH8R_CONFIG || {};
       const { sender_identifier } = config;
-      const chatroomKey = `ch8r_chatroom_${sender_identifier}`;
-
-      let chatroom_identifier = localStorage.getItem(chatroomKey);
-
-      if (chatroom_identifier) {
-        console.log('connected..')
-        connectWebSocket(chatroom_identifier);
+      if (sender_identifier) {
+        connectWebSocket()
       }
     }
 
@@ -445,7 +439,10 @@
 
       if (chatroom_identifier) {
         payload.chatroom_identifier = chatroom_identifier;
+      } else {
+        payload.chatroom_identifier = 'new_chat';
       }
+      console.log(payload)
 
       try {
         const response = await fetch(`${api_url}/${app_uuid}/chatrooms/send-message/`, {
@@ -456,6 +453,7 @@
           },
           body: JSON.stringify(payload)
         });
+        console.log(response)
 
         if (!response.ok) throw new Error("Message send failed");
         const data = await response.json();

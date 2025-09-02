@@ -1,4 +1,27 @@
 <template>
+  <div class="space-y-3">
+    <FormField v-slot="{ componentField }" name="branch_name">
+      <FormItem>
+        <FormLabel class="flex items-center">
+          <div>
+            Branch Name
+            <RequiredLabel />
+          </div>
+        </FormLabel>
+        <FormControl>
+          <Input
+            v-bind="componentField"
+            placeholder="Sarva-Tech/ch8r"
+          />
+        </FormControl>
+        <FormMessage />
+      </FormItem>
+    </FormField>
+
+    <div class="ml-auto" @click="enablePMSGitHub">
+      <Button>Save</Button>
+    </div>
+  </div>
   <div
     v-for="tool in tools"
     :key="tool.key"
@@ -12,17 +35,25 @@
         {{ getToolInfo(tool.key).description }}
       </p>
     </div>
-    <Switch />
+    <Switch :default-value="true" :disabled="true"/>
   </div>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
+import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
+import RequiredLabel from '~/components/RequiredLabel.vue'
+import { usePMSGitHubToolStore } from '~/stores/PMSGitHubTool'
+import { Button } from '~/components/ui/button'
+import { toast } from 'vue-sonner'
 
 const props = defineProps<{
   integration: Integration
 }>()
 
 const integrationStore = useIntegrationStore()
+const PMSGitHubToolStore = usePMSGitHubToolStore()
+
+PMSGitHubToolStore.initForm()
 
 const supportedIntegrations = computed(
   () => integrationStore.supportedIntegrations,
@@ -34,12 +65,12 @@ const integrationTools = computed(() => {
   const { type, provider } = props.integration
   const key = `${type}_${provider}`
 
-  return supportedIntegrations.value.integration_tools[key] || null
+  return supportedIntegrations.value?.integration_tools[key] || null
 })
 
 const tools = computed(() => {
   if (!integrationTools.value) return []
-  return Object.entries(integrationTools.value).map(([key, value]) => ({ key, data: value }))
+  return Object.entries(integrationTools?.value).map(([key, value]) => ({ key, data: value }))
 })
 
 function getToolInfo(toolKey: string) {
@@ -56,4 +87,14 @@ function getToolInfo(toolKey: string) {
       return { label: toolKey, icon: '' }
   }
 }
+
+async function enablePMSGitHub() {
+  try {
+    await PMSGitHubToolStore.create(props.integration.uuid, props.integration.type)
+    toast.success('GitHub Projects enabled')
+  } catch (e: unknown) {
+    PMSGitHubToolStore.setBackendErrors(e.errors)
+  }
+}
+
 </script>

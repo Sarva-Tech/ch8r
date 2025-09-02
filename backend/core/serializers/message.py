@@ -8,6 +8,7 @@ class CreateMessageSerializer(serializers.Serializer):
     sender_identifier = serializers.CharField(required=False)
     message = serializers.CharField()
     metadata = serializers.JSONField(required=False)
+    send_to_user = serializers.BooleanField(required=False, default=False)
 
     def validate_chatroom_identifier(self, value):
         if value == 'new_chat':

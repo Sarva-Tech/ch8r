@@ -31,7 +31,17 @@
           class="max-h-40 overflow-y-auto resize-none"
           @keydown.enter="send"
         />
-        <div class="flex justify-end">
+        <div class="flex justify-between">
+          <div class="flex items-center space-x-2">
+            <Checkbox v-model="sendToUser" />
+            <label
+              for="terms"
+              class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Send to user
+            </label>
+          </div>
+
           <Button
             class="flex items-center w-20 bg-primary"
             size="default"
@@ -70,6 +80,7 @@ const selectedApp = computed(() => appStore.selectedApplication)
 const selectedChatroom = computed(() => chatroomMessagesStore.selectedChatroom)
 
 const currentMessage = ref('')
+const sendToUser = ref(false)
 
 const { state, isMobile } = useSidebar()
 
@@ -89,6 +100,7 @@ async function send() {
   const response = await chatroomMessagesStore.sendMessage(
     selectedApp.value.uuid,
     currentMessage.value,
+    sendToUser.value
   )
   currentMessage.value = ''
 

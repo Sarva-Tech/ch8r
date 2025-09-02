@@ -1,10 +1,15 @@
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db.models import Q
+import logging
 
+from core.consts import LIVE_UPDATES_PREFIX
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
 from core.models.chatroom_participant import ChatroomParticipant
@@ -15,6 +20,8 @@ from core.tasks import generate_bot_response
 from core.tasks.message import AGENT_IDENTIFIER
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.permissions import HasAPIKeyPermission
+
+logger = logging.getLogger(__name__)
 
 def generate_chatroom_name(a, b):
     return f"chat:{':'.join(sorted([a, b]))}"
@@ -39,6 +46,9 @@ class SendMessageView(APIView):
         sender_id = data.get('sender_identifier')
         message_text = data['message']
         metadata = data.get('metadata', {})
+
+        send_to_user = data['send_to_user']
+        metadata['send_to_user'] = send_to_user
 
         if not chatroom_uuid and not sender_id:
             return Response(
@@ -78,7 +88,30 @@ class SendMessageView(APIView):
             metadata=metadata
         )
 
-        generate_bot_response.delay(message.id, app.uuid)
+        if send_to_user:
+            channel_layer = get_channel_layer()
+            participants = list(
+                message.chatroom.participants.filter(
+                    Q(role='user') & Q(user_identifier__startswith='anon_')
+                ).values_list('user_identifier', flat=True)
+            )
+
+            for participant_id in participants:
+                group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
+                try:
+                    async_to_sync(channel_layer.group_send)(
+                        group_name,
+                        {
+                            "type": "send.message",
+                            "message": ViewMessageSerializer(message).data,
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send message to {group_name}: {str(e)}")
+
+        else:
+            generate_bot_response.delay(message.id, app.uuid)
+
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'
         response_data['llm_processing'] = True

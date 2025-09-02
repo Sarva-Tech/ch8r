@@ -6,10 +6,11 @@ from rest_framework_nested.routers import NestedDefaultRouter
 from core.views import (
     UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView,
     MeView, GenerateAPIKeyView,
-    AppNotificationProfileCreateView, ConfigureAppModelView, IntegrationViewSet
+    AppNotificationProfileCreateView, IntegrationViewSet, ConfigureAppIntegrationView, WidgetView
 )
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
 from core.views.chatroom import ChatRoomDetailView
+from core.views.configure_app import ConfigureAppModelView
 from core.views.integration import supported_integrations
 from core.views.llm_model import LLMModelViewSet
 from core.views.message import SendMessageView
@@ -58,6 +59,14 @@ urlpatterns = [
          AppNotificationProfileCreateView.as_view()),
 
     path('applications/<uuid:app_uuid>/configure-model/', ConfigureAppModelView.as_view(), name='configure-app-model'),
+
+    path('applications/<uuid:app_uuid>/configure-integration/', ConfigureAppIntegrationView.as_view(), name='configure-app-integration'),
+
+    path(
+        "applications/<uuid:application_uuid>/widget/",
+        WidgetView.as_view(),
+        name="widget"
+    ),
 
     path('supported-integrations/', supported_integrations, name='supported-integrations'),
 

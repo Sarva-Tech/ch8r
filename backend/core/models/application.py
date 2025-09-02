@@ -20,3 +20,10 @@ class Application(models.Model):
 
         return app_model.llm_model if app_model else None
 
+    def get_model_by_type(self, model_type):
+        app_model = self.model_configs.filter(
+            llm_model__model_type=model_type,
+            llm_model__owner=self.owner
+        ).select_related("llm_model").first()
+
+        return app_model.llm_model if app_model else None

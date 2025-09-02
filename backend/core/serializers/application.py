@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from core.models import LLMModel
 from core.models.application import Application
-from core.serializers.knowledge_base import KnowledgeBaseViewSerializer
+from core.serializers.app_integration import AppIntegrationViewSerializer
 from core.serializers.user import UserViewSerializer
 
 class ApplicationCreateSerializer(serializers.ModelSerializer):
@@ -15,10 +15,11 @@ class ApplicationViewSerializer(serializers.ModelSerializer):
     owner_id = serializers.IntegerField(source='owner.id', read_only=True)
 
     llm_models = serializers.SerializerMethodField()
+    app_integrations = AppIntegrationViewSerializer(many=True, read_only=True)
 
     class Meta:
         model = Application
-        fields = ['id', 'uuid', 'name', 'owner_id', 'owner', 'llm_models']
+        fields = ['id', 'uuid', 'name', 'owner_id', 'owner', 'llm_models', 'app_integrations']
 
     def get_llm_models(self, obj):
         llm_models = LLMModel.objects.filter(application_configs__application=obj).distinct()

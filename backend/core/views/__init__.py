@@ -9,5 +9,5 @@ from .generate_api_key import GenerateAPIKeyView
 from .notification_profile import NotificationProfileViewSet
 from .app_notification_profile import AppNotificationProfileCreateView
 from .llm_model import LLMModelViewSet
-from .app_model import AppModelViewSet, ConfigureAppModelView
 from .integration import IntegrationViewSet, supported_integrations
+from .configure_app import ConfigureAppModelView, ConfigureAppIntegrationView

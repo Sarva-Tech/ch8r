@@ -37,7 +37,7 @@ const schema = z.object({
   model_name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
 })
 
-export type FormValues = z.infer<typeof schema>
+type FormValues = z.infer<typeof schema>
 const typedSchema = toTypedSchema(schema)
 
 export const useModelStore = defineStore('model', {

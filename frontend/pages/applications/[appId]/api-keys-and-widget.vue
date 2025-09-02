@@ -8,8 +8,14 @@ import { computed, onMounted } from 'vue'
 import type { APIKeyTableRow } from '~/lib/types'
 import NewApiKey from '~/components/ApiKey/NewApiKey.vue'
 import type { APIKeyItem } from '~/stores/apiKey'
+import { Loader2, MessageSquareDot } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { Button } from '~/components/ui/button'
+
+const enablingWidget = ref(false)
 
 const apiKeyStore = useAPIKeyStore()
+const widgetStore = useWidgetStore()
 
 const apiKeys = computed(() => apiKeyStore.apiKeys)
 
@@ -45,8 +51,34 @@ const table = useVueTable<APIKeyTableRow>({
 })
 
 onMounted(() => {
-  apiKeyStore.load()
+  try {
+    apiKeyStore.load()
+  } catch (e) {
+    toast.error('Failed to load API keys')
+  }
+
+  try {
+    widgetStore.load()
+  } catch (e) {
+    toast.error('Failed to load widget configuration')
+  }
 })
+
+async function enableWidget() {
+  enablingWidget.value = true
+  try {
+    await widgetStore.enable()
+    toast.success('Widget integration enabled')
+  } catch (e: unknown) {
+    toast.error('Error enabling widget integration')
+  } finally {
+    enablingWidget.value = false
+  }
+}
+
+const widget = computed(
+  () => widgetStore.widget,
+)
 </script>
 
 <template>
@@ -72,6 +104,43 @@ onMounted(() => {
         :delete-fn="deleteRow"
         :expandable="false"
       />
+    </div>
+    <div class="w-full space-y-4 ">
+      <div v-if="!widget" class="flex justify-center">
+        <Button v-if="enablingWidget" disabled>
+          <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+        </Button>
+        <Button v-else @click="enableWidget">
+          <MessageSquareDot class="w-4 h-4 mr-2" /> Enable Widget Integration
+        </Button>
+      </div>
+      <div v-else class="space-y-4">
+        <CardTitle> Widget Configuration </CardTitle>
+        <div
+          class="flex items-center space-x-4 rounded-md border p-4"
+        >
+          <div class="flex-1 space-y-4">
+            <p class="text-sm font-medium leading-none">
+              Status
+            </p>
+            <p class="text-sm text-muted-foreground">
+              Enabled
+            </p>
+            <p class="text-sm font-medium leading-none">
+              Token
+            </p>
+            <p class="text-sm text-muted-foreground">
+              {{ widget.token }}
+            </p>
+            <p class="text-sm font-medium leading-none">
+              URL
+            </p>
+            <p class="text-sm text-muted-foreground">
+              {{ widget.widget_url }}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

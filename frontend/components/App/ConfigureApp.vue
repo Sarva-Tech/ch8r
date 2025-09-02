@@ -1,5 +1,11 @@
 <template>
-  <div class="space-y-5">
+  <div v-if="loading" class="space-y-5">
+    Loading...
+  </div>
+  <div
+    v-else
+    class="space-y-5"
+  >
     <C8Select
       :options="textModels"
       :model-value="selectedTextModel"
@@ -42,20 +48,23 @@ const modelStore = useModelStore()
 const appModelStore = useAppModelStore()
 const integrationStore = useIntegrationStore()
 
+const loading = ref(false)
+
 onMounted(async () => {
+  loading.value = true
   try {
     await modelStore.load()
     await integrationStore.load()
+    await integrationStore.loadSupportedIntegrations()
   } catch (e: unknown) {
     toast.error('Failed to load app configuration')
+  } finally {
+    loading.value = false
   }
 })
 
 const models = computed(() => modelStore.models)
 const integrations = computed(() => integrationStore.integrations)
-const supportedIntegrations = computed(
-  () => integrationStore.supportedIntegrations,
-)
 
 const textModels = computed(() =>
   models.value
@@ -104,10 +113,6 @@ const selectedEmbeddingModel = ref<NullableSelectOption>(null)
 const selectedPMSProfile = ref<NullableSelectOption>(null)
 const selectedPMS = ref<Integration | null>(null)
 
-onMounted(() => {
-  selectedPMSProfile.value = pmsProfileOptions.value[0]
-})
-
 function selectTextModel(val: NullableSelectOption) {
   selectedTextModel.value = val
   const modelId = val?.value
@@ -144,5 +149,9 @@ watch(selectedPMSProfile, (val) => {
     availablePMSProfiles.value.find(
       (profile) => profile.uuid === val?.value,
     ) || null
+})
+
+watch(pmsProfileOptions, (val) => {
+  selectedPMSProfile.value = val[0]
 })
 </script>

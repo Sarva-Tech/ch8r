@@ -1,0 +1,7 @@
+#!/bin/bash
+TOKEN=$1
+curl -X GET "https://api.github.com/search/issues?q=repo:Sarva-Tech/ch8r+is:issue" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28"
+
