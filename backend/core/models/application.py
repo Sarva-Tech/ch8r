@@ -15,10 +15,9 @@ class Application(models.Model):
 
     def get_model_by_type(self, model_type):
         app_model = (
-            self.model_configs
-            .filter(
-                Q(llm_model__model_type=model_type) &
-                (Q(llm_model__is_default=True) | Q(llm_model__owner=self.owner))
+            self.model_configs.filter(
+                Q(llm_model__is_default=True) | Q(llm_model__owner=self.owner),
+                llm_model__model_type=model_type
             )
             .select_related("llm_model")
             .first()
