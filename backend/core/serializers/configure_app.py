@@ -35,7 +35,7 @@ class ConfigureAppModelSerializer(serializers.ModelSerializer):
 
     def validate_llm_model(self, value):
         app = self.context.get('application')
-        if value.owner != app.owner:
+        if not value.is_default and value.owner != app.owner:
             raise serializers.ValidationError("Model and application owner mismatch.")
         return value
 
