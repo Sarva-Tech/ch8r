@@ -1,1 +1,2 @@
 from .notification_templates import render_template, SMART_ESCALATION_TEMPLATE
+from .email_verify_template import VERIFICATION_EMAIL_TEMPLATE, VERIFICATION_EMAIL_HTML_TEMPLATE

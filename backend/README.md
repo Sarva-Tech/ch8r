@@ -47,3 +47,9 @@ MIIEvQIBADANBgkqhkiG9w0BA...
 MIIBIjANBgkqhkiG9w0BAQEFAAOC...
 -----END PUBLIC KEY-----
 ```
+
+
+### Custom Email Verification Command
+```
+python manage.py generate_email_verification --email example@email.com
+```

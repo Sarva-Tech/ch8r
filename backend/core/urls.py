@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
 from core.views import (
-    UserRegisterView, KnowledgeBaseViewSet, ChatRoomMessagesView,
+    UserRegisterView,VerifyEmailView, KnowledgeBaseViewSet, ChatRoomMessagesView,
     MeView, GenerateAPIKeyView,
     AppNotificationProfileCreateView, IntegrationViewSet, ConfigureAppIntegrationView, WidgetView
 )
@@ -32,6 +32,7 @@ urlpatterns = [
     path('applications/<uuid:application_uuid>/api-keys/', GenerateAPIKeyView.as_view(), name='generate-api-key'),
     path('applications/<uuid:application_uuid>/api-keys/<int:api_key_id>/', GenerateAPIKeyView.as_view(), name='delete-api-key'),
     path('me/', MeView.as_view(), name='api_me'),
+    path('verify-email/<str:token>/', VerifyEmailView.as_view(), name='verify-email'),
 
     path(
         'applications/<uuid:application_uuid>/chatrooms/send-message/',
