@@ -1,6 +1,7 @@
 import uuid
 from django.db import (models)
 from django.contrib.auth.models import User
+from django.db.models import Q
 
 
 class Application(models.Model):
@@ -13,17 +14,12 @@ class Application(models.Model):
         return self.name
 
     def get_model_by_type(self, model_type):
-        app_model = self.model_configs.filter(
-            llm_model__model_type=model_type,
-            llm_model__owner=self.owner
-        ).select_related("llm_model").first()
-
-        return app_model.llm_model if app_model else None
-
-    def get_model_by_type(self, model_type):
-        app_model = self.model_configs.filter(
-            llm_model__model_type=model_type,
-            llm_model__owner=self.owner
-        ).select_related("llm_model").first()
-
+        app_model = (
+            self.model_configs.filter(
+                Q(llm_model__is_default=True) | Q(llm_model__owner=self.owner),
+                llm_model__model_type=model_type
+            )
+            .select_related("llm_model")
+            .first()
+        )
         return app_model.llm_model if app_model else None
