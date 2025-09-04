@@ -47,6 +47,7 @@ const appStore = useApplicationsStore()
 const modelStore = useModelStore()
 const appModelStore = useAppModelStore()
 const integrationStore = useIntegrationStore()
+const notificationProfiles = useNotificationProfileStore()
 
 const loading = ref(false)
 
@@ -56,6 +57,7 @@ onMounted(async () => {
     await modelStore.load()
     await integrationStore.load()
     await integrationStore.loadSupportedIntegrations()
+    await notificationProfiles.load()
   } catch (e: unknown) {
     toast.error('Failed to load app configuration')
   } finally {
