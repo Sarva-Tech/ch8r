@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
+const config = useRuntimeConfig()
 
 type SocketMessage = {
   type: string
@@ -21,7 +22,7 @@ export const useLiveUpdateStore = defineStore('liveUpdate', () => {
     clientId.value = id
 
     const wsProtocol = location.protocol === 'https:' ? 'wss://' : 'ws://'
-    const wsUrl = `${wsProtocol}api.ch8r.com/ws/updates/${userStore.userIdentifier}/`
+    const wsUrl = `${wsProtocol}${config.public.domain}/ws/updates/${userStore.userIdentifier}/`
 
     socket.value = new WebSocket(wsUrl)
 
@@ -37,7 +38,10 @@ export const useLiveUpdateStore = defineStore('liveUpdate', () => {
     }
 
     socket.value.onerror = (err) => {
-      console.error('Error establishing connection to receive live updates.', err)
+      console.error(
+        'Error establishing connection to receive live updates.',
+        err,
+      )
     }
 
     socket.value.onmessage = (event: MessageEvent) => {

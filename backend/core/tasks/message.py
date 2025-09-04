@@ -63,6 +63,7 @@ def generate_bot_response(message_id, app_uuid):
 
     tools = get_app_integrations(app)
     logger.info("Tools: %s ", tools)
+    logger.info("Conversation: %s", conversation)
     tool_call_response = client.chat(
         messages=conversation,
         model="gemini-2.5-flash",

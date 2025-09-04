@@ -3,7 +3,7 @@ from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
 from core.models import IngestedChunk
 from core.qdrant import qdrant, COLLECTION_NAME
-from qdrant_client.http.models import PointIdsList
+from qdrant_client.http.models import PointIdsList, PointStruct
 from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, \
     MatchValue as ModelsMatchValue
 from qdrant_client.models import Prefetch, SparseVector
@@ -29,7 +29,6 @@ def embed_text(text_chunks: list[str], task_type: str) -> list[list[float]]:
         ),
     )
     return [embedding.values for embedding in embeddings.embeddings]
-
 
 def embed_sparse(text_chunks: list[str]) -> list:
     sparse_embeddings = list(sparse_model.embed(text_chunks))
@@ -133,18 +132,23 @@ def ingest_kb(kb, app):
 
         qdrant.upsert(
             collection_name=COLLECTION_NAME,
-            points=[{
-                "id": str(chunk_uuid),
-                "vector": {
-                    "dense": dense_vector,
-                    "sparse": sparse_vector
-                },
-                "payload": {
-                    "kb_id": str(kb.uuid),
-                    "app_id": str(app.uuid),
-                    "chunk_index": i
-                }
-            }]
+            points=[
+                PointStruct(
+                    id=str(chunk_uuid),
+                    vector={
+                        "dense": dense_vector,
+                        "sparse": SparseVector(
+                            indices=list(sparse_vector.indices),
+                            values=list(sparse_vector.values),
+                        ),
+                    },
+                    payload={
+                        "kb_id": str(kb.uuid),
+                        "app_id": str(app.uuid),
+                        "chunk_index": i,
+                    }
+                )
+            ]
         )
 
 def delete_vectors_from_qdrant(ids):
