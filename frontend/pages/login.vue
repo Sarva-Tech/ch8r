@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import GoogleIcon from '@/components/icons/GoogleIcon.vue'
 import { useHttpClient } from '~/composables/useHttpClient'
 
 const config = useRuntimeConfig()
@@ -20,6 +19,8 @@ const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const openInactiveAccountDialog = ref(false)
+const dialogMessage = ref('') // <-- new
+
 
 const handleLogin = async () => {
   if (loading.value) return
@@ -31,11 +32,8 @@ const handleLogin = async () => {
   try {
     const response = await httpPost<{ token: string }>(
       '/login/',
-      {
-        username: email.value,
-        password: password.value,
-      },
-      false,
+      { username: email.value, password: password.value },
+      false
     )
 
     if (!response?.token) {
@@ -48,30 +46,66 @@ const handleLogin = async () => {
     cookie.value = response.token
 
     const user = await $fetch<User>(`${config.public.apiBaseUrl}/me/`, {
-      headers: {
-        Authorization: `Token ${response.token}`,
-      },
+      headers: { Authorization: `Token ${response.token}` },
     })
 
     userStore.setUser(user)
     authUser.value = user
     toast.success('Login successful!')
     navigateTo('/')
-  } catch (err: never) {
+  } catch (err: any) {
+    console.log(err, "error")
+
     if (err.status === 403) {
-      openInactiveAccountDialog.value = true;
+      dialogMessage.value = err?.errors?.error || 'Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries'
+      openInactiveAccountDialog.value = true
     } else {
       const message =
-          err?.data?.non_field_errors?.[0] ||
-          err?.data?.detail ||
-          err?.message ||
-          'Login failed. Please try again.'
+        err?.data?.non_field_errors?.[0] ||
+        err?.data?.detail ||
+        err?.message ||
+        'Login failed. Please try again.'
       toast.error(message)
     }
   } finally {
     loading.value = false
   }
 }
+
+onMounted(async () => {
+  const route = useRoute()
+  const token = route.query.token as string | undefined
+  if (!token) return
+
+  const cookie = useCookie('auth_token')
+  const authUser = useCookie<User>('auth_user')
+  const userStore = useUserStore()
+
+  try {
+    const user = await $fetch<User>(`${config.public.apiBaseUrl}/me/`, {
+      headers: { Authorization: `Token ${token}` },
+    })
+
+    cookie.value = token
+    authUser.value = user
+    userStore.setUser(user)
+
+    toast.success('Email verified! Logged in successfully.')
+    navigateTo('/')
+  } catch (err: any) {
+    console.log(err,"error")
+
+    if (err.status === 403) {
+      dialogMessage.value = 'Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries'
+      openInactiveAccountDialog.value = true
+    } else if (err.data?.error) {
+      toast.error(err.data.error)
+    } else {
+      toast.error('Verification failed. The link might be invalid or expired.')
+    }
+  }
+})
+
 </script>
 
 <template>
@@ -159,10 +193,11 @@ const handleLogin = async () => {
     <Dialog v-model:open="openInactiveAccountDialog">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Account Approval Pending</DialogTitle>
-          <DialogDescription>Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries.</DialogDescription>
+          <DialogTitle>Notice</DialogTitle>
+          <DialogDescription>{{ dialogMessage }}</DialogDescription>
         </DialogHeader>
       </DialogContent>
     </Dialog>
+
   </div>
 </template>

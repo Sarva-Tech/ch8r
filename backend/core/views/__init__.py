@@ -1,5 +1,5 @@
 from .dummy_view import DummyView
-from .user import UserRegisterView, MeView
+from .user import UserRegisterView, MeView, VerifyEmailView
 from .application import ApplicationViewSet
 from .knowledge_base import KnowledgeBaseViewSet
 from .chatroom import ChatRoomMessagesView
@@ -11,3 +11,4 @@ from .app_notification_profile import AppNotificationProfileCreateView
 from .llm_model import LLMModelViewSet
 from .integration import IntegrationViewSet, supported_integrations
 from .configure_app import ConfigureAppModelView, ConfigureAppIntegrationView
+from .custom_auth import CustomAuthToken
