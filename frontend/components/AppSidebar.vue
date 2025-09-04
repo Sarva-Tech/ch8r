@@ -13,18 +13,10 @@ import {
   Box,
   ChevronDown,
   ChevronUp,
-  Puzzle
+  Puzzle,
 } from 'lucide-vue-next'
 import SlideOver from '~/components/SlideOver.vue'
-import { toast } from 'vue-sonner'
 import { ref, computed, onMounted, watch } from 'vue'
-import { Input } from '@/components/ui/input'
-import { useKBDraftStore } from '~/stores/kbDraft'
-import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
-import FileUpload from '~/components/FileUpload.vue'
-import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
-import TextInput from '~/components/KnowledgeBase/TextInput.vue'
-import Draft from '~/components/KnowledgeBase/Draft.vue'
 
 import {
   Sidebar,
@@ -36,9 +28,11 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 
-import { DUMMY_NEW_CHATROOM, KB_SOURCES } from '~/lib/consts'
 import { useNavigation } from '~/composables/useNavigation'
-import { DropdownMenuItem, DropdownMenuSeparator } from '~/components/ui/dropdown-menu'
+import {
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '~/components/ui/dropdown-menu'
 import { Button } from '~/components/ui/button'
 import ConfigureApp from '~/components/App/ConfigureApp.vue'
 import { useRoute } from 'vue-router'
@@ -49,7 +43,9 @@ const configureAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const activeMenu = ref('')
 const route = useRoute()
 
-const settingsExpanded = ref(localStorage.getItem('settingsExpanded') === 'true')
+const settingsExpanded = ref(
+  localStorage.getItem('settingsExpanded') === 'true',
+)
 
 function setActiveMenu(uuid: string) {
   activeMenu.value = uuid
@@ -73,32 +69,44 @@ onMounted(() => {
   }
 })
 
-watch(() => route.path, (newPath) => {
-  const uuidMatch = newPath.match(/\/applications\/[^/]+\/(?:messages|knowledge-base|api-keys-and-widget)\/([^/]+)/)
-  if (uuidMatch && uuidMatch[1]) {
-    setActiveMenu(uuidMatch[1])
-  }
-
-  if (newPath.includes('/messages/new_chat')) {
-    setActiveMenu('newChat')
-  }
-
-  if (newPath.startsWith('/settings/')) {
-    const settingType = newPath.split('/')[2]
-    setActiveMenu(settingType)
-
-    if (!settingsExpanded.value) {
-      settingsExpanded.value = true
-      localStorage.setItem('settingsExpanded', 'true')
+watch(
+  () => route.path,
+  (newPath) => {
+    const uuidMatch = newPath.match(
+      /\/applications\/[^/]+\/(?:messages|knowledge-base|api-keys-and-widget)\/([^/]+)/,
+    )
+    if (uuidMatch && uuidMatch[1]) {
+      setActiveMenu(uuidMatch[1])
     }
-  }
 
-  if (newPath.includes('/knowledge-base') && !newPath.match(/\/knowledge-base\/[^/]+$/)) {
-    setActiveMenu('knowledge-base')
-  } else if (newPath.includes('/api-keys-and-widget') && !newPath.match(/\/api-keys-and-widget\/[^/]+$/)) {
-    setActiveMenu('api-keys')
-  }
-}, { immediate: true })
+    if (newPath.includes('/messages/new_chat')) {
+      setActiveMenu('newChat')
+    }
+
+    if (newPath.startsWith('/settings/')) {
+      const settingType = newPath.split('/')[2]
+      setActiveMenu(settingType)
+
+      if (!settingsExpanded.value) {
+        settingsExpanded.value = true
+        localStorage.setItem('settingsExpanded', 'true')
+      }
+    }
+
+    if (
+      newPath.includes('/knowledge-base') &&
+      !newPath.match(/\/knowledge-base\/[^/]+$/)
+    ) {
+      setActiveMenu('knowledge-base')
+    } else if (
+      newPath.includes('/api-keys-and-widget') &&
+      !newPath.match(/\/api-keys-and-widget\/[^/]+$/)
+    ) {
+      setActiveMenu('api-keys')
+    }
+  },
+  { immediate: true },
+)
 
 const { isMobile } = useSidebar()
 const applicationsStore = useApplicationsStore()
@@ -112,41 +120,6 @@ const selectedApplication = computed(
   () => applicationsStore.selectedApplication,
 )
 const chatrooms = computed(() => chatroomStore.chatrooms)
-const loading = computed(() => applicationsStore.loading)
-
-const appName = ref('')
-const kbDraft = useKBDraftStore()
-const selectedSourceValue = ref('file')
-
-const sources = KB_SOURCES
-const isFile = computed(() => selectedSourceValue.value === 'file')
-const isUrl = computed(() => selectedSourceValue.value === 'url')
-const isText = computed(() => selectedSourceValue.value === 'text')
-
-const handleSubmit = async () => {
-  if (!appName.value.trim()) {
-    toast.error('Application name is required')
-    return
-  }
-
-  try {
-    const newApp = await applicationsStore.createApplicationWithKB(
-      appName.value,
-    )
-    if (newApp) {
-      await selectAppAndNavigate(newApp)
-      toast.success(`Application "${newApp?.name}" created successfully`)
-      appName.value = ''
-      kbDraft.clear()
-    } else {
-      toast.error(applicationsStore.error || 'Failed to create application')
-    }
-  } catch (err: unknown) {
-    toast.error(err.message || 'Something went wrong')
-    console.error('Failed to create application:', err)
-  }
-}
-
 async function initNewChat() {
   setActiveMenu('newChat')
   if (selectedApplication.value) {
@@ -370,60 +343,7 @@ async function initNewChat() {
       </SidebarContent>
     </ScrollArea>
   </Sidebar>
-  <SlideOver
-    ref="newAppSlideOver"
-    title="Create Application"
-    submit-text="Create"
-    cancel-text="Cancel"
-    :on-submit="handleSubmit"
-    :loading="loading"
-  >
-    <div class="space-y-4">
-      <div class="space-y-2">
-        <Label
-          for="name"
-          class="text-sm font-medium flex items-center gap-1"
-        >
-          Application Name
-          <span class="text-xs text-muted-foreground italic ml-1"
-          >Required</span
-          >
-        </Label>
-        <Input
-          id="name"
-          v-model="appName"
-          placeholder="Application name"
-          class="rounded-lg border border-gray-300 focus:border-primary focus:ring-2 focus:ring-primary/20 shadow-sm text-sm px-3 py-2"
-        />
-      </div>
-    </div>
-    <div class="space-y-4 mt-4">
-      <SourceSelector v-model="selectedSourceValue" :sources="sources" />
-
-      <div class="space-y-2">
-        <div v-if="isFile" class="space-y-2">
-          <Label for="upload_files" class="text-sm font-medium">
-            Upload Files
-          </Label>
-          <FileUpload @update:files="kbDraft.setFiles" />
-        </div>
-        <UrlInput v-if="isUrl" />
-        <TextInput v-if="isText" />
-      </div>
-
-      <div class="space-y-2">
-        <Draft
-          v-for="item in kbDraft.items"
-          :key="item.id"
-          :item="item"
-          @remove="kbDraft.remove"
-        />
-      </div>
-
-<!--      <AdvancedSettings />-->
-    </div>
-  </SlideOver>
-
+  <Application ref="newAppSlideOver" @success="setActiveMenu" />
   <SlideOver
     ref="configureAppSlideOver"
     title="Configure Application"

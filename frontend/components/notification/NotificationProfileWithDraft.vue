@@ -15,6 +15,7 @@
           <FormMessage />
         </FormItem>
       </FormField>
+
       <C8Select
         :options="notificationTypes"
         :model-value="selectedNotificationType"
@@ -22,55 +23,29 @@
         @update:model-value="(val) => (selectedNotificationType = val)"
       />
 
-      <template v-if="selectedNotificationType">
-<!--        <FormField-->
-<!--          v-if="selectedNotificationType.value === 'email'"-->
-<!--          v-slot="{ componentField }"-->
-<!--          name="config.email"-->
-<!--        >-->
-<!--          <FormItem>-->
-<!--            <FormLabel class="flex items-center">-->
-<!--              <div>-->
-<!--                Email Address-->
-<!--                <RequiredLabel />-->
-<!--              </div>-->
-<!--            </FormLabel>-->
-<!--            <FormControl>-->
-<!--              <Input-->
-<!--                v-bind="componentField"-->
-<!--                type="email"-->
-<!--                placeholder="user@example.com"-->
-<!--                @keyup.enter="addToDraft"-->
-<!--              />-->
-<!--            </FormControl>-->
-<!--            <FormMessage />-->
-<!--          </FormItem>-->
-<!--        </FormField>-->
-
-        <FormField
-          v-if="selectedNotificationType.value !== 'email'"
-          v-slot="{ componentField }"
-          name="config.webhookUrl"
-        >
-          <FormItem>
-            <FormLabel class="flex items-center">
-              <div>
-                Webhook URL
-                <RequiredLabel />
-              </div>
-            </FormLabel>
-            <FormControl>
-              <Input
-                v-bind="componentField"
-                type="url"
-                :placeholder="webhookPlaceholder"
-                @keyup.enter="addToDraft"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
-      </template>
+      <FormField
+        v-if="selectedNotificationType"
+        v-slot="{ componentField }"
+        name="config.webhookUrl"
+      >
+        <FormItem>
+          <FormLabel class="flex items-center">
+            <div>
+              Webhook URL
+              <RequiredLabel />
+            </div>
+          </FormLabel>
+          <FormControl>
+            <Input
+              v-bind="componentField"
+              type="url"
+              :placeholder="webhookPlaceholder"
+              @keyup.enter="addToDraft"
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
     </form>
 
     <div class="flex justify-end">
@@ -78,12 +53,12 @@
         Add to Draft
       </Button>
     </div>
+
     <NotificationItemsList
       v-if="draftStore.hasDrafts"
       :items="{
         discord: draftStore.discordItems,
         slack: draftStore.slackItems,
-        email: draftStore.emailItems,
       }"
       @remove="removeFromDraft"
     />
@@ -110,7 +85,6 @@ const notificationProfileStore = useNotificationProfileStore()
 const draftStore = useNotificationDraftStore()
 
 const notificationTypes = [
-  // { label: 'Email', value: 'email' },
   { label: 'Slack', value: 'slack' },
   { label: 'Discord', value: 'discord' },
 ]
@@ -133,16 +107,12 @@ const { defineField, handleSubmit, resetForm } =
 
 const [name] = defineField('name')
 const [type] = defineField('type')
-const [config_email] = defineField('config.email')
 const [config_webhookUrl] = defineField('config.webhookUrl')
 
 const addToDraft = handleSubmit(async (values) => {
   const notificationType = type.value as NotificationType
   const profileName = values.name
-  const value =
-    notificationType === 'email'
-      ? values.config.email
-      : values.config.webhookUrl
+  const value = values.config.webhookUrl
 
   if (!profileName || !value) return
 
@@ -153,10 +123,7 @@ const addToDraft = handleSubmit(async (values) => {
       values: {
         name: '',
         type: notificationType,
-        config: {
-          email: '',
-          webhookUrl: '',
-        },
+        config: { webhookUrl: '' },
       },
     })
   } catch (error) {
@@ -172,12 +139,7 @@ watch(
   selectedNotificationType,
   (val) => {
     type.value = val.value
-
-    if (val.value === 'email') {
-      config_webhookUrl.value = ''
-    } else {
-      config_email.value = ''
-    }
+    config_webhookUrl.value = ''
   },
   { immediate: true },
 )
