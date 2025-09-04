@@ -1,4 +1,3 @@
-# core/management/commands/generate_email_verification.py
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.contrib.auth.models import User  # default User model
@@ -26,7 +25,7 @@ class Command(BaseCommand):
 
         token = generate_verification_token(user.id, user.email)
 
-        base_url = settings.API_BASE_URL.rstrip('/')  # backend API URL
+        base_url = settings.API_BASE_URL.rstrip('/')
         verification_link = f"{base_url}/verify-email/{token}/"
 
         self.stdout.write(self.style.SUCCESS(f'Verification link for {email}:'))
