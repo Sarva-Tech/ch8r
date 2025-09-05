@@ -35,7 +35,7 @@ PMS_GITHUB_TOOLS = {
                 "The repository is automatically determined from the integration and does not need to be specified."
                 "You can automatically generate a suitable title and description based on the user's request, "
                 "but **always ask the user for confirmation** before actually creating the issue. "
-                "Do not create the issue without explicit approval from the user."
+                "Always ask the user for confirmation before actually creating the issue."
                 "**Do not share the GitHub URL**."
             ),
             "parameters": {

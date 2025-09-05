@@ -4,8 +4,8 @@ from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from core.models import KnowledgeBase, Application, IngestedChunk
-from core.serializers import KnowledgeBaseItemListSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
+from core.models import KnowledgeBase, Application, IngestedChunk, LLMModel
+from core.serializers import KnowledgeBaseCreateSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from core.permissions import HasAPIKeyPermission
 from core.services.ingestion import delete_vectors_from_qdrant
 from core.services.kb_utils import create_kb_records, parse_kb_from_request, format_text_uri
@@ -23,7 +23,7 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return KnowledgeBaseItemListSerializer
+            return KnowledgeBaseCreateSerializer
         return KnowledgeBaseViewSerializer
 
     def get_queryset(self):
@@ -58,6 +58,22 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
             created_kbs = create_kb_records(application, items)
 
+            # TODO: May be we need a better error handling approach here
+            # TODO: Serializer with validator might work
+            errors = {}
+            text_model = application.get_model_by_type(LLMModel.ModelType.TEXT)
+            if not text_model:
+                errors[
+                    "text_model"] = f"Text model not found for application {application.name}. Please configure a TEXT model."
+
+            embedding_model = application.get_model_by_type(LLMModel.ModelType.EMBEDDING)
+            if not embedding_model:
+                errors[
+                    "embedding_model"] = f"Embedding model not found for application {application.name}. Please configure an EMBEDDING model."
+
+            if errors:
+                return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+
             process_kb.delay([kb.id for kb in created_kbs])
             serialized_kbs = KnowledgeBaseViewSerializer(created_kbs, many=True)
             return Response({"kbs": serialized_kbs.data}, status=status.HTTP_201_CREATED)
@@ -85,6 +101,7 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
         kb.save(update_fields=fields_to_update)
 
+        # TODO: We need to check whether text & embedding models are configured here as well
         process_kb.delay([kb.id])
 
         return Response(KnowledgeBaseViewSerializer(kb).data)

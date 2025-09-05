@@ -40,3 +40,6 @@ class LLMModel(models.Model):
         from core.services.encryption import encrypt
         self.api_key = encrypt(value or "")
 
+    @classmethod
+    def get_default_by_type(cls, model_type):
+        return cls.objects.filter(model_type=model_type, is_default=True).first()

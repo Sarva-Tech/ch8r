@@ -1,6 +1,6 @@
 from .user import UserViewSerializer, UserRegisterSerializer
 from .application import ApplicationCreateSerializer, ApplicationViewSerializer
-from .knowledge_base import KnowledgeBaseItemListSerializer, KnowledgeBaseItemSerializer, KnowledgeBaseViewSerializer
+from .knowledge_base import KnowledgeBaseCreateSerializer, KnowledgeBaseItemSerializer, KnowledgeBaseViewSerializer
 from .chatroom import ChatRoomViewSerializer
 from .message import CreateMessageSerializer, ViewMessageSerializer
 from .api_key import APIKeySerializer

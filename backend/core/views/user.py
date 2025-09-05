@@ -1,3 +1,6 @@
+import json
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -7,9 +10,12 @@ from django.contrib.auth.models import User
 from urllib.parse import urlencode
 from django.conf import settings
 from rest_framework.authtoken.models import Token
+
+from core.models import Application, AccountStatus
 from core.serializers import UserRegisterSerializer, UserViewSerializer
 from core.services.encryption import verify_verification_token
 
+logger = logging.getLogger(__name__)
 
 class UserRegisterView(APIView):
     permission_classes = []
@@ -47,6 +53,23 @@ class VerifyEmailView(APIView):
 
                 user.is_active = True
                 user.save()
+
+                try:
+                    alpha_signup_emails = json.loads(settings.CLOSED_ALPHA_SIGN_UPS)
+                    if user.email in alpha_signup_emails:
+                        AccountStatus.objects.filter(account=user).update(status='ACTIVE')
+                except Exception as e:
+                    logger.error(f"Failed to update account status of {user.email}: {e}")
+
+                app_name = f"Default - {user.email}"
+                application, created = Application.objects.get_or_create(
+                    owner=user,
+                    name=app_name
+                )
+
+                if created:
+                    from core.models import AppModel, LLMModel
+                    AppModel.configure_defaults(application)
 
                 token_obj, _ = Token.objects.get_or_create(user=user)
 

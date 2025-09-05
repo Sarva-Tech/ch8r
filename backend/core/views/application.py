@@ -4,7 +4,7 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Application, ChatRoom, Message
+from core.models import Application, ChatRoom, Message, LLMModel, AppModel
 from core.serializers import ApplicationCreateSerializer, ApplicationViewSerializer
 from core.serializers.chatroom import ChatRoomPreviewSerializer
 from core.services.kb_utils import parse_kb_from_request
@@ -29,11 +29,14 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         create_serializer.is_valid(raise_exception=True)
         app_instance = create_serializer.save(owner=request.user)
 
+        # TODO: may be we need to handle proper log and error messages if default
+        # TODO: models are not configured yet.
+        AppModel.configure_defaults(app_instance)
+
         parsed_kb_items = parse_kb_from_request(request)
 
         if parsed_kb_items:
             created_kbs = create_kb_records(app_instance, parsed_kb_items)
-
             process_kb.delay([kb.id for kb in created_kbs])
 
         view_serializer = ApplicationViewSerializer(app_instance, context={'request': request})

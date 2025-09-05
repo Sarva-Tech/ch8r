@@ -23,7 +23,7 @@ class KnowledgeBaseItemSerializer(serializers.Serializer):
         return data
 
 
-class KnowledgeBaseItemListSerializer(serializers.Serializer):
+class KnowledgeBaseCreateSerializer(serializers.Serializer):
     items = KnowledgeBaseItemSerializer(many=True)
 
     def create(self, validated_data):
