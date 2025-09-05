@@ -12,6 +12,7 @@
         :columns="columns"
         :expandable="false"
         :delete-fn="deleteModel"
+        :update-fn="deleteModel"
       />
     </div>
   </div>
@@ -23,6 +24,7 @@ import NewModel from '~/components/Model/NewModel.vue'
 import { toast } from 'vue-sonner'
 
 const modelStore = useModelStore()
+const user = useUserStore()
 
 const loading = ref(false)
 
@@ -36,7 +38,17 @@ onMounted(async () => {
     loading.value = false
   }
 })
-const models = computed(() => modelStore.models)
+
+// TODO: Disable model deletion and update for now
+// canDelete: !model.is_default && model.owner === user.authUser.id,
+
+const models = computed(() =>
+  modelStore.models.map((model) => ({
+    ...model,
+    canDelete: false,
+    canUpdate: false
+  }))
+)
 
 const columns: ColumnDef<never>[] = [
   {
@@ -62,4 +74,5 @@ const columns: ColumnDef<never>[] = [
 ]
 
 function deleteModel() {}
+function updateModel() {}
 </script>

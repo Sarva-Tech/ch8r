@@ -35,10 +35,10 @@ def generate_bot_response(message_id, app_uuid):
         knowledge_base__application__uuid=app_uuid
     ).exists()
 
-    messages = chatroom.messages.order_by("created_at")
+    messages = Message.objects.filter(chatroom=chatroom).order_by("created_at")
 
     if has_chunks:
-        kb_data = get_chunks(question, app_uuid, top_k=5)
+        kb_data = get_chunks(question, app, top_k=5)
     else:
         kb_data = "NO_CONTEXT"
 
@@ -53,7 +53,7 @@ def generate_bot_response(message_id, app_uuid):
     text_model = app.get_model_by_type(LLMModel.ModelType.TEXT)
     client = LLMClient(
         base_url=text_model.base_url,
-        api_key = text_model.config,
+        api_key=text_model.config,
     )
     conversation = messages_to_llm_conversation(messages)
     conversation = add_instructions_to_convo(conversation, system_instruction)
@@ -66,7 +66,7 @@ def generate_bot_response(message_id, app_uuid):
     logger.info("Conversation: %s", conversation)
     tool_call_response = client.chat(
         messages=conversation,
-        model="gemini-2.5-flash",
+        model=text_model.model_name,
         tools=tools
     )
 
@@ -97,7 +97,7 @@ def generate_bot_response(message_id, app_uuid):
 
     llm_response = client.chat(
         conversation,
-        model="gemini-2.5-flash",
+        model=text_model.model_name,
         response_schema=response_schema
     )
 

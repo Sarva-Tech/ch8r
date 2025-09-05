@@ -30,9 +30,18 @@ class LLMClient:
         kwargs: dict[str, Any] = {
             "model": model,
             "input": messages,
+            "temperature": 0.7
         }
         if tools:
             kwargs["tools"] = tools
         if response_schema:
             kwargs["response_format"] = response_schema
         return client.responses.create(**kwargs)
+
+    def embed(self, messages: list[str], model: str):
+        client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        embedding = client.embeddings.create(
+            input=messages,
+            model=model
+        )
+        return embedding.data[0].embedding

@@ -59,17 +59,16 @@ def process_kb_item(kb):
 @shared_task
 def process_kb(kb_ids):
     kb_items = KnowledgeBase.objects.filter(id__in=kb_ids).select_related('application__owner')
+
     for kb in kb_items:
         try:
             process_kb_item(kb)
             kb.status = KBStatus.COMPLETED
-            kb.save()
-            send_kb_update(kb, kb.status)
         except Exception as e:
-            print('eeeeeror', e)
             metadata = kb.metadata or {}
             metadata['error'] = str(e)
             kb.metadata = metadata
             kb.status = KBStatus.FAILED
+        finally:
             kb.save()
             send_kb_update(kb, kb.status)

@@ -1,7 +1,9 @@
 from fastembed import SparseTextEmbedding
 from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
-from core.models import IngestedChunk
+
+from core.llm_client import LLMClient
+from core.models import IngestedChunk, LLMModel
 from core.qdrant import qdrant, COLLECTION_NAME
 from qdrant_client.http.models import PointIdsList, PointStruct
 from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, \
@@ -9,26 +11,29 @@ from qdrant_client.models import Filter as ModelsFilter, FieldCondition as Model
 from qdrant_client.models import Prefetch, SparseVector
 import uuid
 
-from google import genai
-from google.genai import types
-
 logger = logging.getLogger(__name__)
-
-client = genai.Client()
-GEMINI_EMBEDDING_MODEL = "models/gemini-embedding-001"
 
 sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
 
 
-def embed_text(text_chunks: list[str], task_type: str) -> list[list[float]]:
-    embeddings = client.models.embed_content(
-        model=GEMINI_EMBEDDING_MODEL,
-        contents=text_chunks,
-        config=types.EmbedContentConfig(
-            task_type=task_type,
-        ),
-    )
-    return [embedding.values for embedding in embeddings.embeddings]
+def embed_text(text_chunks: list[str], app) -> list[list[float]]:
+    embedding_model = app.get_model_by_type(LLMModel.ModelType.EMBEDDING)
+    try:
+        client = LLMClient(
+            base_url=embedding_model.base_url,
+            api_key=embedding_model.config,
+        )
+        response = client.embed(text_chunks, embedding_model.model_name)
+
+        if not response:
+            return [[] for _ in text_chunks]
+
+        if isinstance(response[0], float):
+            return [response]
+        return response
+    except Exception as e:
+        logger.error(f"[embed_text] Embedding failed: {e}")
+        return [[] for _ in text_chunks]
 
 def embed_sparse(text_chunks: list[str]) -> list:
     sparse_embeddings = list(sparse_model.embed(text_chunks))
@@ -48,52 +53,66 @@ def chunk_text(text: str, chunk_size=300, overlap=50) -> list[str]:
         start += chunk_size - overlap
     return chunks
 
-def get_chunks(query_text, app_uuid, top_k=5):
-    dense_query = embed_text(text_chunks=[query_text], task_type="RETRIEVAL_QUERY")[0]
+def get_chunks(query_text, app, top_k=5):
+    dense_embeddings = embed_text(text_chunks=[query_text], app=app)
+    if not dense_embeddings or not dense_embeddings[0]:
+        print("[get_chunks] Warning: dense embedding empty, returning no context")
+        return "No context available."
 
-    sparse_embedding = list(sparse_model.embed([query_text]))[0]
-    sparse_query = SparseVector(
-        indices=sparse_embedding.indices.tolist(),
-        values=sparse_embedding.values.tolist()
-    )
+    dense_query = dense_embeddings[0]
 
     try:
-        search_result = qdrant.query_points(
-            collection_name=COLLECTION_NAME,
-            prefetch=[
-                Prefetch(
-                    query=dense_query,
-                    using="dense",
-                    limit=top_k * 2,
-                    filter=ModelsFilter(
-                        must=[ModelsFieldCondition(key="app_id", match=ModelsMatchValue(value=str(app_uuid)))]
-                    )
-                ),
+        sparse_embeddings = list(sparse_model.embed([query_text]))[0]
+        sparse_query = SparseVector(
+            indices=sparse_embeddings.indices.tolist(),
+            values=sparse_embeddings.values.tolist()
+        )
+    except Exception as e:
+        print(f"[get_chunks] Sparse embedding failed: {e}")
+        sparse_query = None
+
+    try:
+        prefetch_list = [
+            Prefetch(
+                query=dense_query,
+                using="dense",
+                limit=top_k * 2,
+                filter=ModelsFilter(
+                    must=[ModelsFieldCondition(key="app_id", match=ModelsMatchValue(value=str(app.uuid)))]
+                )
+            )
+        ]
+        if sparse_query:
+            prefetch_list.append(
                 Prefetch(
                     query=sparse_query,
                     using="sparse",
                     limit=top_k * 2,
                     filter=ModelsFilter(
-                        must=[ModelsFieldCondition(key="app_id", match=ModelsMatchValue(value=str(app_uuid)))]
+                        must=[ModelsFieldCondition(key="app_id", match=ModelsMatchValue(value=str(app.uuid)))]
                     )
                 )
-            ],
+            )
+
+        search_result = qdrant.query_points(
+            collection_name=COLLECTION_NAME,
+            prefetch=prefetch_list,
             query=dense_query,
             using="dense",
             limit=top_k,
             with_payload=True
         )
     except UnexpectedResponse as e:
-        print("Qdrant query failed:", str(e))
+        print("[get_chunks] Qdrant query failed:", e)
         return "No context available."
 
     chunk_uuids = [point.id for point in search_result.points if point.score >= 0.3]
 
-    chunks = IngestedChunk.objects.filter(uuid__in=chunk_uuids).order_by('chunk_index')
-    for idx, chunk in enumerate(chunks):
-        print(f"Document {idx + 1} - document:\n{chunk.content}\n{'-' * 40}")
-    context = "\n".join([chunk.content for chunk in chunks])
+    if not chunk_uuids:
+        return "No context available."
 
+    chunks = IngestedChunk.objects.filter(uuid__in=chunk_uuids).order_by('chunk_index')
+    context = "\n".join([chunk.content for chunk in chunks])
     return context
 
 def ingest_kb(kb, app):
@@ -104,7 +123,7 @@ def ingest_kb(kb, app):
 
     chunks = chunk_text(content)
 
-    dense_embeddings = embed_text(text_chunks=chunks, task_type="RETRIEVAL_DOCUMENT")
+    dense_embeddings = embed_text(text_chunks=chunks, app=app)
 
     sparse_embeddings = embed_sparse(chunks)
 

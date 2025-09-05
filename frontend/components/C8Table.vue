@@ -44,10 +44,18 @@
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem v-if="updateFn" @click="updateFn(row.original)">
+                      <DropdownMenuItem
+                        v-if="updateFn"
+                        @click="updateFn(row.original)"
+                      >
                         <Pencil class="mr-2 h-4 w-4" /> Update
                       </DropdownMenuItem>
-                      <DropdownMenuItem class="text-red-600" @click="deleteFn(row.original.uuid || row.original.id)">
+                      <DropdownMenuItem
+                        v-if="deleteFn"
+                        class="text-red-600"
+                        :disabled="!row.original?.canDelete"
+                        @click="deleteFn(row.original?.uuid || row.original?.id)"
+                      >
                         <Trash class="mr-2 h-4 w-4" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -104,7 +112,7 @@ const props = defineProps({
   },
   deleteFn: {
     type: Function as PropType<(identifier: unknown) => void>,
-    required: true
+    required: false
   },
   expandable: {
     type: Boolean as PropType<boolean>,
