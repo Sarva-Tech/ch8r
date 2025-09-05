@@ -31,12 +31,17 @@ class NotificationProfileViewSet(viewsets.ModelViewSet):
 
         try:
             with transaction.atomic():
-                instances = serializer.save()
+                instances = [
+                    NotificationProfile.objects.create(
+                        owner=request.user,
+                        **item
+                    )
+                    for item in serializer.validated_data
+                ]
 
             response_data = []
             for instance in instances:
                 config = instance.config or {}
-
                 if 'webhookUrl' in config:
                     config = {}
 

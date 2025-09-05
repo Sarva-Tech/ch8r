@@ -1,62 +1,38 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { Eye, EyeOff } from 'lucide-vue-next'
-import { toast } from 'vue-sonner'
-import { Button } from '@/components/ui/button'
+import { ref, computed } from 'vue'
+import { useUserStore } from '~/stores/user'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useHttpClient } from '~/composables/useHttpClient'
-import { getErrorMessage } from '~/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff } from 'lucide-vue-next'
+import { Field as FormField } from 'vee-validate'
+import {
+  FormControl,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '~/components/ui/form'
+import RequiredLabel from '~/components/RequiredLabel.vue'
 
 definePageMeta({
   layout: 'public',
   middleware: ['redirect-if-authenticated'],
 })
 
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
+const userStore = useUserStore()
+const form = userStore.getFormInstance()
+const { handleSubmit, meta } = form
+
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
-const isSubmitting = ref(false)
-const passwordsMatch = ref(true)
 
-
-watch([password, confirmPassword], () => {
-  passwordsMatch.value = password.value === confirmPassword.value
-})
-const { httpPost } = useHttpClient()
-
-const handleRegister = async () => {
-  if (!passwordsMatch.value) {
-    toast.error('Passwords do not match')
-    return
-  }
-
-  isSubmitting.value = true
-
-  try {
-    await httpPost('/register/', {
-      email: email.value,
-      password: password.value,
-      username: email.value,
-    }, false)
-
-    toast.success('Registration successful! Please login.')
+const onSubmit = handleSubmit(async (values) => {
+  const success = await userStore.register(values)
+  if (success) {
     navigateTo('/login')
-  } catch (err: never) {
-    const message = getErrorMessage(err)
-    try {
-      const errorData = JSON.parse(err.message)
-      Object.values(errorData).flat().forEach((msg) => toast.error(String(msg)))
-    } catch {
-      toast.error(message || 'Registration failed. Please try again.')
-    }
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
+const disabled = computed(() => !meta.value.valid)
 </script>
 
 <template>
@@ -67,84 +43,75 @@ const handleRegister = async () => {
         <p class="text-sm sm:text-base">Fill the form below to register</p>
       </header>
 
-      <form class="space-y-5 sm:space-y-6" novalidate @submit.prevent="handleRegister">
-        <div>
-          <Label for="email" class="block text-sm font-medium mb-1">Email</Label>
-          <Input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            autofocus
-            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm"
-          />
-        </div>
+      <form class="space-y-4" @submit.prevent="onSubmit">
+        <FormField v-slot="{ field }" name="email">
+          <FormItem>
+            <FormLabel class="flex items-center gap-1">
+              Email <RequiredLabel />
+            </FormLabel>
+            <FormControl>
+              <Input v-bind="field" type="email" placeholder="you@example.com" autofocus />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
 
-        <div class="relative">
-          <Label for="password" class="block text-sm font-medium mb-1">Password</Label>
-          <Input
-            id="password"
-            v-model="password"
-            :type="showPassword ? 'text' : 'password'"
-            required
-            placeholder="••••••••"
-            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
-          />
-          <button
-            type="button"
-            class="absolute right-3 top-9 focus:outline-none"
-            aria-label="Toggle password visibility"
-            tabindex="-1"
-            @click="showPassword = !showPassword"
-          >
-            <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
-          </button>
-        </div>
+        <FormField v-slot="{ field }" name="password">
+          <FormItem class="relative">
+            <FormLabel class="flex items-center gap-1">
+              Password <RequiredLabel />
+            </FormLabel>
+            <FormControl>
+              <Input
+                v-bind="field"
+                :type="showPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="pr-10"
+              />
+              <button
+                type="button"
+                class="absolute right-3 top-9 focus:outline-none"
+                @click="showPassword = !showPassword"
+              >
+                <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
+              </button>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
 
-        <div class="relative">
-          <Label for="confirmPassword" class="block text-sm font-medium mb-1">Confirm Password</Label>
-          <Input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            :type="showConfirmPassword ? 'text' : 'password'"
-            required
-            placeholder="••••••••"
-            @keyup.enter="handleRegister"
-            :class="[
-              'w-full ring-1 pr-10 rounded-sm',
-              passwordsMatch ? 'ring-muted' : 'ring-destructive'
-            ]"
-          />
-          <button
-            type="button"
-            class="absolute right-3 top-9 focus:outline-none"
-            aria-label="Toggle confirm password visibility"
-            tabindex="-1"
-            @click="showConfirmPassword = !showConfirmPassword"
-          >
-            <component :is="showConfirmPassword ? Eye : EyeOff" class="w-5 h-5" />
-          </button>
-          <p v-if="!passwordsMatch" class="text-sm text-destructive mt-1">
-            Passwords do not match
-          </p>
-        </div>
+        <FormField v-slot="{ field }" name="confirm_password">
+          <FormItem class="relative">
+            <FormLabel class="flex items-center gap-1">
+              Confirm Password <RequiredLabel />
+            </FormLabel>
+            <FormControl>
+              <Input
+                v-bind="field"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                placeholder="••••••••"
+                class="pr-10"
+              />
+              <button
+                type="button"
+                class="absolute right-3 top-9 focus:outline-none"
+                @click="showConfirmPassword = !showConfirmPassword"
+              >
+                <component :is="showConfirmPassword ? Eye : EyeOff" class="w-5 h-5" />
+              </button>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        </FormField>
 
-        <Button
-          type="submit"
-          class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md transition cursor-pointer"
-          :disabled="isSubmitting"
-        >
-          <span v-if="isSubmitting">Registering...</span>
-          <span v-else>Register</span>
+        <Button type="submit" class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md" :disabled="disabled">
+          Register
         </Button>
       </form>
 
       <p class="mt-6 sm:mt-8 text-center text-sm">
         Already have an account?
-        <a href="/login" class="font-semibold underline underline-offset-4">
-          Login here
-        </a>
+        <a href="/login" class="font-semibold underline underline-offset-4">Login here</a>
       </p>
     </div>
   </div>
