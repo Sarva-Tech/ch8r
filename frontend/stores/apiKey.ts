@@ -1,86 +1,105 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
-import type {Application} from "~/stores/applications";
+import { useApplicationsStore  } from '~/stores/applications'
+import type {Application} from '~/stores/applications';
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
+import { applyBackendErrors } from '~/lib/utils'
 
 export interface APIKeyItem {
-  id: number,
-  name: string,
-  created: string,
-  permissions: string[],
+  id: number
+  name: string
+  created: string
+  permissions: string[]
   api_key: string
 }
+
+const apiKeySchema = z.object({
+  name: z.string().nonempty({ message: 'required' }),
+  permissions: z.array(z.string()).min(1, { message: 'At least one permission is required' }),
+})
+
+
+export type APIKeyFormValues = z.infer<typeof apiKeySchema>
+const typedApiKeySchema = toTypedSchema(apiKeySchema)
+
 export const useAPIKeyStore = defineStore('apiKey', {
   state: () => ({
     appDetails: null as Application | null,
-    loading: false,
-    apiKeys: [] as APIKeyItem[]
+    apiKeys: [] as APIKeyItem[],
+    form: shallowRef<ReturnType<typeof useForm<APIKeyFormValues>> | null>(null),
   }),
 
   actions: {
+    initForm() {
+      if (!this.form) {
+        this.form = useForm<APIKeyFormValues>({
+          validationSchema: typedApiKeySchema,
+          initialValues: {
+            name: '',
+            permissions: [],
+          },
+        })
+      }
+      return this.form
+    },
+
+    getFormInstance() {
+      return this.initForm()
+    },
+
+    setBackendErrors(errors: Record<string, string[] | string>) {
+      const formInstance = this.getFormInstance()
+      if (!formInstance) return
+      applyBackendErrors(formInstance, errors)
+    },
+
     async load() {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return
 
-      this.loading = true
-
-      try {
-        const { httpGet } = useHttpClient()
-        const response = await httpGet<{apiKeyItem: APIKeyItem[]}>(
-          `/applications/${app.uuid}/api-keys/`
-        )
-        this.appDetails = appStore.selectedApplication
-        this.apiKeys = response
-      } catch (err: unknown) {
-        console.error('Fetch error:', err)
-      } finally {
-        this.loading = false
-      }
+      const { httpGet } = useHttpClient()
+      const response = await httpGet<APIKeyItem[]>(
+        `/applications/${app.uuid}/api-keys/`
+      )
+      this.appDetails = app
+      this.apiKeys = response
     },
 
-    async create(content: object) {
+    async create() {
+      if (!this.form) return null
+
+      const { handleSubmit, resetForm } = this.form
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
-      let apiKey
-      if (!app) return
+      if (!app) return null
 
-      this.loading = true
-
-      try {
+      return handleSubmit(async (values: APIKeyFormValues) => {
         const { httpPost } = useHttpClient()
         const response = await httpPost<APIKeyItem>(
-          `/applications/${app.uuid}/api-keys/`, content
+          `/applications/${app.uuid}/api-keys/`,
+          values
         )
         this.apiKeys.push(response)
-        apiKey = response.api_key
-      }
-      catch (err: unknown) {
-        console.error('Create error:', err)
-      } finally {
-        this.loading = false
-      }
-      return apiKey
+        resetForm({
+          values: {
+            name: '',
+            permissions: [],
+          },
+        })
+        return response.api_key
+      })()
     },
-
     async delete(id: number) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return
 
-      this.loading = true
-
-      try {
-        const { httpDelete } = useHttpClient()
-        await httpDelete(
-          `/applications/${app.uuid}/api-keys/${id}/`,
-        )
-        this.apiKeys = this.apiKeys.filter((key) => key.id !== id)
-      }
-      catch (err: unknown) {
-        console.error('Delete error:', err)
-      } finally {
-        this.loading = false
-      }
+      const { httpDelete } = useHttpClient()
+      await httpDelete(`/applications/${app.uuid}/api-keys/${id}/`)
+      this.apiKeys = this.apiKeys.filter((key) => key.id !== id)
     },
   },
 })

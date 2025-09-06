@@ -89,10 +89,8 @@ const widget = computed(
           <NewApiKey />
         </div>
       </div>
-
-      <div v-if="apiKeyStore.loading" class="text-center py-8">Loading...</div>
       <div
-        v-else-if="!table.getRowModel().rows?.length"
+        v-if="!table.getRowModel().rows?.length"
         class="text-center py-8"
       >
         Your API keys are empty.
