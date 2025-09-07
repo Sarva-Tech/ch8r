@@ -10,5 +10,6 @@ from .notification_profile import NotificationProfileViewSet
 from .app_notification_profile import AppNotificationProfileCreateView
 from .llm_model import LLMModelViewSet
 from .integration import IntegrationViewSet, supported_integrations
-from .configure_app import ConfigureAppModelView, ConfigureAppIntegrationView
+from .configure_app import LoadAppConfigurationView, LoadAvailableConfigurationView, ConfigureAppIntegrationView
 from .custom_auth import CustomAuthToken
+from .app_model import ConfigureAppModelsView

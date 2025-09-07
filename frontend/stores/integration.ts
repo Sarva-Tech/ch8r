@@ -77,7 +77,7 @@ const schema = z.object({
 );
 
 
-export type FormValues = z.infer<typeof schema>
+type FormValues = z.infer<typeof schema>
 const typedSchema = toTypedSchema(schema)
 
 export const useIntegrationStore = defineStore('integration', {

@@ -9,6 +9,6 @@ export type KBTableRow = {
   status: StatusType
 }
 
-export type SelectOption = { label: string; value: string; icon?: string | Component }
+export type SelectOption = { label: string; value: string; icon?: string | Component } | null | undefined
 
 export type NullableSelectOption = SelectOption | null

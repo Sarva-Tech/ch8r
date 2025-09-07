@@ -112,7 +112,7 @@ const { isMobile } = useSidebar()
 const applicationsStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
 
-const { selectAppAndNavigate, selectChatroomAndNavigate } = useNavigation()
+const { selectAppAndNavigate } = useNavigation()
 const { ellipsis } = useTextUtils()
 
 const applications = computed(() => applicationsStore.applications)
@@ -125,6 +125,10 @@ async function initNewChat() {
   if (selectedApplication.value) {
     await navigateTo(`/applications/${selectedApplication.value.uuid}/messages/new_chat`)
   }
+}
+
+async function configureApp() {
+
 }
 </script>
 
@@ -349,6 +353,7 @@ async function initNewChat() {
     title="Configure Application"
     submit-text="Configure"
     cancel-text="Cancel"
+    width="!w-lg !max-w-xl"
     :show-submit="false"
   >
     <ConfigureApp />

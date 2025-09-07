@@ -25,6 +25,7 @@ const props = withDefaults(
     triggerDialog?: boolean
     dialogTitle?: string
     dialogDescription?: string
+    width?: string
   }>(),
   {
     submitText: 'Save',
@@ -32,7 +33,8 @@ const props = withDefaults(
     open: undefined,
     disabled: false,
     showSubmit: true,
-    triggerDialog: false
+    triggerDialog: false,
+    width: ''
   }
 )
 
@@ -66,6 +68,10 @@ function openSlide() {
 function closeSlide() {
   sheetOpen.value = false
 }
+
+const widthClass = computed(() => {
+  return props.width ? `!${props.width}` : ''
+})
 </script>
 
 <template>
@@ -74,7 +80,10 @@ function closeSlide() {
       <slot name="trigger" />
     </SheetTrigger>
 
-    <SheetContent>
+    <SheetContent
+      side="right"
+      :class="widthClass"
+    >
       <SheetHeader class="border-b">
         <SheetTitle class="text-left">{{ title }}</SheetTitle>
       </SheetHeader>

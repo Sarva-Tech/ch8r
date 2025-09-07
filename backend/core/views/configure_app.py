@@ -4,36 +4,52 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import AppModel, Application, AppIntegration
-from core.serializers import ConfigureAppModelSerializer, LLMModelViewSerializer, ConfigureAppIntegrationSerializer, \
-    IntegrationViewSerializer
+from core.integrations import SUPPORTED_INTEGRATIONS, SUPPORTED_PROVIDERS, INTEGRATION_TOOLS
+from core.models.application import Application
+from core.models.app_integration import AppIntegration
+from core.serializers import AppIntegrationViewSerializer
+
+from core.serializers.configure_app import ConfigureAppIntegrationSerializer, LoadAppConfigurationSerializer
+from core.serializers.llm_model import LLMModelViewSerializer
+from core.serializers.integration import IntegrationViewSerializer
+from core.views import LLMModelViewSet, IntegrationViewSet
 
 
-class ConfigureAppModelView(APIView):
+class LoadAvailableConfigurationView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, app_uuid):
+    def get(self, request):
+        llm_viewset = LLMModelViewSet()
+        llm_viewset.request = request
+        llm_queryset = llm_viewset.get_queryset()
+        llm_serializer = LLMModelViewSerializer(llm_queryset, many=True)
+
+        integration_viewset = IntegrationViewSet()
+        integration_viewset.request = request
+        integration_queryset = integration_viewset.get_queryset()
+        integration_serializer = IntegrationViewSerializer(integration_queryset, many=True)
+
+        supported_data = {
+            "supported_integrations": SUPPORTED_INTEGRATIONS,
+            "supported_providers": SUPPORTED_PROVIDERS,
+            "integration_tools": INTEGRATION_TOOLS,
+        }
+
+        return Response({
+            "llm_models": llm_serializer.data,
+            "integrations": integration_serializer.data,
+            **supported_data
+        })
+
+
+class LoadAppConfigurationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, app_uuid):
         application = get_object_or_404(Application, uuid=app_uuid, owner=request.user)
+        serializer = LoadAppConfigurationSerializer(application)
+        return Response(serializer.data)
 
-        serializer = ConfigureAppModelSerializer(data=request.data, context={'request': request, 'application': application})
-        serializer.is_valid(raise_exception=True)
-
-        llm_model = serializer.validated_data['llm_model']
-        model_type = llm_model.model_type
-
-        existing_app_model = AppModel.objects.filter(
-            application=application,
-            llm_model__model_type=model_type
-        ).first()
-
-        if existing_app_model:
-            existing_app_model.llm_model = llm_model
-            existing_app_model.save()
-        else:
-            AppModel.objects.create(application=application, llm_model=llm_model)
-
-        llm_model_serializer = LLMModelViewSerializer(llm_model)
-        return Response(llm_model_serializer.data, status=status.HTTP_200_OK)
 
 class ConfigureAppIntegrationView(APIView):
     permission_classes = [IsAuthenticated]
@@ -52,22 +68,27 @@ class ConfigureAppIntegrationView(APIView):
 
         existing_app_integration = AppIntegration.objects.filter(
             application=application,
-            integration=integration,
+            integration__type=integration.type
         ).first()
 
         if existing_app_integration:
-            if branch_name:
-                existing_app_integration.metadata = {
-                    **(existing_app_integration.metadata or {}),
-                    "branch_name": branch_name
-                }
+            if existing_app_integration.integration_id == integration.id:
+                if branch_name:
+                    existing_app_integration.metadata = {
+                        **(existing_app_integration.metadata or {}),
+                        "branch_name": branch_name
+                    }
+            else:
+                existing_app_integration.integration = integration
+                existing_app_integration.metadata = {"branch_name": branch_name} if branch_name else {}
             existing_app_integration.save()
+            app_integration_instance = existing_app_integration
         else:
-            AppIntegration.objects.create(
+            app_integration_instance = AppIntegration.objects.create(
                 application=application,
                 integration=integration,
                 metadata={"branch_name": branch_name} if branch_name else {}
             )
 
-        integration_serializer = IntegrationViewSerializer(integration)
-        return Response(integration_serializer.data, status=status.HTTP_200_OK)
+        response_serializer = AppIntegrationViewSerializer(app_integration_instance)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)

@@ -1,43 +1,22 @@
-from django.db.models import Q
 from rest_framework import serializers
 
-from core.models import LLMModel, AppModel, Integration, AppIntegration
+from core.models.integration import Integration
+from core.models.application import Application
+from core.serializers.app_model import AppModelViewSerializer
+from core.serializers.app_integration import AppIntegrationViewSerializer
 
 
-class ConfigureAppModelSerializer(serializers.ModelSerializer):
-    llm_model = serializers.SlugRelatedField(slug_field='uuid', queryset=LLMModel.objects.none())
+class LoadAppConfigurationSerializer(serializers.ModelSerializer):
+    llm_models = AppModelViewSerializer(source="model_configs", many=True, read_only=True)
+    integrations = AppIntegrationViewSerializer(source="app_integrations", many=True, read_only=True)
 
     class Meta:
-        model = AppModel
-        fields = ['llm_model']
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if user:
-            self.fields['llm_model'].queryset = LLMModel.objects.filter(
-                Q(owner=user) | Q(is_default=True)
-            )
-        else:
-            self.fields['llm_model'].queryset = LLMModel.objects.none()
-
-    def validate(self, attrs):
-        llm_model = attrs['llm_model']
-        request_model_type = self.initial_data.get('model_type')
-
-        if llm_model.model_type != request_model_type:
-            raise serializers.ValidationError(
-                f"LLM model type '{llm_model.model_type}' does not match the type '{request_model_type}'"
-            )
-
-        return attrs
-
-    def validate_llm_model(self, value):
-        app = self.context.get('application')
-        if not value.is_default and value.owner != app.owner:
-            raise serializers.ValidationError("Model and application owner mismatch.")
-        return value
+        model = Application
+        fields = [
+            "id", "uuid", "name",
+            "llm_models",
+            "integrations",
+        ]
 
 class ConfigureAppIntegrationSerializer(serializers.Serializer):
     integration = serializers.SlugRelatedField(slug_field='uuid', queryset=Integration.objects.none())

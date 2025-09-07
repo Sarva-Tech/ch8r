@@ -26,21 +26,18 @@ export interface Application {
   name: string
   owner_id: number
   knowledge_base: KnowledgeBaseItem[]
-  llm_models: any[]
 }
 
 const schema = z.object({
   name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
 })
-export type FormValues = z.infer<typeof schema>
+type FormValues = z.infer<typeof schema>
 const typedSchema = toTypedSchema(schema)
 
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
     applications: [] as Application[],
     selectedApplication: null as Application | null,
-    selectedTextModel: null as any | null,
-    selectedEmbeddingModel: null as any | null,
     form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
   }),
 
@@ -71,11 +68,6 @@ export const useApplicationsStore = defineStore('applications', {
 
       if (!this.selectedApplication && this.applications.length > 0) {
         this.selectedApplication = this.applications[0]
-        const models = this.selectedApplication.llm_models || []
-        this.selectedTextModel =
-          models.find((m: any) => m.model_type === 'text') || null
-        this.selectedEmbeddingModel =
-          models.find((m: any) => m.model_type === 'embedding') || null
       }
     },
 

@@ -17,10 +17,6 @@
         <FormMessage />
       </FormItem>
     </FormField>
-
-    <div class="ml-auto" @click="enablePMSGitHub">
-      <Button>Save</Button>
-    </div>
   </div>
   <div
     v-for="tool in tools"
@@ -37,32 +33,37 @@
     </div>
     <Switch :default-value="true" :disabled="true"/>
   </div>
+  <CardFooter class="flex justify-end">
+    <C8Button
+      label="Save"
+      :disabled="disabled"
+      :loading="isSubmitting"
+      @click="enablePMSGitHub"
+    />
+  </CardFooter>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
 import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
 import RequiredLabel from '~/components/RequiredLabel.vue'
 import { usePMSGitHubToolStore } from '~/stores/PMSGitHubTool'
-import { Button } from '~/components/ui/button'
 import { toast } from 'vue-sonner'
+import { CardFooter } from '~/components/ui/card'
 
-const props = defineProps<{
-  integration: Integration
-}>()
-
-const integrationStore = useIntegrationStore()
+const appConfigStore = useAppConfigurationStore()
 const PMSGitHubToolStore = usePMSGitHubToolStore()
 
-PMSGitHubToolStore.initForm()
+const integration = computed(() => appConfigStore.selectedPMS)
+const { isSubmitting, meta, validate } = PMSGitHubToolStore.initForm()
 
 const supportedIntegrations = computed(
-  () => integrationStore.supportedIntegrations,
+  () => appConfigStore.supportedIntegrations,
 )
 
 const integrationTools = computed(() => {
-  if (!props.integration) return null
+  if (!integration.value) return null
 
-  const { type, provider } = props.integration
+  const { type, provider } = integration.value
   const key = `${type}_${provider}`
 
   return supportedIntegrations.value?.integration_tools[key] || null
@@ -89,12 +90,43 @@ function getToolInfo(toolKey: string) {
 }
 
 async function enablePMSGitHub() {
+  if (!integration.value) {
+    toast.error('GitHub integration not found.')
+    return
+  }
+
   try {
-    await PMSGitHubToolStore.create(props.integration.uuid, props.integration.type)
-    toast.success('GitHub Projects enabled')
+    const newPMS = await PMSGitHubToolStore.create(integration.value.uuid, integration.value.type)
+    if (newPMS) {
+      appConfigStore.configuredPMS = newPMS
+    }
+    toast.success('GitHub Projects configured')
   } catch (e: unknown) {
+    toast.error(e?.message || 'Error configuring GitHub Projects')
     PMSGitHubToolStore.setBackendErrors(e.errors)
   }
 }
 
+const disabled = computed(() =>
+  !meta.value.valid
+)
+
+onMounted(() => {
+  validate()
+})
+
+watch(
+  () => integration.value,
+  (newValue) => {
+    const branchName =
+      newValue?.uuid === appConfigStore?.configuredPMS?.uuid
+        ? String(appConfigStore?.configuredPMS?.metadata?.branch_name ?? '')
+        : ''
+
+    PMSGitHubToolStore.form?.setValues({
+      branch_name: branchName,
+    })
+  },
+  { immediate: true }
+)
 </script>
