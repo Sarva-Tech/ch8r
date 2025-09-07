@@ -18,7 +18,7 @@ class AccountStatusMiddleware(MiddlewareMixin):
         if request.method != 'OPTIONS' and request.path.startswith('/api/'):
             auth_header = request.headers.get('Authorization')
 
-            if not auth_header or not auth_header.startswith('Token '):
+            if not auth_header or (not auth_header.startswith('Bearer ') and not auth_header.startswith('Token ')):
                 return JsonResponse(
                     {"error": "Authorization header missing or invalid"},
                     status=401,
