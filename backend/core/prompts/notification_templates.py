@@ -6,7 +6,7 @@ Smart Human Escalation Alert
 Your agent {{ app.name }} was unable to process the user's query.  
 Please jump into the conversation:
 
-[Open Chatroom](https://ch8r.com/applications/{{ app.id }}/chatrooms/{{ chat_id }})
+[Open Chat](https://ch8r.com/applications/{{ app.uuid }}/messages/{{ chatroom_uuid }})
 
 User Identifier: `{{ user_id }}`  
 Query: _{{ user_query }}_  

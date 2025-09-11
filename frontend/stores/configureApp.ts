@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
 import type { LLMModel } from '~/stores/model'
 import type { IntegrationTools, SupportedIntegrationsResponse, SupportedProviders } from '~/stores/integration'
+import type { SelectOption } from '~/lib/types'
 
 export interface AvailableConfig {
   llm_models: LLMModel[]
@@ -16,6 +17,7 @@ export interface AvailableConfig {
 export interface AppConfig {
   llm_models: LLMModel[]
   integrations: Integration[]
+  notification_profiles: NotificationProfile[]
 }
 
 export const useAppConfigurationStore = defineStore('appConfiguration', {
@@ -30,6 +32,8 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
     configuredPMS: null as Integration | null,
 
     supportedIntegrations: {} as SupportedIntegrationsResponse,
+
+    notifications: [] as NotificationProfile[] | [],
   }),
 
   actions: {
@@ -73,6 +77,8 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
         integration_tools: availableConfig.integration_tools,
         supported_providers: availableConfig.supported_providers
       }
+
+      this.notifications = appConfig.notification_profiles
     },
 
     async saveModels() {
@@ -96,6 +102,26 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
           ],
         },
       )
+    },
+
+    async saveNotifications(profiles: SelectOption[]) {
+      console.log(profiles)
+      const appStore = useApplicationsStore()
+      const app = appStore.selectedApplication
+      if (!app) return
+
+      const { httpPatch } = useHttpClient()
+      const response = await httpPatch<AppConfig>(
+        `applications/${app.uuid}/app-notification-update/`,
+        {
+          profile_uuids: profiles.map((profile) => profile.value)
+        },
+      )
+      if (response?.notification_profiles) {
+        this.notifications = response.notification_profiles
+      }
+
+      return response
     },
   },
 })

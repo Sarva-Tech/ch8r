@@ -7,7 +7,7 @@ from .ingestion import IngestApplicationKBView
 from .widget import WidgetView
 from .generate_api_key import GenerateAPIKeyView
 from .notification_profile import NotificationProfileViewSet
-from .app_notification_profile import AppNotificationProfileCreateView
+from .app_notification import AppNotificationUpdateView
 from .llm_model import LLMModelViewSet
 from .integration import IntegrationViewSet, supported_integrations
 from .configure_app import LoadAppConfigurationView, LoadAvailableConfigurationView, ConfigureAppIntegrationView

@@ -1,7 +1,9 @@
 from rest_framework import serializers
 
+from core.models import NotificationProfile, AppNotificationProfile
 from core.models.integration import Integration
 from core.models.application import Application
+from core.serializers import NotificationProfileSerializer
 from core.serializers.app_model import AppModelViewSerializer
 from core.serializers.app_integration import AppIntegrationViewSerializer
 
@@ -9,6 +11,7 @@ from core.serializers.app_integration import AppIntegrationViewSerializer
 class LoadAppConfigurationSerializer(serializers.ModelSerializer):
     llm_models = AppModelViewSerializer(source="model_configs", many=True, read_only=True)
     integrations = AppIntegrationViewSerializer(source="app_integrations", many=True, read_only=True)
+    notification_profiles = serializers.SerializerMethodField()
 
     class Meta:
         model = Application
@@ -16,7 +19,25 @@ class LoadAppConfigurationSerializer(serializers.ModelSerializer):
             "id", "uuid", "name",
             "llm_models",
             "integrations",
+            "notification_profiles"
         ]
+    def get_notification_profiles(self, obj):
+        user = self.context["request"].user
+        profiles = NotificationProfile.objects.filter(owner=user)
+
+        enabled_profile_ids = set(
+            AppNotificationProfile.objects.filter(application=obj)
+            .values_list("notification_profile__id", flat=True)
+        )
+
+        data = []
+        for profile in profiles:
+            profile_data = NotificationProfileSerializer(profile).data
+            profile_data["is_enabled"] = profile.id in enabled_profile_ids
+            data.append(profile_data)
+
+        return data
+
 
 class ConfigureAppIntegrationSerializer(serializers.Serializer):
     integration = serializers.SlugRelatedField(slug_field='uuid', queryset=Integration.objects.none())

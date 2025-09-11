@@ -6,7 +6,7 @@ from rest_framework_nested.routers import NestedDefaultRouter
 from core.views import (
     UserRegisterView, VerifyEmailView, KnowledgeBaseViewSet, ChatRoomMessagesView,
     MeView, GenerateAPIKeyView,
-    AppNotificationProfileCreateView, IntegrationViewSet, WidgetView, LoadAvailableConfigurationView
+    IntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
 )
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
 from core.views.chatroom import ChatRoomDetailView
@@ -57,9 +57,6 @@ urlpatterns = [
          NotificationProfileViewSet.as_view({'post': 'bulk_upload'}),
          name='notificationprofile-bulk-upload'),
 
-    path('app-notification-profiles/',
-         AppNotificationProfileCreateView.as_view()),
-
     path('applications/<uuid:app_uuid>/configure-app-models/', ConfigureAppModelsView.as_view(), name='configure-app-models'),
 
     path('applications/<uuid:app_uuid>/configure-integration/', ConfigureAppIntegrationView.as_view(), name='configure-app-integration'),
@@ -80,6 +77,12 @@ urlpatterns = [
         'available-configurations/',
         LoadAvailableConfigurationView.as_view(),
         name='available-configurations',
+    ),
+
+    path(
+        "applications/<uuid:app_uuid>/app-notification-update/",
+        AppNotificationUpdateView.as_view(),
+        name="app-notification-update"
     ),
 
     path('supported-integrations/', supported_integrations, name='supported-integrations'),

@@ -19,6 +19,7 @@ export interface NotificationProfile {
   type: NotificationType
   config: NotificationConfig
   created_at?: string
+  is_enabled?: boolean
 }
 
 const schema = z.object({

@@ -28,14 +28,14 @@ def send_notification_task(self, channel_data, message):
 
     try:
         if notification_type == NotificationType.DISCORD:
-            webhook_url = config.get("webhook_url")
-            username = config.get('username', 'ch8r Bot')
+            webhook_url = config.get("webhook_url") or config.get("webhookUrl")
+            username = config.get('username', 'Ch8r Bot')
             if webhook_url:
                 payload = {"content": message, "username": username}
                 requests.post(webhook_url, json=payload)
 
         elif notification_type == NotificationType.SLACK:
-            webhook_url = config.get("webhook_url")
+            webhook_url = config.get("webhook_url") or config.get("webhookUrl")
             username = config.get("username", "Ch8r Bot")
             if webhook_url:
                 payload = {"text": message, "username": username}

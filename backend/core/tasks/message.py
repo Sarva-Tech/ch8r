@@ -14,9 +14,10 @@ from core.llm_client_utils import messages_to_llm_conversation, get_agent_respon
     add_instructions_to_convo
 from core.models import IngestedChunk, Application, LLMModel
 from core.models.message import Message
+from core.prompts import SMART_ESCALATION_TEMPLATE
 
 from core.serializers.message import ViewMessageSerializer
-from core.services import get_chunks
+from core.services.ingestion import get_chunks
 from core.services.template_loader import TemplateLoader
 from core.utils import parse_llm_response
 
@@ -101,6 +102,8 @@ def generate_bot_response(message_id, app_uuid):
         response_schema=response_schema
     )
 
+    escalation = False
+
     try:
         llm_response_data = parse_llm_response(llm_response.choices[0].message.content)
 
@@ -152,3 +155,16 @@ def generate_bot_response(message_id, app_uuid):
             )
         except Exception as e:
             logger.warning(f"Failed to send message to {group_name}: {str(e)}")
+
+    print(escalation)
+    if escalation:
+        from core.services.notifications import notify_users
+
+        context = {
+            "app": chatroom.application,
+            "chatroom_uuid": chatroom.uuid,
+            "user_id": user_message.sender_identifier,
+            "user_query": user_message.message,
+            "agent_response": answer,
+        }
+        notify_users(chatroom.application, SMART_ESCALATION_TEMPLATE, context)

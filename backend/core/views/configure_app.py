@@ -47,7 +47,7 @@ class LoadAppConfigurationView(APIView):
 
     def get(self, request, app_uuid):
         application = get_object_or_404(Application, uuid=app_uuid, owner=request.user)
-        serializer = LoadAppConfigurationSerializer(application)
+        serializer = LoadAppConfigurationSerializer(application, context={"request": request})
         return Response(serializer.data)
 
 
