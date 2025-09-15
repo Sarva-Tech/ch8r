@@ -16,6 +16,7 @@ const typedSchema = toTypedSchema(schema)
 export const usePMSGitHubToolStore = defineStore('PMSGitHubTool', {
   state: () => ({
     form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
+    branchName: ''
   }),
 
   actions: {
@@ -50,12 +51,11 @@ export const usePMSGitHubToolStore = defineStore('PMSGitHubTool', {
 
       return handleSubmit(async (values: FormValues) => {
         const { httpPost } = useHttpClient()
-        const response = await httpPost<LLMModel>(`applications/${app.uuid}/configure-integration/`, {
+        return httpPost<Integration>(`applications/${app.uuid}/configure-integration/`, {
           integration: integrationUUID,
           type: integrationType,
           branch_name: values.branch_name,
         })
-        return response
       })()
     },
   }

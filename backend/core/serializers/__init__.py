@@ -8,5 +8,6 @@ from .notification_profiles import NotificationProfileSerializer, BulkNotificati
 from .app_notification_profile import AppNotificationProfileSerializer
 from .llm_model import LLMModelViewSerializer, LLMModelCreateSerializer
 from .integration import IntegrationCreateSerializer, IntegrationViewSerializer
-from .configure_app import ConfigureAppModelSerializer, ConfigureAppIntegrationSerializer
+from .configure_app import LoadAppConfigurationSerializer, ConfigureAppIntegrationSerializer
 from .app_integration import AppIntegrationViewSerializer
+from .app_model import AppModelViewSerializer, ConfigureAppModelsSerializer

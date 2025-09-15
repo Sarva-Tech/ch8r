@@ -1,43 +1,43 @@
-from django.db.models import Q
 from rest_framework import serializers
 
-from core.models import LLMModel, AppModel, Integration, AppIntegration
+from core.models import NotificationProfile, AppNotificationProfile
+from core.models.integration import Integration
+from core.models.application import Application
+from core.serializers import NotificationProfileSerializer
+from core.serializers.app_model import AppModelViewSerializer
+from core.serializers.app_integration import AppIntegrationViewSerializer
 
 
-class ConfigureAppModelSerializer(serializers.ModelSerializer):
-    llm_model = serializers.SlugRelatedField(slug_field='uuid', queryset=LLMModel.objects.none())
+class LoadAppConfigurationSerializer(serializers.ModelSerializer):
+    llm_models = AppModelViewSerializer(source="model_configs", many=True, read_only=True)
+    integrations = AppIntegrationViewSerializer(source="app_integrations", many=True, read_only=True)
+    notification_profiles = serializers.SerializerMethodField()
 
     class Meta:
-        model = AppModel
-        fields = ['llm_model']
+        model = Application
+        fields = [
+            "id", "uuid", "name",
+            "llm_models",
+            "integrations",
+            "notification_profiles"
+        ]
+    def get_notification_profiles(self, obj):
+        user = self.context["request"].user
+        profiles = NotificationProfile.objects.filter(owner=user)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if user:
-            self.fields['llm_model'].queryset = LLMModel.objects.filter(
-                Q(owner=user) | Q(is_default=True)
-            )
-        else:
-            self.fields['llm_model'].queryset = LLMModel.objects.none()
+        enabled_profile_ids = set(
+            AppNotificationProfile.objects.filter(application=obj)
+            .values_list("notification_profile__id", flat=True)
+        )
 
-    def validate(self, attrs):
-        llm_model = attrs['llm_model']
-        request_model_type = self.initial_data.get('model_type')
+        data = []
+        for profile in profiles:
+            profile_data = NotificationProfileSerializer(profile).data
+            profile_data["is_enabled"] = profile.id in enabled_profile_ids
+            data.append(profile_data)
 
-        if llm_model.model_type != request_model_type:
-            raise serializers.ValidationError(
-                f"LLM model type '{llm_model.model_type}' does not match the type '{request_model_type}'"
-            )
+        return data
 
-        return attrs
-
-    def validate_llm_model(self, value):
-        app = self.context.get('application')
-        if not value.is_default and value.owner != app.owner:
-            raise serializers.ValidationError("Model and application owner mismatch.")
-        return value
 
 class ConfigureAppIntegrationSerializer(serializers.Serializer):
     integration = serializers.SlugRelatedField(slug_field='uuid', queryset=Integration.objects.none())
