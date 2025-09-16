@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-  createColumnHelper,
-  getCoreRowModel,
-  useVueTable,
-} from '@tanstack/vue-table'
+import type { ColumnDef } from '@tanstack/vue-table';
 import { ref, computed, onMounted } from 'vue'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
 import UpdateKnowledgeBase from '~/components/KnowledgeBase/UpdateKnowledgeBase.vue'
@@ -18,7 +14,7 @@ const kbStore = useKnowledgeBaseStore()
 const kbs = computed(() => kbStore.kbs)
 const isLoading = ref(false)
 
-const data = computed<KBTableRow[]>(() => {
+const data = computed(() => {
   return (kbs.value || []).map((item: KnowledgeBaseItem) => {
     return {
       uuid: item.uuid,
@@ -30,21 +26,28 @@ const data = computed<KBTableRow[]>(() => {
   })
 })
 
-const columnHelper = createColumnHelper<KBTableRow>()
-const columns = [
-  columnHelper.display({ id: 'expander', header: '' }),
-  columnHelper.accessor('path', { header: 'File' }),
-  columnHelper.accessor('status', { header: 'Status' }),
-  columnHelper.display({ id: 'actions', header: 'Actions' }),
-]
-
-const table = useVueTable<KBTableRow>({
-  get data() {
-    return data.value
+const columns: ColumnDef<unknown, string | number>[] = [
+  {
+    id: 'expander',
+    header: '',
+    cell: () => '',
   },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-})
+  {
+    accessorKey: 'path',
+    header: 'File',
+    cell: (info) => info.getValue(),
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: (info) => info.getValue(),
+  },
+  {
+    id: 'actions',
+    header: 'Actions',
+    cell: () => '',
+  },
+]
 
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
   if (msg.type === KB_UPDATE) {
@@ -54,7 +57,7 @@ const unsubscribe = liveUpdateStore.subscribe((msg) => {
 })
 
 function openUpdateKB(kb: KBTableRow) {
-  updateKBRef.value?.openSheet(kb)
+  updateKBRef.value?.openSlide(kb)
 }
 
 onMounted(() => { kbStore.load() })
@@ -77,8 +80,9 @@ function deleteRow(uuid: string) {
       </div>
 
       <div v-if="isLoading" class="text-center py-8">Loading...</div>
+
       <div
-        v-else-if="!table.getRowModel().rows?.length"
+        v-if="data.length === 0"
         class="text-center py-8"
       >
         Your knowledge base is empty.
@@ -95,9 +99,3 @@ function deleteRow(uuid: string) {
     <UpdateKnowledgeBase ref="updateKBRef" />
   </div>
 </template>
-
-<style>
-tr[data-expanded='true'] {
-  display: table-row !important;
-}
-</style>

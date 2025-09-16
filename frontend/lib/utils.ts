@@ -21,6 +21,13 @@ export function getErrorMessage(error: unknown): string {
   return 'Unknown error'
 }
 
+export function setBackendErrors(form: FormContext, errors: Record<string, string[] | string>) {
+  const formInstance = form
+  if (!formInstance) return
+
+  applyBackendErrors(formInstance, errors)
+}
+
 export function applyBackendErrors(
   formInstance: FormContext,
   errors: Record<string, string[] | string> | string

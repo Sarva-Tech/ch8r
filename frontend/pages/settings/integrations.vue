@@ -26,21 +26,22 @@ import { useIntegrationStore } from '~/stores/integration'
 const integrationStore = useIntegrationStore()
 const loading = ref(false)
 
+await integrationStore.load()
+await integrationStore.loadSupportedIntegrations()
+
 const integrations = computed(() => integrationStore.integrations)
 
-onMounted(async () => {
-  loading.value = true
-  try {
-    await integrationStore.load()
-    await integrationStore.loadSupportedIntegrations()
-  } catch (e: unknown) {
-    toast.error('Failed to load integrations')
-  } finally {
-    loading.value = false
-  }
-})
+// onMounted(async () => {
+//   loading.value = true
+//   try {
+//   } catch (e: unknown) {
+//     toast.error('Failed to load integrations')
+//   } finally {
+//     loading.value = false
+//   }
+// })
 
-const columns: ColumnDef<never>[] = [
+const columns: ColumnDef<unknown, string | number>[] = [
   {
     accessorKey: 'name',
     header: 'Name',

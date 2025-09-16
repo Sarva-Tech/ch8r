@@ -28,7 +28,7 @@ const content = ref('')
 
 const kbStore = useKnowledgeBaseStore()
 
-function openSheet(kb: KBTableRow) {
+function openSlide(kb: KBTableRow) {
   selectedKB.value = kb
   content.value = selectedKB.value?.content || ''
   open.value = true
@@ -40,5 +40,5 @@ async function updateKB() {
   open.value = false
 }
 
-defineExpose({ openSheet })
+defineExpose({ openSlide })
 </script>

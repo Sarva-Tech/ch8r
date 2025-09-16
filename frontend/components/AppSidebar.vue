@@ -36,6 +36,7 @@ import {
 import { Button } from '~/components/ui/button'
 import ConfigureApp from '~/components/App/ConfigureApp.vue'
 import { useRoute } from 'vue-router'
+import NewApp from '~/components/App/NewApp.vue'
 
 const newAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const configureAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
@@ -125,10 +126,6 @@ async function initNewChat() {
   if (selectedApplication.value) {
     await navigateTo(`/applications/${selectedApplication.value.uuid}/messages/new_chat`)
   }
-}
-
-async function configureApp() {
-
 }
 </script>
 
@@ -347,7 +344,7 @@ async function configureApp() {
       </SidebarContent>
     </ScrollArea>
   </Sidebar>
-  <Application ref="newAppSlideOver" @success="setActiveMenu" />
+  <NewApp ref="newAppSlideOver" @success="setActiveMenu" />
   <SlideOver
     ref="configureAppSlideOver"
     title="Configure Application"

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import SlideOver from '~/components/SlideOver.vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { Input } from '@/components/ui/input'
+import { Input } from '~/components/ui/input'
 import {
   FormControl,
   FormItem,
@@ -32,24 +32,28 @@ const isFile = computed(() => selectedSourceValue.value === 'file')
 const isUrl = computed(() => selectedSourceValue.value === 'url')
 const isText = computed(() => selectedSourceValue.value === 'text')
 
-const form = applicationsStore.initForm()
-const { handleSubmit, resetForm, isSubmitting } = form
+const { handleSubmit, resetForm, validate, isSubmitting, meta } = applicationsStore.initForm()
+
+onMounted(() => {
+  validate()
+})
 
 const onSubmit = handleSubmit(async (values) => {
   try {
     const newApp = await applicationsStore.createApplicationWithKB(values)
     if (newApp) {
       await selectAppAndNavigate(newApp)
-      toast.success(`Application "${newApp.name}" created successfully`)
+      toast.success(`Application ${newApp.name} created`)
       kbDraft.clear()
       resetForm()
+      slideRef.value?.closeSlide()
       emit('success', newApp)
     } else {
-      toast.error(applicationsStore.setBackendErrors || 'Failed to create application')
+      toast.error('Error creating application')
     }
-  } catch (err: any) {
-    toast.error(err.message || 'Something went wrong')
-    console.error('Failed to create application:', err)
+  } catch (e: unknown) {
+    applicationsStore.setBackendErrors(e.errors)
+    toast.error('Error creating application')
   }
 })
 
@@ -59,6 +63,10 @@ defineExpose({
 
 const slideRef = ref<InstanceType<typeof SlideOver> | null>(null)
 const emit = defineEmits(['success'])
+
+const disabled = computed(() =>
+  !meta.value.valid
+)
 </script>
 
 <template>
@@ -69,8 +77,9 @@ const emit = defineEmits(['success'])
     cancel-text="Cancel"
     :on-submit="onSubmit"
     :loading="isSubmitting"
+    :disabled="disabled"
   >
-    <form class="space-y-4" @submit.prevent="onSubmit">
+    <form class="space-y-4">
       <FormField v-slot="{ componentField }" name="name">
         <FormItem>
           <FormLabel class="flex items-center">
@@ -86,13 +95,13 @@ const emit = defineEmits(['success'])
         </FormItem>
       </FormField>
 
-      <div class="space-y-4 mt-4">
+      <div class="space-y-4">
         <SourceSelector v-model="selectedSourceValue" :sources="sources" />
         <div class="space-y-2">
           <div v-if="isFile" class="space-y-2">
-            <label for="upload_files" class="text-sm font-medium">
+            <Label class="text-sm font-medium">
               Upload Files
-            </label>
+            </Label>
             <FileUpload @update:files="kbDraft.setFiles" />
           </div>
           <UrlInput v-if="isUrl" />

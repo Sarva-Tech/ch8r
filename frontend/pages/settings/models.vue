@@ -12,7 +12,7 @@
         :columns="columns"
         :expandable="false"
         :delete-fn="deleteModel"
-        :update-fn="deleteModel"
+        :update-fn="updateModel"
       />
     </div>
   </div>
@@ -33,24 +33,22 @@ onMounted(async () => {
   try {
     await modelStore.load()
   } catch (e: unknown) {
+    console.error(e)
     toast.error('Failed to load models')
   } finally {
     loading.value = false
   }
 })
 
-// TODO: Disable model deletion and update for now
-// canDelete: !model.is_default && model.owner === user.authUser.id,
-
 const models = computed(() =>
   modelStore.models.map((model) => ({
     ...model,
-    canDelete: false,
-    canUpdate: false
+    canDelete: model.owner === user.authUser.id,
+    canUpdate: model.owner === user.authUser.id,
   }))
 )
 
-const columns: ColumnDef<never>[] = [
+const columns: ColumnDef<unknown, string | number>[] = [
   {
     accessorKey: 'name',
     header: 'Name',
@@ -73,6 +71,11 @@ const columns: ColumnDef<never>[] = [
   },
 ]
 
-function deleteModel() {}
-function updateModel() {}
+function updateModel(model: LLMModel) {
+  console.log(model.owner === user.authUser.id)
+}
+
+function deleteModel(model: LLMModel) {
+  console.log(model)
+}
 </script>
