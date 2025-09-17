@@ -23,7 +23,7 @@ const data = computed<APIKeyTableRow[]>(() => {
   return (apiKeys.value || []).map((item: APIKeyItem) => {
     return {
       id: item.id,
-      created: item.created,
+      created: item.created?.split('T')[0],
       name: item.name,
       permissions: item.permissions?.map(p => p.toUpperCase()).sort().join(", "),
     }
@@ -35,6 +35,7 @@ const columns = [
   columnHelper.display({ id: 'expander', header: '' }),
   columnHelper.accessor('name', { header: 'Name' }),
   columnHelper.accessor('permissions', { header: 'Permissions' }),
+  columnHelper.accessor('created', { header: 'Created Date' }),
   columnHelper.display({ id: 'actions', header: 'Actions' }),
 ]
 

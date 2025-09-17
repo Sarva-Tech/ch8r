@@ -27,7 +27,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
         verification_token = generate_verification_token(user.id, user.email)
 
-        send_verification_email_task.delay(user.id, user.email, user.username, verification_token)
+        send_verification_email_task.delay(user.id, user.email, user.username, verification_token, purpose="VERIFY_EMAIL")
         send_discord_notification_task.delay(f"A new user has registered: {user.email}")
 
         return user

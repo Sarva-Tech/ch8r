@@ -138,28 +138,36 @@ onMounted(async () => {
           />
         </div>
 
-        <div class="relative">
-          <Label for="password" class="block text-sm font-medium mb-1"
-            >Password</Label
-          >
-          <Input
-            id="password"
-            v-model="password"
-            :type="showPassword ? 'text' : 'password'"
-            required
-            placeholder="••••••••"
-            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
-            @keyup.enter="handleLogin"
-          />
-          <button
-            type="button"
-            class="absolute right-2 top-9 focus:outline-none"
-            aria-label="Toggle password visibility"
-            tabindex="-1"
-            @click="showPassword = !showPassword"
-          >
-            <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
-          </button>
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <Label for="password" class="block text-sm  font-medium">Password</Label>
+            <a
+              href="/forgot-password"
+              class="text-sm text-primary font-medium hover:underline"
+            >
+              Forgot Password?
+            </a>
+          </div>
+          <div class="relative">
+            <Input
+              id="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              placeholder="••••••••"
+              class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
+              @keyup.enter="handleLogin"
+            />
+            <button
+              type="button"
+              class="absolute right-2 top-2/4 -translate-y-1/2 focus:outline-none"
+              aria-label="Toggle password visibility"
+              tabindex="-1"
+              @click="showPassword = !showPassword"
+            >
+              <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <Button
