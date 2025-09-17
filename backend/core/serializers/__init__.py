@@ -11,3 +11,4 @@ from .integration import IntegrationCreateSerializer, IntegrationViewSerializer
 from .configure_app import LoadAppConfigurationSerializer, ConfigureAppIntegrationSerializer
 from .app_integration import AppIntegrationViewSerializer
 from .app_model import AppModelViewSerializer, ConfigureAppModelsSerializer
+from .rate_limit import ApplicationRateLimitSerializer

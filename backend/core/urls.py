@@ -52,7 +52,7 @@ urlpatterns = [
     path('chatrooms/<uuid:chatroom_uuid>/', ChatRoomDetailView.as_view(), name='chatroom-detail'),
 
     path('applications/<uuid:application_uuid>/ingests/', IngestApplicationKBView.as_view(), name='application-ingest'),
-
+    path('applications/<uuid:application_uuid>/rate-limit/', IngestApplicationKBView.as_view(), name='application-ingest'),
     path('notification-profiles/bulk-upload/',
          NotificationProfileViewSet.as_view({'post': 'bulk_upload'}),
          name='notificationprofile-bulk-upload'),

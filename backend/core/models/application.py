@@ -9,6 +9,7 @@ class Application(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='applications')
     name = models.CharField(max_length=255)
+    custom_model_rate_limit_per_minute = models.IntegerField(default=10)
 
     def __str__(self):
         return self.name
