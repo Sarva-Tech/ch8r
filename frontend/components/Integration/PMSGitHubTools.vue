@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-3">
+  <form class="space-y-3" @submit.prevent="enablePMSGitHub">
     <FormField v-slot="{ componentField }" name="branch_name">
       <FormItem>
         <FormLabel class="flex items-center">
@@ -9,15 +9,12 @@
           </div>
         </FormLabel>
         <FormControl>
-          <Input
-            v-bind="componentField"
-            placeholder="Sarva-Tech/ch8r"
-          />
+          <Input v-bind="componentField" placeholder="Sarva-Tech/ch8r" />
         </FormControl>
         <FormMessage />
       </FormItem>
     </FormField>
-  </div>
+  </form>
   <div
     v-for="tool in tools"
     :key="tool.key"
@@ -31,7 +28,7 @@
         {{ getToolInfo(tool.key).description }}
       </p>
     </div>
-    <Switch :default-value="true" :disabled="true"/>
+    <Switch :default-value="true" :disabled="true" />
   </div>
   <CardFooter class="flex justify-end">
     <C8Button
@@ -49,12 +46,26 @@ import RequiredLabel from '~/components/RequiredLabel.vue'
 import { usePMSGitHubToolStore } from '~/stores/PMSGitHubTool'
 import { toast } from 'vue-sonner'
 import { CardFooter } from '~/components/ui/card'
+import { useForm } from 'vee-validate'
+import { z } from 'zod'
+import { toTypedSchema } from '@vee-validate/zod'
+import { setBackendErrors } from '~/lib/utils'
 
 const appConfigStore = useAppConfigurationStore()
 const PMSGitHubToolStore = usePMSGitHubToolStore()
 
 const integration = computed(() => appConfigStore.selectedPMS)
-const { isSubmitting, meta, validate } = PMSGitHubToolStore.initForm()
+
+const schema = z.object({
+  branch_name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
+})
+const form = useForm({
+  validationSchema: toTypedSchema(schema),
+  initialValues: {
+    branch_name: '',
+  },
+})
+const { isSubmitting, meta, setFieldValue } = form
 
 const supportedIntegrations = computed(
   () => appConfigStore.supportedIntegrations,
@@ -89,31 +100,27 @@ function getToolInfo(toolKey: string) {
   }
 }
 
-async function enablePMSGitHub() {
+const enablePMSGitHub = form.handleSubmit(async (values) => {
   if (!integration.value) {
     toast.error('GitHub integration not found.')
     return
   }
 
   try {
-    const newPMS = await PMSGitHubToolStore.create(integration.value.uuid, integration.value.type)
+    const newPMS = await PMSGitHubToolStore.create(values, integration.value.type, integration.value.uuid)
     if (newPMS) {
       appConfigStore.configuredPMS = newPMS
     }
     toast.success('GitHub Projects configured')
   } catch (e: unknown) {
     toast.error(e?.message || 'Error configuring GitHub Projects')
-    PMSGitHubToolStore.setBackendErrors(e.errors)
+    setBackendErrors(form, e.errors)
   }
-}
+})
 
 const disabled = computed(() =>
   !meta.value.valid
 )
-
-onMounted(() => {
-  validate()
-})
 
 watch(
   () => integration.value,
@@ -123,9 +130,7 @@ watch(
         ? String(appConfigStore?.configuredPMS?.metadata?.branch_name ?? '')
         : ''
 
-    PMSGitHubToolStore.form?.setValues({
-      branch_name: branchName,
-    })
+    setFieldValue('branch_name', branchName)
   },
   { immediate: true }
 )

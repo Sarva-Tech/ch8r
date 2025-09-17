@@ -130,13 +130,10 @@ import {
 } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import PMSGitHubTools from '~/components/Integration/PMSGitHubTools.vue'
-import { usePMSGitHubToolStore } from '~/stores/PMSGitHubTool'
 import type { SelectOption } from '~/lib/types'
 
 const appConfigStore = useAppConfigurationStore()
-const PMSGitHubToolStore = usePMSGitHubToolStore()
 
-PMSGitHubToolStore.initForm()
 const initialLoading = ref(false)
 const processing = ref(false)
 

@@ -5,57 +5,23 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { applyBackendErrors } from '~/lib/utils'
 import { useHttpClient } from '~/composables/useHttpClient'
 
-const schema = z.object({
-  branch_name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-})
-
-type FormValues = z.infer<typeof schema>
-const typedSchema = toTypedSchema(schema)
 
 export const usePMSGitHubToolStore = defineStore('PMSGitHubTool', {
   state: () => ({
-    form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
-    branchName: ''
   }),
 
   actions: {
-    initForm() {
-      if (!this.form) {
-        this.form = useForm<FormValues>({
-          validationSchema: typedSchema,
-          initialValues: {
-            branch_name: '',
-          },
-        })
-      }
-      return this.form
-    },
-    getFormInstance() {
-      return this.initForm()
-    },
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-
-      applyBackendErrors(formInstance, errors)
-    },
-    async create(integrationUUID: string, integrationType: string) {
+    async create(values: { branch_name: string }, integrationType: string, integrationUUID: string) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return
 
-      if (!this.form) return
-
-      const { handleSubmit } = this.form
-
-      return handleSubmit(async (values: FormValues) => {
-        const { httpPost } = useHttpClient()
-        return httpPost<Integration>(`applications/${app.uuid}/configure-integration/`, {
-          integration: integrationUUID,
-          type: integrationType,
-          branch_name: values.branch_name,
-        })
-      })()
+      const { httpPost } = useHttpClient()
+      return httpPost<Integration>(`applications/${app.uuid}/configure-integration/`, {
+        integration: integrationUUID,
+        type: integrationType,
+        branch_name: values.branch_name,
+      })
     },
   }
 })
