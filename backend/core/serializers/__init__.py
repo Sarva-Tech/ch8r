@@ -4,7 +4,7 @@ from .knowledge_base import KnowledgeBaseCreateSerializer, KnowledgeBaseItemSeri
 from .chatroom import ChatRoomViewSerializer
 from .message import CreateMessageSerializer, ViewMessageSerializer
 from .api_key import APIKeySerializer
-from .notification_profiles import NotificationProfileSerializer, BulkNotificationProfileSerializer
+from .notification_profiles import NotificationProfileSerializer
 from .app_notification_profile import AppNotificationProfileSerializer
 from .llm_model import LLMModelViewSerializer, LLMModelCreateSerializer
 from .integration import IntegrationCreateSerializer, IntegrationViewSerializer

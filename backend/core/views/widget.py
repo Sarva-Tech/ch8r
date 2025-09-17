@@ -15,14 +15,21 @@ class WidgetView(APIView):
     def post(self, request, application_uuid):
         app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
 
-        ApplicationWidgetToken.objects.filter(application=app).delete()
-
-        token_obj = ApplicationWidgetToken.objects.create(application=app)
-
-        return Response({
-            "token": token_obj.key,
-            "widget_url": f"{WIDGET_BASE_URL}/widget.html?token={token_obj.key}&app_uuid={app.uuid}"
-        })
+        token_obj = ApplicationWidgetToken.objects.filter(application=app).first()
+        if token_obj:
+            token_obj.delete()
+            return Response({
+                "status": "disabled",
+                "token": None,
+                "widget_url": None
+            })
+        else:
+            new_token = ApplicationWidgetToken.objects.create(application=app)
+            return Response({
+                "status": "enabled",
+                "token": new_token.key,
+                "widget_url": f"{WIDGET_BASE_URL}/widget.html?token={new_token.key}&app_uuid={app.uuid}"
+            })
 
     def get(self, request, application_uuid):
         app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)

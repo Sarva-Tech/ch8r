@@ -30,7 +30,6 @@
       />
 
       <FormField
-        v-if="selectedNotificationType"
         v-slot="{ componentField }"
         name="webhookUrl"
       >
@@ -44,7 +43,6 @@
           <FormControl>
             <Input
               v-bind="componentField"
-              type="url"
               :placeholder="webhookPlaceholder"
             />
           </FormControl>
@@ -84,32 +82,21 @@ const newNotificationSlideOver = ref<InstanceType<typeof SlideOver> | null>(
 const schema = z.object({
   name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
   type: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  email: z.string().optional(),
   webhookUrl: z.string().url().optional(),
-  }).superRefine((data, ctx) => {
-  if (data.type === 'email' && !data.email) {
-    ctx.addIssue({
-      path: ['email'],
-      code: z.ZodIssueCode.custom,
-      message: 'Email is required',
-    })
+  }).refine(
+  (data) =>
+    !(['slack', 'discord'].includes(data.type)) || !!data.webhookUrl,
+  {
+    message: "Web Hook URL is required",
+    path: ["webhookUrl"],
   }
-
-  if ((data.type === 'slack' || data.type === 'discord') && !data.webhookUrl) {
-    ctx.addIssue({
-      path: ['webhookUrl'],
-      code: z.ZodIssueCode.custom,
-      message: 'Webhook URL is required',
-    })
-  }
-})
+)
 
 const form = useForm({
   validationSchema: toTypedSchema(schema),
   initialValues: {
     name: '',
     type: '',
-    email: '',
     webhookUrl: ''
   },
 })
@@ -137,7 +124,6 @@ const webhookPlaceholder = computed(() => {
 })
 
 const [type] = defineField('type')
-const [config_webhookUrl] = defineField('webhookUrl')
 
 const createNewNotification = form.handleSubmit(async (values) => {
   try {
@@ -153,13 +139,11 @@ watch(
   selectedNotificationType,
   (val) => {
     type.value = val.value
-    config_webhookUrl.value = ''
   },
   { immediate: true },
 )
 
-
-const disabled = computed(() => {
-  return meta.value.valid
-})
+const disabled = computed(() =>
+  !meta.value.valid
+)
 </script>

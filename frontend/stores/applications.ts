@@ -1,10 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
 import { useKBDraftStore } from '~/stores/kbDraft'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import { z } from 'zod'
-import { applyBackendErrors } from '~/lib/utils'
 
 export interface KnowledgeBaseItem {
   id: number
@@ -28,40 +24,13 @@ export interface Application {
   knowledge_base: KnowledgeBaseItem[]
 }
 
-const schema = z.object({
-  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-})
-type FormValues = z.infer<typeof schema>
-const typedSchema = toTypedSchema(schema)
-
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
     applications: [] as Application[],
     selectedApplication: null as Application | null,
-    form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
   }),
 
   actions: {
-    initForm() {
-      if (!this.form) {
-        this.form = useForm<FormValues>({
-          validationSchema: typedSchema,
-          initialValues: { name: '' },
-        })
-      }
-      return this.form
-    },
-
-    getFormInstance() {
-      return this.initForm()
-    },
-
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-      applyBackendErrors(formInstance, errors)
-    },
-
     async fetchApplications() {
       const { httpGet } = useHttpClient()
       this.applications = await httpGet<Application[]>('/applications/')
@@ -71,7 +40,7 @@ export const useApplicationsStore = defineStore('applications', {
       }
     },
 
-    async createApplicationWithKB(values: FormValues) {
+    async createApplicationWithKB(values: { name: string }) {
       const kbDraft = useKBDraftStore()
       const kbItems = kbDraft.items
 

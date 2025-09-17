@@ -20,6 +20,10 @@ import { useKBDraftStore } from '~/stores/kbDraft'
 import { KB_SOURCES } from '~/lib/consts'
 import { useApplicationsStore } from '~/stores/applications'
 import { useNavigation } from '~/composables/useNavigation'
+import { z } from 'zod'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { setBackendErrors } from '~/lib/utils'
 
 const kbDraft = useKBDraftStore()
 const applicationsStore = useApplicationsStore()
@@ -32,13 +36,18 @@ const isFile = computed(() => selectedSourceValue.value === 'file')
 const isUrl = computed(() => selectedSourceValue.value === 'url')
 const isText = computed(() => selectedSourceValue.value === 'text')
 
-const { handleSubmit, resetForm, validate, isSubmitting, meta } = applicationsStore.initForm()
-
-onMounted(() => {
-  validate()
+const schema = z.object({
+  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
 })
 
-const onSubmit = handleSubmit(async (values) => {
+const form = useForm({
+  validationSchema: toTypedSchema(schema),
+  initialValues: { name: '' },
+})
+
+const { resetForm, isSubmitting, meta } = form
+
+const createNewApp = form.handleSubmit(async (values) => {
   try {
     const newApp = await applicationsStore.createApplicationWithKB(values)
     if (newApp) {
@@ -46,22 +55,22 @@ const onSubmit = handleSubmit(async (values) => {
       toast.success(`Application ${newApp.name} created`)
       kbDraft.clear()
       resetForm()
-      slideRef.value?.closeSlide()
+      newAppSlideOver.value?.closeSlide()
       emit('success', newApp)
     } else {
       toast.error('Error creating application')
     }
   } catch (e: unknown) {
-    applicationsStore.setBackendErrors(e.errors)
+    setBackendErrors(form, e.errors)
     toast.error('Error creating application')
   }
 })
 
 defineExpose({
-  openSlide: () => slideRef.value?.openSlide(),
+  openSlide: () => newAppSlideOver.value?.openSlide(),
 })
 
-const slideRef = ref<InstanceType<typeof SlideOver> | null>(null)
+const newAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const emit = defineEmits(['success'])
 
 const disabled = computed(() =>
@@ -71,15 +80,10 @@ const disabled = computed(() =>
 
 <template>
   <SlideOver
-    ref="slideRef"
+    ref="newAppSlideOver"
     title="Create Application"
-    submit-text="Create"
-    cancel-text="Cancel"
-    :on-submit="onSubmit"
-    :loading="isSubmitting"
-    :disabled="disabled"
   >
-    <form class="space-y-4">
+    <form class="space-y-4" @submit.prevent="createNewApp">
       <FormField v-slot="{ componentField }" name="name">
         <FormItem>
           <FormLabel class="flex items-center">
@@ -118,5 +122,14 @@ const disabled = computed(() =>
         </div>
       </div>
     </form>
+
+    <template #submitBtn>
+      <C8Button
+        label="Create"
+        :disabled="disabled"
+        :loading="isSubmitting"
+        @click="createNewApp"
+      />
+    </template>
   </SlideOver>
 </template>

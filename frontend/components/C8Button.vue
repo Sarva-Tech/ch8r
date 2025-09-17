@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-vue-next'
 interface Props {
   label?: string
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
-  size?: 'default' | 'sm' | 'lg'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
   disabled?: boolean
   loading?: boolean
 }

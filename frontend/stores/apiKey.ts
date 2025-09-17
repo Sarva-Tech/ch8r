@@ -13,7 +13,8 @@ export const useAPIKeyStore = defineStore('apiKey', {
   state: () => ({
     appDetails: null as Application | null,
     loading: false,
-    apiKeys: [] as APIKeyItem[]
+    apiKeys: [] as APIKeyItem[],
+    newAPIKey: null as APIKeyItem | null
   }),
 
   actions: {
@@ -38,28 +39,17 @@ export const useAPIKeyStore = defineStore('apiKey', {
       }
     },
 
-    async create(content: object) {
+    async create(values: { name: string, permissions: string[] }) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
-      let apiKey
       if (!app) return
 
-      this.loading = true
-
-      try {
-        const { httpPost } = useHttpClient()
-        const response = await httpPost<APIKeyItem>(
-          `/applications/${app.uuid}/api-keys/`, content
-        )
-        this.apiKeys.push(response)
-        apiKey = response.api_key
-      }
-      catch (err: unknown) {
-        console.error('Create error:', err)
-      } finally {
-        this.loading = false
-      }
-      return apiKey
+      const { httpPost } = useHttpClient()
+      const response = await httpPost<APIKeyItem>(
+        `/applications/${app.uuid}/api-keys/`, values
+      )
+      this.apiKeys.push(response)
+      return response
     },
 
     async delete(id: number) {

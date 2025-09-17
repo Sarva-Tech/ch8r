@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
 import { applyBackendErrors } from '~/lib/utils'
 import { useHttpClient } from '~/composables/useHttpClient'
-import type { LLMModel } from '~/stores/model'
 
 const schema = z.object({
   branch_name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
