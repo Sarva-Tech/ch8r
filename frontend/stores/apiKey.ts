@@ -27,8 +27,9 @@ const typedApiKeySchema = toTypedSchema(apiKeySchema)
 export const useAPIKeyStore = defineStore('apiKey', {
   state: () => ({
     appDetails: null as Application | null,
+    loading: false,
     apiKeys: [] as APIKeyItem[],
-    form: shallowRef<ReturnType<typeof useForm<APIKeyFormValues>> | null>(null),
+    newAPIKey: null as APIKeyItem | null
   }),
 
   actions: {
@@ -68,29 +69,17 @@ export const useAPIKeyStore = defineStore('apiKey', {
       this.apiKeys = response
     },
 
-    async create() {
-      if (!this.form) return null
-
-      const { handleSubmit, resetForm } = this.form
+    async create(values: { name: string, permissions: string[] }) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return null
 
-      return handleSubmit(async (values: APIKeyFormValues) => {
-        const { httpPost } = useHttpClient()
-        const response = await httpPost<APIKeyItem>(
-          `/applications/${app.uuid}/api-keys/`,
-          values
-        )
-        this.apiKeys.push(response)
-        resetForm({
-          values: {
-            name: '',
-            permissions: [],
-          },
-        })
-        return response.api_key
-      })()
+      const { httpPost } = useHttpClient()
+      const response = await httpPost<APIKeyItem>(
+        `/applications/${app.uuid}/api-keys/`, values
+      )
+      this.apiKeys.push(response)
+      return response
     },
     async delete(id: number) {
       const appStore = useApplicationsStore()

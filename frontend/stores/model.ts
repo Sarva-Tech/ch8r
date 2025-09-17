@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import { z } from 'zod'
-import { applyBackendErrors } from '~/lib/utils'
 
 export type LLMModelType = 'text' | 'embedding' | 'image' | 'rerank' | 'other'
 
@@ -24,56 +20,12 @@ export interface LLMModel {
   created_at: string
 }
 
-const schema = z.object({
-  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  model_type: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  base_url: z
-    .string()
-    .nonempty({ message: 'Required' })
-    .min(1)
-    .max(255)
-    .url({ message: 'Invalid URL' }),
-  api_key: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  model_name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-})
-
-type FormValues = z.infer<typeof schema>
-const typedSchema = toTypedSchema(schema)
-
 export const useModelStore = defineStore('model', {
   state: () => ({
-    form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
     models: [] as LLMModel[],
   }),
 
   actions: {
-    initForm() {
-      if (!this.form) {
-        this.form = useForm<FormValues>({
-          validationSchema: typedSchema,
-          initialValues: {
-            name: '',
-            model_type: '',
-            base_url: '',
-            api_key: '',
-            model_name: '',
-          },
-        })
-      }
-      return this.form
-    },
-
-    getFormInstance() {
-      return this.initForm()
-    },
-
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-
-      applyBackendErrors(formInstance, errors)
-    },
-
     async load() {
       const { httpGet } = useHttpClient()
       const response = await httpGet<LLMModel[]>(`/models/`)
@@ -81,12 +33,7 @@ export const useModelStore = defineStore('model', {
       return response
     },
 
-    async create() {
-      if (!this.form) return
-
-      const { handleSubmit } = this.form
-
-      return handleSubmit(async (values: FormValues) => {
+    async create(values: Record<string, unknown>) {
         const { httpPost } = useHttpClient()
         const response = await httpPost<LLMModel>('/models/', {
           name: values.name,
@@ -97,7 +44,6 @@ export const useModelStore = defineStore('model', {
         })
         this.models = [...this.models, response]
         return response
-      })()
     },
   },
 })

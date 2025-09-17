@@ -1,148 +1,146 @@
 <template>
-  <Button variant="secondary" class="mr-4" @click="openHelpDialog">Help</Button>
-
   <SlideOver
-    ref="apikeySlideOver"
+    ref="newAPIKeySlideOver"
     title="Create API Key"
-    submit-text="Create"
-    :on-submit="handleCreate"
-    :loading="isSubmitting"
-    :disabled="disabled"
   >
     <template #trigger>
-      <Button>Create API Key</Button>
+      <C8Button label="Create API Key" />
     </template>
-
-    <form class="space-y-4">
-      <FormField v-slot="{ field }" name="name">
+    <form class="space-y-5" @submit.prevent="createNewAPIKey">
+      <FormField v-slot="{ componentField }" name="name">
         <FormItem>
-          <FormLabel class="flex items-center gap-1">
-            API Key Name <RequiredLabel />
+          <FormLabel class="flex items-center">
+            <div>
+              API Key Name
+              <RequiredLabel />
+            </div>
           </FormLabel>
           <FormControl>
-            <Input v-bind="field" id="name" placeholder="Enter API Key name" />
+            <Input v-bind="componentField" placeholder="API Key Name" />
           </FormControl>
           <FormMessage />
         </FormItem>
       </FormField>
 
-      <FormField v-slot="{ field }" name="permissions">
+      <FormField v-slot="{ componentField }" name="permissions">
         <FormItem>
-          <FormLabel>
-            Permissions
-            <RequiredLabel />
+          <FormLabel class="flex items-center">
+            <div>
+              Permissions
+              <RequiredLabel />
+            </div>
           </FormLabel>
           <FormControl>
-            <MultiSelectComboBox
-              v-bind="field"
+            <C8Multiselect
+              v-bind="componentField"
+              v-model="selectedPermissions"
               :options="permissions"
+              :multiple="true"
+              :preselect-first="false"
               placeholder="Select permissions"
             />
           </FormControl>
           <FormMessage />
         </FormItem>
       </FormField>
-
-      <Dialog v-model:open="isCopyApiKeyDialogOpen">
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Copy API Key</DialogTitle>
-            <DialogDescription>
-              Your API key is {{ apiKey }}
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter>
-            <Button @click="copyApiKey">Copy And Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </form>
+    <Dialog v-model:open="isCopyApiKeyDialogOpen">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Copy API Key</DialogTitle>
+          <DialogDescription>Your API key is {{ newAPIKey }}</DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button @click="copyApiKey">Copy And Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <template #submitBtn>
+      <C8Button
+        label="Create"
+        :disabled="disabled"
+        :loading="isSubmitting"
+        @click="createNewAPIKey"
+      />
+    </template>
   </SlideOver>
-
-  <Dialog v-model:open="isHelpDialogOpen">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Sample usage of API Key</DialogTitle>
-        <DialogDescription>
-          <div class="w-full">
-            curl -X GET -H 'x-api-key: your-api-key' https://example.com
-          </div>
-        </DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <Button @click="closeHelpDialog">Close</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
 </template>
-
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import { Button } from '~/components/ui/button'
-import { MultiSelectComboBox } from '~/components/ui/multiselectcombobox'
 import SlideOver from '~/components/SlideOver.vue'
-import {
-  FormField,
-  FormItem,
-  FormLabel,
-  FormControl,
-  FormMessage,
-} from '~/components/ui/form'
+import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
 import RequiredLabel from '~/components/RequiredLabel.vue'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '~/components/ui/dialog'
-
-import { useAPIKeyStore } from '~/stores/apiKey'
+import { computed, ref } from 'vue'
+import type { SelectOption } from '~/lib/types'
+import { z } from 'zod'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
+import { setBackendErrors } from '~/lib/utils'
+
+const newAPIKeySlideOver = ref<InstanceType<typeof SlideOver> | null>(
+  null,
+)
 
 const apiKeyStore = useAPIKeyStore()
-
-const apikeySlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
-
-const { isSubmitting, meta, validate } = apiKeyStore.getFormInstance()
-
-const apiKey = ref('')
+const newAPIKey = ref('')
 const isCopyApiKeyDialogOpen = ref(false)
-const isHelpDialogOpen = ref(false)
 
+const selectedPermissions = ref<SelectOption[]>([])
 const permissions = [
-  { value: 'read', label: 'Read' },
-  { value: 'write', label: 'Write' },
-  { value: 'delete', label: 'Delete' },
+  { value: 'read', label: 'Read', selected: false },
+  { value: 'write', label: 'Write', selected: false },
+  { value: 'delete', label: 'Delete', selected: false },
 ]
 
-onMounted(() => {
-  validate()
+const schema = z.object({
+  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
+  permissions: z.array(
+    z.object({
+      value: z.string().nonempty(),
+      label: z.string().nonempty(),
+      selected: z.boolean()
+    })
+  ).min(1, { message: 'Required' }),
 })
-async function handleCreate() {
+
+const form = useForm({
+  validationSchema: toTypedSchema(schema),
+  initialValues: {
+    name: '',
+    permissions: [],
+  },
+})
+
+const { isSubmitting, meta } = form
+
+const createNewAPIKey = form.handleSubmit(async (values) => {
   try {
-    await apiKeyStore.create()
-    apikeySlideOver.value?.closeSlide()
-    toast.success('Api key created created')
-  } catch (e: never) {
-    apiKeyStore.setBackendErrors(e.errors)
+    const response = await apiKeyStore.create({
+      name: values.name,
+      permissions: values.permissions?.map(s => s.value)
+    })
+
+    if(response?.api_key) {
+      apiKeyStore.newAPIKey = response
+      newAPIKeySlideOver.value?.closeSlide()
+      toast.success('API Key created')
+    }
+  } catch (e: unknown) {
+    setBackendErrors(form, e.errors)
+  }
+})
+
+function copyApiKey() {
+  if (newAPIKey.value) {
+    navigator.clipboard.writeText(newAPIKey.value)
+    isCopyApiKeyDialogOpen.value = false
   }
 }
 
-function copyApiKey() {
-  navigator.clipboard.writeText(apiKey.value)
-  isCopyApiKeyDialogOpen.value = false
-}
-
-function openHelpDialog() {
-  isHelpDialogOpen.value = true
-}
-
-function closeHelpDialog() {
-  isHelpDialogOpen.value = false
-}
-
-const disabled = computed(() => !meta.value.valid)
+const disabled = computed(() =>
+  !meta.value.valid
+)
 </script>

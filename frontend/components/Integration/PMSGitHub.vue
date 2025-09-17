@@ -18,9 +18,9 @@
 <script setup lang="ts">
 import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
 import RequiredLabel from '~/components/RequiredLabel.vue'
-import { useIntegrationStore } from '~/stores/integration'
+import type { FormContext } from 'vee-validate'
 
-const integrationStore = useIntegrationStore()
-
-integrationStore.initForm()
+defineProps<{
+  form: FormContext
+}>()
 </script>

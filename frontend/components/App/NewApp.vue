@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import SlideOver from '~/components/SlideOver.vue'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { toast } from 'vue-sonner'
-import { Input } from '@/components/ui/input'
+import { Input } from '~/components/ui/input'
 import {
   FormControl,
   FormItem,
@@ -20,6 +20,10 @@ import { useKBDraftStore } from '~/stores/kbDraft'
 import { KB_SOURCES } from '~/lib/consts'
 import { useApplicationsStore } from '~/stores/applications'
 import { useNavigation } from '~/composables/useNavigation'
+import { z } from 'zod'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { setBackendErrors } from '~/lib/utils'
 
 const kbDraft = useKBDraftStore()
 const applicationsStore = useApplicationsStore()
@@ -32,45 +36,54 @@ const isFile = computed(() => selectedSourceValue.value === 'file')
 const isUrl = computed(() => selectedSourceValue.value === 'url')
 const isText = computed(() => selectedSourceValue.value === 'text')
 
-const form = applicationsStore.initForm()
-const { handleSubmit, resetForm, isSubmitting } = form
+const schema = z.object({
+  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
+})
 
-const onSubmit = handleSubmit(async (values) => {
+const form = useForm({
+  validationSchema: toTypedSchema(schema),
+  initialValues: { name: '' },
+})
+
+const { resetForm, isSubmitting, meta } = form
+
+const createNewApp = form.handleSubmit(async (values) => {
   try {
     const newApp = await applicationsStore.createApplicationWithKB(values)
     if (newApp) {
       await selectAppAndNavigate(newApp)
-      toast.success(`Application "${newApp.name}" created successfully`)
+      toast.success(`Application ${newApp.name} created`)
       kbDraft.clear()
       resetForm()
+      newAppSlideOver.value?.closeSlide()
       emit('success', newApp)
     } else {
-      toast.error(applicationsStore.setBackendErrors || 'Failed to create application')
+      toast.error('Error creating application')
     }
-  } catch (err: any) {
-    toast.error(err.message || 'Something went wrong')
-    console.error('Failed to create application:', err)
+  } catch (e: unknown) {
+    setBackendErrors(form, e.errors)
+    toast.error('Error creating application')
   }
 })
 
 defineExpose({
-  openSlide: () => slideRef.value?.openSlide(),
+  openSlide: () => newAppSlideOver.value?.openSlide(),
 })
 
-const slideRef = ref<InstanceType<typeof SlideOver> | null>(null)
+const newAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const emit = defineEmits(['success'])
+
+const disabled = computed(() =>
+  !meta.value.valid
+)
 </script>
 
 <template>
   <SlideOver
-    ref="slideRef"
+    ref="newAppSlideOver"
     title="Create Application"
-    submit-text="Create"
-    cancel-text="Cancel"
-    :on-submit="onSubmit"
-    :loading="isSubmitting"
   >
-    <form class="space-y-4" @submit.prevent="onSubmit">
+    <form class="space-y-4" @submit.prevent="createNewApp">
       <FormField v-slot="{ componentField }" name="name">
         <FormItem>
           <FormLabel class="flex items-center">
@@ -86,13 +99,13 @@ const emit = defineEmits(['success'])
         </FormItem>
       </FormField>
 
-      <div class="space-y-4 mt-4">
+      <div class="space-y-4">
         <SourceSelector v-model="selectedSourceValue" :sources="sources" />
         <div class="space-y-2">
           <div v-if="isFile" class="space-y-2">
-            <label for="upload_files" class="text-sm font-medium">
+            <Label class="text-sm font-medium">
               Upload Files
-            </label>
+            </Label>
             <FileUpload @update:files="kbDraft.setFiles" />
           </div>
           <UrlInput v-if="isUrl" />
@@ -109,5 +122,14 @@ const emit = defineEmits(['success'])
         </div>
       </div>
     </form>
+
+    <template #submitBtn>
+      <C8Button
+        label="Create"
+        :disabled="disabled"
+        :loading="isSubmitting"
+        @click="createNewApp"
+      />
+    </template>
   </SlideOver>
 </template>

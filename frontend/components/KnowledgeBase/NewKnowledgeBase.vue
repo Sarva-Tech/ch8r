@@ -1,11 +1,10 @@
 <template>
   <SlideOver
+    ref="newKBSlideOver"
     title="Add Files to Knowledge Base"
-    submit-text="Upload & Process"
-    :on-submit="processKB"
   >
     <template #trigger>
-      <Button>Add to Knowledge Base</Button>
+      <C8Button label="Add to Knowledge Base" />
     </template>
     <div class="space-y-4">
       <SourceSelector v-model="selectedSourceValue" :sources="sources" />
@@ -13,6 +12,7 @@
         <div v-if="isFile" class="space-y-2">
           <Label for="upload_files" class="text-sm font-medium">
             Upload Files
+            <RequiredLabel />
           </Label>
           <FileUpload @update:files="kbDraft.setFiles" />
         </div>
@@ -28,10 +28,18 @@
         />
       </div>
     </div>
+
+    <template #submitBtn>
+      <C8Button
+        label="Upload & Process"
+        :disabled="disabled"
+        :loading="loading"
+        @click="processKB"
+      />
+    </template>
   </SlideOver>
 </template>
 <script setup lang="ts">
-import { Button } from '~/components/ui/button'
 import SourceSelector from '~/components/KnowledgeBase/SourceSelector.vue'
 import FileUpload from '~/components/FileUpload.vue'
 import UrlInput from '~/components/KnowledgeBase/UrlInput.vue'
@@ -39,8 +47,16 @@ import TextInput from '~/components/KnowledgeBase/TextInput.vue'
 import SlideOver from '~/components/SlideOver.vue'
 import Draft from '~/components/KnowledgeBase/Draft.vue'
 import { KB_SOURCES } from '~/lib/consts'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { toast } from 'vue-sonner'
+import RequiredLabel from '~/components/RequiredLabel.vue'
+import { setBackendErrors } from '~/lib/utils'
 
+const newKBSlideOver = ref<InstanceType<typeof SlideOver> | null>(
+  null,
+)
+
+const loading = ref(false)
 const sources = KB_SOURCES
 const selectedSourceValue = ref('file')
 const isFile = computed(() => selectedSourceValue.value === 'file')
@@ -50,8 +66,21 @@ const isText = computed(() => selectedSourceValue.value === 'text')
 const kbDraft = useKBDraftStore()
 const kbStore = useKnowledgeBaseStore()
 
-
 async function processKB() {
-  await kbStore.process()
+  loading.value = true
+  try {
+    await kbStore.process()
+    newKBSlideOver.value?.closeSlide()
+    toast.success('Knowledge base processing started')
+    kbDraft.clear()
+  } catch (e: unknown) {
+    toast.error('Failed to process knowledge base')
+  } finally {
+    loading.value = false
+  }
 }
+
+const disabled = computed(() =>
+  !kbDraft.hasDrafts
+)
 </script>

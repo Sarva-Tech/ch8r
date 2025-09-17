@@ -88,14 +88,14 @@ async function updateNotification() {
     payload.config = { webhookUrl: encryptWithPublicKey(webhookValue.value) }
   }
 
-  try {
-    await notificationStore.updateNotificationProfile(payload)
-    open.value = false
-    await notificationStore.fetchNotificationProfiles();
-    toast.success('Profile updated successfully!')
-  } catch (err) {
-    toast.error(err.message || 'Failed to update profile')
-  }
+  // try {
+  //   await notificationStore.update(payload)
+  //   open.value = false
+  //   await notificationStore.fetchNotificationProfiles();
+  //   toast.success('Profile updated successfully!')
+  // } catch (err) {
+  //   toast.error(err.message || 'Failed to update profile')
+  // }
 }
 defineExpose({ openSheet })
 </script>

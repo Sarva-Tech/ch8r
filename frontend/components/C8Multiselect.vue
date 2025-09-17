@@ -45,7 +45,7 @@ const props = defineProps<{
   options: SelectOption[],
   multiple: boolean
   placeholder?: string
-  label: string
+  label?: string
   preselectFirst: boolean
 }>()
 

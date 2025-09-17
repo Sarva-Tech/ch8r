@@ -1,15 +1,19 @@
 from django.db.models import OuterRef, Subquery, DateTimeField
 from rest_framework import viewsets, permissions, status
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import Application, ChatRoom, Message, LLMModel, AppModel
+from core.permissions import HasAPIKeyPermission
 from core.serializers import ApplicationCreateSerializer, ApplicationViewSerializer
 from core.serializers.chatroom import ChatRoomPreviewSerializer
 from core.services.kb_utils import parse_kb_from_request
 from core.services.kb_utils import create_kb_records
 from core.tasks import process_kb
+from core.widget_auth import WidgetTokenAuthentication
+
 
 class ApplicationViewSet(viewsets.ModelViewSet):
     queryset = Application.objects.none()
@@ -60,7 +64,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         return Application.objects.filter(owner=self.request.user)
 
 class ApplicationChatRoomsPreviewView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
+
     def get(self, request, application_uuid):
         try:
             application = Application.objects.get(uuid=application_uuid)

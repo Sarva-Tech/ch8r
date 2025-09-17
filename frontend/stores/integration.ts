@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import { z } from 'zod'
-import { applyBackendErrors } from '~/lib/utils'
 
 export type IntegrationType = "pms" | "crm" | "custom";
 
@@ -57,63 +53,13 @@ export type SupportedIntegrationsResponse = {
   };
 };
 
-
-const schema = z.object({
-  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  type: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  provider: z
-    .string()
-    .nonempty({ message: 'Required' })
-    .min(1)
-    .max(255),
-  token: z.string().optional()
-}).refine(
-  (data) =>
-    !(data.provider === "github") || !!data.token,
-  {
-    message: "Token is required for GitHub integrations",
-    path: ["token"],
-  }
-);
-
-
-type FormValues = z.infer<typeof schema>
-const typedSchema = toTypedSchema(schema)
-
 export const useIntegrationStore = defineStore('integration', {
   state: () => ({
-    form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
     supportedIntegrations: {} as SupportedIntegrationsResponse,
     integrations: [] as Integration[],
   }),
 
   actions: {
-    initForm() {
-      if (!this.form) {
-        this.form = useForm<FormValues>({
-          validationSchema: typedSchema,
-          initialValues: {
-            name: '',
-            type: '',
-            provider: '',
-            token: ''
-          },
-        })
-      }
-      return this.form
-    },
-
-    getFormInstance() {
-      return this.initForm()
-    },
-
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-
-      applyBackendErrors(formInstance, errors)
-    },
-
     async load() {
       const { httpGet } = useHttpClient()
       const response = await httpGet<Integration[]>(`/integrations/`)
@@ -128,12 +74,7 @@ export const useIntegrationStore = defineStore('integration', {
       return response
     },
 
-    async create() {
-      if (!this.form) return
-
-      const { handleSubmit } = this.form
-
-      return handleSubmit(async (values: FormValues) => {
+    async create(values: Record<string, unknown>) {
         const { httpPost } = useHttpClient()
         const response = await httpPost<Integration>('/integrations/', {
           name: values.name,
@@ -143,7 +84,6 @@ export const useIntegrationStore = defineStore('integration', {
         })
         this.integrations = [...this.integrations, response]
         return response
-      })()
     },
   },
 })

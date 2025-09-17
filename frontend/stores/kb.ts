@@ -52,15 +52,12 @@ export const useKnowledgeBaseStore = defineStore('kb', {
         }
       })
 
-      try {
-        const { httpPostForm } = useHttpClient()
-        const response = await httpPostForm<{ kbs: KnowledgeBaseItem[] }>(`/applications/${app.uuid}/knowledge-bases/`, formData)
-        if (response?.kbs) {
-          this.kbs.push(...response.kbs)
-        }
-      } catch (err: unknown) {
-        console.error('Error processing knowledge base:', err)
+      const { httpPostForm } = useHttpClient()
+      const response = await httpPostForm<{ kbs: KnowledgeBaseItem[] }>(`/applications/${app.uuid}/knowledge-bases/`, formData)
+      if (response?.kbs) {
+        this.kbs.push(...response.kbs)
       }
+      return response
     },
 
     updateStatus(uuid: string, status: StatusType) {

@@ -105,7 +105,6 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
     },
 
     async saveNotifications(profiles: SelectOption[]) {
-      console.log(profiles)
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return

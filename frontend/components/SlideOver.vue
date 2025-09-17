@@ -9,7 +9,6 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Loader2 } from "lucide-vue-next"
 import { ref, computed } from 'vue'
 
 const props = withDefaults(
@@ -17,7 +16,6 @@ const props = withDefaults(
     title: string
     submitText?: string
     cancelText?: string
-    onSubmit?: () => void | Promise<void>
     loading?: boolean
     open?: boolean
     disabled?: boolean
@@ -34,7 +32,7 @@ const props = withDefaults(
     disabled: false,
     showSubmit: true,
     triggerDialog: false,
-    width: ''
+    width: '',
   }
 )
 
@@ -103,19 +101,7 @@ const widthClass = computed(() => {
             </Button>
           </SheetClose>
 
-            <Button
-              v-if="showSubmit"
-              type="button"
-              :disabled="props.disabled || props.loading"
-              @click="props.onSubmit?.()"
-            >
-              <template v-if="props.loading">
-                <Button disabled>
-                  <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-                </Button>
-              </template>
-              <template v-else>{{ submitText }}</template>
-            </Button>
+          <slot name="submitBtn" />
         </div>
       </SheetFooter>
     </SheetContent>

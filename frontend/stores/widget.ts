@@ -24,7 +24,7 @@ export const useWidgetStore = defineStore('widget', {
       return response
     },
 
-    async enable() {
+    async toggle() {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
       if (!app) return

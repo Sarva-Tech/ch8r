@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import { z } from 'zod'
-import { applyBackendErrors } from '~/lib/utils'
 
 export type NotificationType = 'email' | 'slack' | 'discord'
 
@@ -22,71 +18,14 @@ export interface NotificationProfile {
   is_enabled?: boolean
 }
 
-const schema = z.object({
-  name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  type: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  config: z
-    .object({
-      email: z
-        .string()
-        .email({ message: 'Invalid email' })
-        .optional()
-        .or(z.literal('')),
-      webhookUrl: z
-        .string()
-        .url({ message: 'Invalid URL' })
-        .optional()
-        .or(z.literal('')),
-    })
-    .refine((data) => data.email || data.webhookUrl, {
-      message: 'Either email or webhook URL is required',
-    }),
-})
-
-type FormValues = z.infer<typeof schema>
-const typedSchema = toTypedSchema(schema)
-
 export const useNotificationProfileStore = defineStore('notificationProfiles', {
   state: () => ({
-    form: shallowRef<ReturnType<typeof useForm<FormValues>> | null>(null),
     profiles: [] as NotificationProfile[],
     loading: false,
     error: null as string | null,
   }),
 
   actions: {
-    initForm() {
-      if (!this.form) {
-        this.form = useForm<FormValues>({
-          validationSchema: typedSchema,
-          initialValues: {
-            name: '',
-            type: '',
-            config: {
-              email: '',
-              webhookUrl: '',
-            },
-          },
-        })
-      }
-      return this.form
-    },
-
-    getFormInstance() {
-      return this.initForm()
-    },
-
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-
-      applyBackendErrors(formInstance, errors)
-    },
-
-    createProfilesPayload(profiles: NotificationProfile[]) {
-      return profiles.map(({ name, type, config }) => ({ name, type, config }))
-    },
-
     async load() {
       const { httpGet } = useHttpClient()
       const res = await httpGet<NotificationProfile>('/notification-profiles/')
@@ -94,40 +33,22 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
       return this.profiles
     },
 
-    async create() {
-      if (!this.form) return
-
-      const { values } = this.form
-
+    async create(values: Record<string, unknown>) {
       const { httpPost } = useHttpClient()
-      const cleanConfig: NotificationConfig = {}
-      if (values.config.email) cleanConfig.email = values.config.email
-      if (values.config.webhookUrl)
-        cleanConfig.webhookUrl = values.config.webhookUrl
 
       const response = await httpPost<NotificationProfile>(
         '/notification-profiles/',
         {
           name: values.name,
           type: values.type as NotificationType,
-          config: cleanConfig,
+          config: {
+            email: values.email,
+            webhookUrl: values.webhookUrl
+          },
         },
       )
 
       this.profiles = [...this.profiles, response]
-      return response
-    },
-    async createBulkNotificationProfiles(profiles: NotificationProfile[]) {
-      const { httpPost } = useHttpClient()
-      const payload = this.createProfilesPayload(profiles)
-
-      const response = await httpPost<NotificationProfile>(
-        '/notification-profiles/bulk-upload/',
-        payload,
-      )
-      if (Array.isArray(response)) {
-        this.profiles = [...this.profiles, ...response]
-      }
       return response
     },
     async delete(id: number | string) {
