@@ -5,25 +5,29 @@ from mailersend import MailerSendClient, EmailBuilder
 import requests
 
 @shared_task(bind=True, max_retries=3)
-def send_verification_email_task(self, user_id, user_email, username, verification_token):
+def send_verification_email_task(self, user_id, user_email, username, token, purpose="VERIFY_EMAIL"):
     try:
-        base_url = settings.API_BASE_URL.rstrip('/')
-        verification_url = f"{base_url}/verify-email/{verification_token}/"
-
-        context = {
-            "username": username,
-            "verification_url": verification_url
-        }
-
-        plain_message = TemplateLoader.render_template('verify_email.txt.j2', context)
-        html_message = TemplateLoader.render_template('verify_email.html.j2', context)
+        base_url = settings.FRONTEND_URL.rstrip('/')
+        if purpose == "VERIFY_EMAIL":
+            url = f"{base_url}/verify-email/{token}/"
+            subject = "Verify your email address for CH8R"
+            context = {"username": username, "verification_url": url}
+            plain_message = TemplateLoader.render_template('verify_email.txt.j2', context)
+            html_message = TemplateLoader.render_template('verify_email.html.j2', context)
+        elif purpose == "RESET_PASSWORD":
+            url = f"{base_url}/reset-password?token={token}"
+            subject = "Reset your password for CH8R"
+            context = {"username": username, "reset_url": url}
+            plain_message = TemplateLoader.render_template('reset_password.txt.j2', context)
+            html_message = TemplateLoader.render_template('reset_password.html.j2', context)
+        else:
+            raise ValueError("Invalid email purpose")
 
         ms = MailerSendClient(api_key=settings.MAILERSEND_API_KEY)
-
         email = (EmailBuilder()
                  .from_email(settings.DEFAULT_FROM_EMAIL, "CH8R Team")
                  .to_many([{"email": user_email, "name": username}])
-                 .subject("Verify your email address for CH8R")
+                 .subject(subject)
                  .text(plain_message)
                  .html(html_message)
                  .build())

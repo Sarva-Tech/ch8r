@@ -13,3 +13,5 @@ from .integration import IntegrationViewSet, supported_integrations
 from .configure_app import LoadAppConfigurationView, LoadAvailableConfigurationView, ConfigureAppIntegrationView
 from .custom_auth import CustomAuthToken
 from .app_model import ConfigureAppModelsView
+from .reset_password import ResetPasswordView, ResetPasswordVerifyView
+from .forgot_password import ForgotPasswordView

@@ -17,6 +17,8 @@ from core.views.message import SendMessageView
 from core.views.ingestion import IngestApplicationKBView
 from core.views.notification_profile import NotificationProfileViewSet
 from core.views.app_model import ConfigureAppModelsView
+from core.views.forgot_password import ForgotPasswordView
+from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
@@ -31,7 +33,8 @@ urlpatterns = [
     path('login/', obtain_auth_token, name='api_login'),
     path('register/', UserRegisterView.as_view(), name='api_register'),
     path('applications/<uuid:application_uuid>/api-keys/', GenerateAPIKeyView.as_view(), name='generate-api-key'),
-    path('applications/<uuid:application_uuid>/api-keys/<int:api_key_id>/', GenerateAPIKeyView.as_view(), name='delete-api-key'),
+    path('applications/<uuid:application_uuid>/api-keys/<int:api_key_id>/', GenerateAPIKeyView.as_view(),
+         name='delete-api-key'),
     path('me/', MeView.as_view(), name='api_me'),
     path('verify-email/<str:token>/', VerifyEmailView.as_view(), name='verify-email'),
 
@@ -85,4 +88,7 @@ urlpatterns = [
 
     path('', include(router.urls)),
     path('', include(nested_router.urls)),
+    path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
+    path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),  # remove <token>
+    path('reset-password/<str:token>/', ResetPasswordView.as_view(), name='reset-password'),
 ]

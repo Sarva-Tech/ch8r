@@ -21,7 +21,7 @@ const data = computed(() => {
   return (apiKeys.value || []).map((item: APIKeyItem) => {
     return {
       id: item.id,
-      created: item.created,
+      created: item.created?.split('T')[0],
       name: item.name,
       permissions: item.permissions?.map(p => p.toUpperCase()).sort().join(", "),
     }
@@ -38,6 +38,11 @@ const columns: ColumnDef<unknown, string | number>[] = [
   {
     accessorKey: 'permissions',
     header: 'Permissions',
+    cell: (info) => info.getValue(),
+  },
+  {
+    accessorKey: 'created',
+    header: 'created',
     cell: (info) => info.getValue(),
   },
   {
