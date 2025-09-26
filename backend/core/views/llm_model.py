@@ -11,6 +11,7 @@ class LLMModelViewSet(viewsets.ModelViewSet):
     queryset = LLMModel.objects.none()
     permission_classes = [permissions.IsAuthenticated, DefaultLLMModelPermission]
     lookup_field = 'uuid'
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -33,9 +34,6 @@ class LLMModelViewSet(viewsets.ModelViewSet):
 
         view_serializer = LLMModelViewSerializer(instance, context={'request': request})
         return Response(view_serializer.data, status=status.HTTP_201_CREATED)
-
-    def update(self, request, *args, **kwargs):
-        raise MethodNotAllowed("PUT", detail="Use PATCH to update LLM model.")
 
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)

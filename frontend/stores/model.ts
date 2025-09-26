@@ -45,5 +45,40 @@ export const useModelStore = defineStore('model', {
         this.models = [...this.models, response]
         return response
     },
+
+    async update(values: Record<string, unknown>) {
+      const { httpPatch } = useHttpClient()
+
+      const body: Record<string, unknown> = {
+        name: values.name,
+        base_url: values.base_url,
+        model_name: values.model_name,
+      }
+
+      if (values.api_key) {
+        body.api_key = values.api_key
+      }
+
+      const response = await httpPatch<LLMModel>(`/models/${values.uuid}/`, body)
+
+      const index = this.models.findIndex(m => m.uuid === values.uuid)
+      if (index !== -1 && response?.name) {
+        this.models[index] = { ...this.models[index], ...response }
+      }
+
+      return response
+    },
+
+    async delete(uuid: string) {
+      const { httpDelete } = useHttpClient()
+
+      const response = await httpDelete<{detail: string}>(`/models/${uuid}/`)
+
+      if (response?.detail === 'Deleted') {
+        this.models = this.models.filter((m) => m.uuid !== uuid)
+      }
+
+      return response
+    },
   },
 })

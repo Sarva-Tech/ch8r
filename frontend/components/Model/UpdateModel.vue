@@ -1,12 +1,13 @@
 <template>
-  <SlideOver
-    ref="newModelSlideOver"
-    title="Create New Model"
-  >
-    <template #trigger>
-      <C8Button label="Create New Model" />
-    </template>
-    <form class="space-y-5" @submit.prevent="createNewModel">
+  <SlideOver ref="updateModelSlide" title="Update Model">
+    <form class="space-y-5" @submit.prevent="updateModel">
+      <C8Select
+        :options="ModelTypes"
+        :model-value="selectedModelType"
+        label="Model Purpose"
+        disabled
+      />
+
       <FormField v-slot="{ componentField }" name="name">
         <FormItem>
           <FormLabel class="flex items-center">
@@ -21,13 +22,6 @@
           <FormMessage />
         </FormItem>
       </FormField>
-
-      <C8Select
-        :options="ModelTypes"
-        :model-value="selectedModelType"
-        label="Model Purpose"
-        @update:model-value="(val) => (selectedModelType = val)"
-      />
 
       <FormField v-slot="{ componentField }" name="base_url">
         <FormItem>
@@ -62,6 +56,9 @@
               placeholder="org-YvnH2WW0YjzHn0gAUzh7JY3q"
             />
           </FormControl>
+          <FormDescription>
+            Leave the API key field blank to keep the existing key.
+          </FormDescription>
           <FormMessage />
         </FormItem>
       </FormField>
@@ -84,10 +81,10 @@
 
     <template #submitBtn>
       <C8Button
-        label="Create"
+        label="Update"
         :disabled="disabled"
         :loading="isSubmitting"
-        @click="createNewModel"
+        @click="updateModel"
       />
     </template>
   </SlideOver>
@@ -110,13 +107,14 @@ import { z } from 'zod'
 import { setBackendErrors } from '~/lib/utils'
 import { ModelTypes } from '~/lib/consts'
 
-const newModelSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
+const updateModelSlide = ref<InstanceType<typeof SlideOver> | null>(null)
 
 const modelStore = useModelStore()
 
-const selectedModelType = ref(ModelTypes[0])
+const selectedModelType: Ref<{ label: string, value: string } | null> = ref(null)
 
 const schema = z.object({
+  uuid: z.string().nonempty({ message: 'Required' }),
   name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
   model_type: z.string().nonempty({ message: 'Required' }).min(1).max(255),
   base_url: z
@@ -125,13 +123,14 @@ const schema = z.object({
     .min(1)
     .max(255)
     .url({ message: 'Invalid URL' }),
-  api_key: z.string().nonempty({ message: 'Required' }).min(1).max(255),
+  api_key: z.string().optional(),
   model_name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
 })
 
 const form = useForm({
   validationSchema: toTypedSchema(schema),
   initialValues: {
+    uuid: '',
     name: '',
     model_type: '',
     base_url: '',
@@ -139,22 +138,36 @@ const form = useForm({
     model_name: '',
   },
 })
-const { isSubmitting, meta, defineField } = form
+const { isSubmitting, meta, setValues } = form
 
-const [model_type] = defineField('model_type')
+function open(model: LLMModel) {
+  const modelType = model.model_type
 
-watch(selectedModelType, (val) => {
-  model_type.value = val.value
-}, { immediate: true })
+  setValues({
+    uuid: model.uuid,
+    name: model.name,
+    model_type: modelType,
+    base_url: model.base_url!,
+    api_key: '',
+    model_name: model.model_name,
+  })
+  selectedModelType.value = ModelTypes.find((m) => m.value === modelType) || null
 
+  updateModelSlide.value?.openSlide()
+}
 
-const createNewModel = form.handleSubmit(async (values) => {
+defineExpose({
+  open
+})
+
+const updateModel = form.handleSubmit(async (values) => {
   try {
-    await modelStore.create(values)
-    newModelSlideOver.value?.closeSlide()
-    toast.success('Model created')
+    await modelStore.update(values)
+    updateModelSlide.value?.closeSlide()
+    toast.success('Model updated')
   } catch (e: unknown) {
     setBackendErrors(form, e.errors)
+    toast.error('Failed to update model')
   }
 })
 

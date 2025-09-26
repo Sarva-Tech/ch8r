@@ -85,5 +85,17 @@ export const useIntegrationStore = defineStore('integration', {
         this.integrations = [...this.integrations, response]
         return response
     },
+
+    async delete(uuid: string) {
+      const { httpDelete } = useHttpClient()
+
+      const response = await httpDelete<{detail: string}>(`/integrations/${uuid}/`)
+
+      if (response?.detail === 'Deleted') {
+        this.integrations = this.integrations.filter((i) => i.uuid !== uuid)
+      }
+
+      return response
+    },
   },
 })

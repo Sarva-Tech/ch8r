@@ -13,6 +13,7 @@ export interface NotificationProfile {
   uuid?: string
   name: string
   type: NotificationType
+  owner: number
   config: NotificationConfig
   created_at?: string
   is_enabled?: boolean

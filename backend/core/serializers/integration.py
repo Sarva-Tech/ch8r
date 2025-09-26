@@ -38,4 +38,4 @@ class IntegrationCreateSerializer(serializers.ModelSerializer):
 class IntegrationViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Integration
-        fields = ['id', 'uuid', 'name', 'type', 'provider', 'metadata', 'created_at', 'updated_at']
+        fields = ['id', 'uuid', 'name', 'type', 'provider', 'metadata', 'created_at', 'updated_at', 'owner']

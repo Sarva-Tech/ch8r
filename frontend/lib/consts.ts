@@ -1,4 +1,4 @@
-import { File, LetterText, Link } from 'lucide-vue-next'
+import { File, LetterText } from 'lucide-vue-next'
 
 export const NEW_CHAT = 'new_chat'
 export const DUMMY_NEW_CHATROOM = {
@@ -65,3 +65,10 @@ export const STATUS_LABELS: Record<StatusType, string> = {
   failed: 'Failed',
   completed: 'Completed',
 }
+
+export const TEXT_MODEL = { label: 'Text Generation', value: 'text' }
+export const EMBEDDING_MODEL = { label: 'Embedding', value: 'embedding' }
+export const ModelTypes = [
+  TEXT_MODEL,
+  EMBEDDING_MODEL,
+]

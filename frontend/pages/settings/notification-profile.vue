@@ -4,16 +4,24 @@ import UpdateNotificationProfiles from '~/components/notification/UpdateNotifica
 import Ch8rTable from '~/components/C8Table.vue'
 import NewNotificationProfile from '~/components/notification/NewNotificationProfile.vue'
 import { useNotificationProfileStore } from '~/stores/notificationProfile'
-import type { NotificationProfile } from '~/lib/types'
 import type { ColumnDef } from '@tanstack/vue-table'
 
 const updateNotification = ref<InstanceType<
   typeof UpdateNotificationProfiles
 > | null>(null)
+
 const notificationProfileStore = useNotificationProfileStore()
+const user = useUserStore()
+
 const isLoading = ref(false)
 
-const profiles = computed(() => notificationProfileStore.profiles)
+const profiles = computed(() =>
+  notificationProfileStore.profiles.map((profile) => ({
+    ...profile,
+    canDelete: profile.owner === user.authUser.id,
+    canUpdate: profile.owner === user.authUser.id,
+  }))
+)
 
 onMounted(async () => {
   isLoading.value = true

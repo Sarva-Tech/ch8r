@@ -11,6 +11,8 @@ from core.serializers import IntegrationCreateSerializer, IntegrationViewSeriali
 class IntegrationViewSet(viewsets.ModelViewSet):
     queryset = Integration.objects.none()
     permission_classes = [IsAuthenticated]
+    lookup_field = 'uuid'
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         return Integration.objects.filter(owner=self.request.user)
@@ -27,6 +29,14 @@ class IntegrationViewSet(viewsets.ModelViewSet):
         return Response(
             {"detail": "PUT method not allowed. Use PATCH instead."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"detail": "Deleted"},
+            status=status.HTTP_200_OK
         )
 
 @api_view(['GET'])

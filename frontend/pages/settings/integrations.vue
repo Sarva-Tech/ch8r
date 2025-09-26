@@ -17,29 +17,25 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import { toast } from 'vue-sonner'
 import NewIntegration from '~/components/Integration/NewIntegration.vue'
 import { useIntegrationStore } from '~/stores/integration'
 
 const integrationStore = useIntegrationStore()
-const loading = ref(false)
+const user = useUserStore()
 
 await integrationStore.load()
 await integrationStore.loadSupportedIntegrations()
 
-const integrations = computed(() => integrationStore.integrations)
+const integrations = computed(() =>
+  integrationStore.integrations.map((i) => ({
+    ...i,
+    canDelete: i.owner === user.authUser.id,
+    canUpdate: false,
+  }))
+)
 
-// onMounted(async () => {
-//   loading.value = true
-//   try {
-//   } catch (e: unknown) {
-//     toast.error('Failed to load integrations')
-//   } finally {
-//     loading.value = false
-//   }
-// })
 
 const columns: ColumnDef<unknown, string | number>[] = [
   {
@@ -54,5 +50,7 @@ const columns: ColumnDef<unknown, string | number>[] = [
   },
 ]
 
-function deleteIntegration() {}
+function deleteIntegration(uuid: string) {
+  integrationStore.delete(uuid)
+}
 </script>

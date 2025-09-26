@@ -14,14 +14,19 @@
         :delete-fn="deleteModel"
         :update-fn="updateModel"
       />
+
+      <UpdateModel ref="updateModelSlide" />
     </div>
   </div>
 </template>
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 import NewModel from '~/components/Model/NewModel.vue'
+import UpdateModel from '~/components/Model/UpdateModel.vue'
 import { toast } from 'vue-sonner'
+
+const updateModelSlide = ref<InstanceType<typeof UpdateModel> | null>(null)
 
 const modelStore = useModelStore()
 const user = useUserStore()
@@ -72,10 +77,10 @@ const columns: ColumnDef<unknown, string | number>[] = [
 ]
 
 function updateModel(model: LLMModel) {
-  console.log(model.owner === user.authUser.id)
+  updateModelSlide.value?.open(model)
 }
 
-function deleteModel(model: LLMModel) {
-  console.log(model)
+function deleteModel(uuid: string) {
+  modelStore.delete(uuid)
 }
 </script>

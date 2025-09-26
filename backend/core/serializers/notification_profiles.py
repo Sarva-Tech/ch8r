@@ -9,8 +9,8 @@ class NotificationProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NotificationProfile
-        fields = ['id', 'uuid', 'type', 'config', 'created_at', 'name']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'uuid', 'type', 'config', 'created_at', 'name', 'owner']
+        read_only_fields = ['id', 'created_at', 'owner']
 
     def create(self, validated_data):
         config = validated_data.pop('config', {})
