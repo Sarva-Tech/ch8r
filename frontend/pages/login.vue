@@ -5,6 +5,7 @@ import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useHttpClient } from '~/composables/useHttpClient'
 
 const config = useRuntimeConfig()
@@ -19,7 +20,10 @@ const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const openInactiveAccountDialog = ref(false)
-const dialogMessage = ref('') // <-- new
+const dialogMessage = ref('')
+const showResendOption = ref(false)
+const userEmail = ref('')
+const resendLoading = ref(false)
 
 
 const handleLogin = async () => {
@@ -30,7 +34,7 @@ const handleLogin = async () => {
   const { httpPost } = useHttpClient()
 
   try {
-    const response = await httpPost<{ token: string }>(
+    const response = await httpPost<{ token: string; user_id: number; username: string }>(
       '/login/',
       { username: email.value, password: password.value },
       false
@@ -57,18 +61,56 @@ const handleLogin = async () => {
     console.log(err, "error")
 
     if (err.status === 403) {
-      dialogMessage.value = err?.errors?.error || 'Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries'
-      openInactiveAccountDialog.value = true
+      if (err?.errors?.is_verified === false) {
+        userEmail.value = email.value
+        dialogMessage.value = err?.errors?.error || 'Your account is not verified. Please check your email for verification instructions.'
+        showResendOption.value = true
+        openInactiveAccountDialog.value = true
+      } else {
+        dialogMessage.value = err?.errors?.error || 'Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries'
+        showResendOption.value = false
+        openInactiveAccountDialog.value = true
+      }
     } else {
       const message =
-        err?.data?.non_field_errors?.[0] ||
-        err?.data?.detail ||
+        err?.errors?.non_field_errors?.[0] ||
+        err?.errors?.error ||
+        err?.errors?.detail ||
         err?.message ||
         'Login failed. Please try again.'
       toast.error(message)
     }
   } finally {
     loading.value = false
+  }
+}
+
+const handleResendVerification = async () => {
+  if (resendLoading.value) return
+  resendLoading.value = true
+
+  const { httpPost } = useHttpClient()
+
+  try {
+    const response = await httpPost<{ message: string }>(
+      '/resend-verification/',
+      { email: userEmail.value },
+      false
+    )
+
+    if (response?.message) {
+      toast.success(response.message)
+      openInactiveAccountDialog.value = false
+    }
+  } catch (err: any) {
+    const message =
+      err?.errors?.error ||
+      err?.errors?.detail ||
+      err?.message ||
+      'Failed to resend verification email. Please try again.'
+    toast.error(message)
+  } finally {
+    resendLoading.value = false
   }
 }
 
@@ -201,9 +243,36 @@ onMounted(async () => {
     <Dialog v-model:open="openInactiveAccountDialog">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Notice</DialogTitle>
+          <DialogTitle>Account Verification Required</DialogTitle>
           <DialogDescription>{{ dialogMessage }}</DialogDescription>
         </DialogHeader>
+        <DialogFooter v-if="showResendOption">
+          <div class="flex flex-col gap-2 w-full">
+            <Button
+              @click="handleResendVerification"
+              :disabled="resendLoading"
+              class="w-full"
+            >
+              <span v-if="resendLoading">Sending...</span>
+              <span v-else>Resend Verification Email</span>
+            </Button>
+            <Button
+              variant="outline"
+              @click="openInactiveAccountDialog = false"
+              class="w-full"
+            >
+              Cancel
+            </Button>
+          </div>
+        </DialogFooter>
+        <DialogFooter v-else>
+          <Button
+            @click="openInactiveAccountDialog = false"
+            class="w-full"
+          >
+            OK
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
 

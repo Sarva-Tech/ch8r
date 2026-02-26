@@ -8,6 +8,8 @@ from core.views import (
     MeView, GenerateAPIKeyView,
     IntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
 )
+from core.views.resend_verification import ResendVerificationView
+from core.views.custom_auth import CustomAuthToken
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
 from core.views.chatroom import ChatRoomDetailView
 from core.views.configure_app import ConfigureAppIntegrationView, LoadAppConfigurationView
@@ -30,8 +32,9 @@ nested_router = NestedDefaultRouter(router, r'applications', lookup='application
 nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='application-knowledge-bases')
 
 urlpatterns = [
-    path('login/', obtain_auth_token, name='api_login'),
+    path('login/', CustomAuthToken.as_view(), name='api_login'),
     path('register/', UserRegisterView.as_view(), name='api_register'),
+    path('resend-verification/', ResendVerificationView.as_view(), name='resend-verification'),
     path('applications/<uuid:application_uuid>/api-keys/', GenerateAPIKeyView.as_view(), name='generate-api-key'),
     path('applications/<uuid:application_uuid>/api-keys/<int:api_key_id>/', GenerateAPIKeyView.as_view(),
          name='delete-api-key'),

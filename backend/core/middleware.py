@@ -12,6 +12,7 @@ class AccountStatusMiddleware(MiddlewareMixin):
         '/api/forgot-password/',
         '/api/reset-password-verify/',
         '/api/reset-password/',
+        '/api/resend-verification/',
     ]
 
     def process_request(self, request):

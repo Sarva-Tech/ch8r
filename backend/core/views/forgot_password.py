@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from django.contrib.auth.models import User
 
 from core.serializers import ForgotPasswordSerializer
@@ -8,7 +8,7 @@ from core.services.encryption import generate_verification_token
 from core.tasks.email import send_verification_email_task
 
 class ForgotPasswordView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)

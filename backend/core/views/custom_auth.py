@@ -10,16 +10,23 @@ class CustomAuthToken(ObtainAuthToken):
         username = request.data.get('username')
         password = request.data.get('password')
 
+        if not username or not password:
+            return Response({'error': 'Both username/email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = None
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            return Response({'error': 'Invalid credentials.'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                user = User.objects.get(email=username)
+            except User.DoesNotExist:
+                return Response({'error': 'Invalid credentials.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not user.check_password(password):
             return Response({'error': 'Invalid credentials.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not user.is_active:
-            return Response({'error': 'Your account is inactive. Please verify your email.'},
+            return Response({'error': 'Your account is not verified. Please check your email for verification instructions or request a new verification email.', 'is_verified': False},
                             status=status.HTTP_403_FORBIDDEN)
 
         token, created = Token.objects.get_or_create(user=user)

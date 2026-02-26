@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.shortcuts import redirect
 from urllib.parse import urlencode
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
@@ -11,7 +11,7 @@ from core.services.encryption import verify_verification_token
 
 
 class ResetPasswordView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         token = request.data.get('token')
@@ -36,7 +36,7 @@ class ResetPasswordView(APIView):
 
 
 class ResetPasswordVerifyView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, token):
 
