@@ -1,7 +1,7 @@
 import json
 import logging
 
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -18,7 +18,7 @@ from core.services.encryption import verify_verification_token
 logger = logging.getLogger(__name__)
 
 class UserRegisterView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = UserRegisterSerializer(data=request.data, context={'request': request})
@@ -32,7 +32,7 @@ class UserRegisterView(APIView):
 
 
 class VerifyEmailView(APIView):
-    permission_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def get(self, request, token):
         frontend_login_url = f"{settings.FRONTEND_URL.rstrip('/')}/login"
