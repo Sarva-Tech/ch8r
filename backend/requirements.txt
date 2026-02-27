@@ -107,7 +107,7 @@ python-docx==1.2.0
 python-dotenv==1.1.1
 pytz==2025.2
 PyYAML==6.0.2
-qdrant-client==1.14.3
+qdrant-client==1.17.0
 redis==6.2.0
 regex==2024.11.6
 requests==2.32.4
@@ -128,7 +128,7 @@ tenacity==8.5.0
 threadpoolctl==3.6.0
 tokenizers==0.21.2
 tomli==2.2.1
-torch==2.7.1
+torch==2.2.2
 tqdm==4.67.1
 transformers==4.53.0
 Twisted==25.5.0
