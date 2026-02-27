@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Eye, EyeOff, LogIn } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useHttpClient } from '~/composables/useHttpClient'
 
@@ -154,90 +155,92 @@ onMounted(async () => {
   <div
     class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr from-background to-muted px-4"
   >
-    <div
-      class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card"
-    >
-      <header class="mb-6 sm:mb-8 text-center">
-        <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Welcome Back!</h1>
-        <p class="text-sm sm:text-base">
-          Sign in to continue to your dashboard
-        </p>
-      </header>
+    <div class="w-full max-w-md">
+      <Card>
+        <CardHeader class="text-center">
+          <CardTitle class="flex items-center justify-center gap-2 text-2xl">
+            <LogIn class="w-6 h-6" />
+            Welcome Back!
+          </CardTitle>
+          <CardDescription>
+            Sign in to continue to your dashboard
+          </CardDescription>
+        </CardHeader>
 
-      <form class="space-y-5 sm:space-y-6" @submit.prevent="handleLogin">
-        <div>
-          <Label for="email" class="block text-sm font-medium mb-1"
-            >Email</Label
-          >
-          <Input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            autofocus
-            class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm"
-          />
-        </div>
+        <CardContent class="space-y-6">
+          <form class="space-y-4" @submit.prevent="handleLogin">
+            <div class="space-y-2">
+              <Label for="email" class="text-sm font-medium">
+                Email
+              </Label>
+              <Input
+                id="email"
+                v-model="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                autofocus
+                class="w-full"
+              />
+            </div>
 
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <Label for="password" class="block text-sm  font-medium">Password</Label>
-            <a
-              href="/forgot-password"
-              class="text-sm text-primary font-medium hover:underline"
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <Label for="password" class="text-sm font-medium">
+                  Password
+                </Label>
+                <a
+                  href="/forgot-password"
+                  class="text-sm text-primary font-medium hover:underline"
+                >
+                  Forgot Password?
+                </a>
+              </div>
+              <div class="relative">
+                <Input
+                  id="password"
+                  v-model="password"
+                  :type="showPassword ? 'text' : 'password'"
+                  required
+                  placeholder="••••••••"
+                  class="w-full pr-10"
+                  @keyup.enter="handleLogin"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  @click="showPassword = !showPassword"
+                >
+                  <component
+                    :is="showPassword ? EyeOff : Eye"
+                    class="h-4 w-4 text-muted-foreground"
+                  />
+                </Button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              class="w-full"
+              :disabled="loading"
             >
-              Forgot Password?
+              <span v-if="loading">Signing in...</span>
+              <span v-else>Sign In</span>
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter>
+          <p class="text-center text-sm text-muted-foreground w-full">
+            Don't have an account?
+            <a href="/register" class="font-semibold underline underline-offset-4 text-primary">
+              Register here
             </a>
-          </div>
-          <div class="relative">
-            <Input
-              id="password"
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              required
-              placeholder="••••••••"
-              class="w-full ring-1 focus:ring-primary focus:border-primary rounded-sm pr-10"
-              @keyup.enter="handleLogin"
-            />
-            <button
-              type="button"
-              class="absolute right-2 top-2/4 -translate-y-1/2 focus:outline-none"
-              aria-label="Toggle password visibility"
-              tabindex="-1"
-              @click="showPassword = !showPassword"
-            >
-              <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <Button
-          type="submit"
-          class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md transition cursor-pointer"
-          :disabled="loading"
-        >
-          <span v-if="loading">Signing in...</span>
-          <span v-else>Sign In</span>
-        </Button>
-
-<!--        <Button-->
-<!--          variant="outline"-->
-<!--          class="w-full flex items-center justify-center gap-2 cursor-pointer text-sm sm:text-base"-->
-<!--          type="button"-->
-<!--          @click="() => toast.info('Google login not implemented')"-->
-<!--        >-->
-<!--          <GoogleIcon />-->
-<!--          Login with Google-->
-<!--        </Button>-->
-      </form>
-
-      <p class="mt-6 sm:mt-8 text-center text-sm">
-        Don't have an account?
-        <a href="/register" class="font-semibold underline underline-offset-4">
-          Register here
-        </a>
-      </p>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
 
     <Dialog v-model:open="openInactiveAccountDialog">
@@ -275,6 +278,5 @@ onMounted(async () => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-
   </div>
 </template>
