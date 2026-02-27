@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronUp,
   Puzzle,
+  Lock,
 } from 'lucide-vue-next'
 import SlideOver from '~/components/SlideOver.vue'
 import { ref, computed, onMounted, watch } from 'vue'
@@ -256,6 +257,24 @@ async function initNewChat() {
               >
                 <Bell class="size-4" />
                 <span>Notification Profile</span>
+              </NuxtLink>
+            </SidebarMenuButton>
+
+            <SidebarMenuButton
+              :class="[
+                'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                activeMenu === 'change-password'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : '',
+              ]"
+            >
+              <NuxtLink
+                to="/settings/change-password"
+                class="flex items-center gap-2 w-full"
+                @click="setActiveMenu('change-password')"
+              >
+                <Lock class="size-4" />
+                <span>Change Password</span>
               </NuxtLink>
             </SidebarMenuButton>
           </div>
