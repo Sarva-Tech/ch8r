@@ -2,6 +2,7 @@ from django.utils.deprecation import MiddlewareMixin
 from core.models import AccountStatus
 from rest_framework.authtoken.models import Token
 from django.http import JsonResponse
+from django.conf import settings
 
 
 class AccountStatusMiddleware(MiddlewareMixin):
@@ -16,6 +17,9 @@ class AccountStatusMiddleware(MiddlewareMixin):
     ]
 
     def process_request(self, request):
+        if not getattr(settings, 'REQUIRE_ACCOUNT_APPROVAL', False):
+            return None
+
         if any(request.path.startswith(path) for path in self.EXCLUDED_PATHS):
             return None
 
