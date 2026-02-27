@@ -3,7 +3,9 @@ import { ref, computed } from 'vue'
 import { useUserStore } from '~/stores/user'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { Label } from '@/components/ui/label'
+import { Eye, EyeOff, UserPlus } from 'lucide-vue-next'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field as FormField } from 'vee-validate'
 import {
   FormControl,
@@ -36,83 +38,104 @@ const disabled = computed(() => !meta.value.valid)
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6">
-    <div class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card">
-      <header class="mb-6 sm:mb-8 text-center">
-        <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Create Account</h1>
-        <p class="text-sm sm:text-base">Fill the form below to register</p>
-      </header>
+  <div class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr from-background to-muted px-4">
+    <div class="w-full max-w-md">
+      <Card>
+        <CardHeader class="text-center">
+          <CardTitle class="flex items-center justify-center gap-2 text-2xl">
+            <UserPlus class="w-6 h-6" />
+            Create Account
+          </CardTitle>
+          <CardDescription>
+            Fill the form below to register
+          </CardDescription>
+        </CardHeader>
 
-      <form class="space-y-4" @submit.prevent="onSubmit">
-        <FormField v-slot="{ field }" name="email">
-          <FormItem>
-            <FormLabel class="flex items-center gap-1">
-              Email <RequiredLabel />
-            </FormLabel>
-            <FormControl>
-              <Input v-bind="field" type="email" placeholder="you@example.com" autofocus />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <CardContent class="space-y-6">
+          <form class="space-y-4" @submit.prevent="onSubmit">
+            <FormField v-slot="{ field }" name="email">
+              <FormItem>
+                <FormLabel class="flex items-center gap-1">
+                  Email <RequiredLabel />
+                </FormLabel>
+                <FormControl>
+                  <Input v-bind="field" type="email" placeholder="you@example.com" autofocus class="w-full" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
-        <FormField v-slot="{ field }" name="password">
-          <FormItem class="relative">
-            <FormLabel class="flex items-center gap-1">
-              Password <RequiredLabel />
-            </FormLabel>
-            <FormControl>
-              <Input
-                v-bind="field"
-                :type="showPassword ? 'text' : 'password'"
-                placeholder="••••••••"
-                class="pr-10"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-9 focus:outline-none"
-                @click="showPassword = !showPassword"
-              >
-                <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
-              </button>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+            <FormField v-slot="{ field }" name="password">
+              <FormItem class="relative">
+                <FormLabel class="flex items-center gap-1">
+                  Password <RequiredLabel />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="field"
+                    :type="showPassword ? 'text' : 'password'"
+                    placeholder="••••••••"
+                    class="w-full pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    @click="showPassword = !showPassword"
+                  >
+                    <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
-        <FormField v-slot="{ field }" name="confirm_password">
-          <FormItem class="relative">
-            <FormLabel class="flex items-center gap-1">
-              Confirm Password <RequiredLabel />
-            </FormLabel>
-            <FormControl>
-              <Input
-                v-bind="field"
-                :type="showConfirmPassword ? 'text' : 'password'"
-                placeholder="••••••••"
-                class="pr-10"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-9 focus:outline-none"
-                @click="showConfirmPassword = !showConfirmPassword"
-              >
-                <component :is="showConfirmPassword ? Eye : EyeOff" class="w-5 h-5" />
-              </button>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+            <FormField v-slot="{ field }" name="confirm_password">
+              <FormItem class="relative">
+                <FormLabel class="flex items-center gap-1">
+                  Confirm Password <RequiredLabel />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="field"
+                    :type="showConfirmPassword ? 'text' : 'password'"
+                    placeholder="••••••••"
+                    class="w-full pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    @click="showConfirmPassword = !showConfirmPassword"
+                  >
+                    <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
-        <Button type="submit" class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md" :disabled="disabled">
-          Register
-        </Button>
-      </form>
+            <Button
+              type="submit"
+              class="w-full"
+              :disabled="disabled"
+            >
+              Create Account
+            </Button>
+          </form>
+        </CardContent>
 
-      <p class="mt-6 sm:mt-8 text-center text-sm">
-        Already have an account?
-        <a href="/login" class="font-semibold underline underline-offset-4">Login here</a>
-      </p>
+        <CardFooter>
+          <p class="text-center text-sm text-muted-foreground w-full">
+            Already have an account?
+            <a href="/login" class="font-semibold underline underline-offset-4 text-primary">
+              Sign in here
+            </a>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   </div>
 </template>
