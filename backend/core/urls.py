@@ -8,6 +8,7 @@ from core.views import (
     MeView, GenerateAPIKeyView,
     IntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
 )
+from core.views.change_password import ChangePasswordView
 from core.views.resend_verification import ResendVerificationView
 from core.views.custom_auth import CustomAuthToken
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
@@ -94,4 +95,5 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot-password'),
     path('reset-password/', ResetPasswordView.as_view(), name='reset-password'),  # remove <token>
     path('reset-password/<str:token>/', ResetPasswordView.as_view(), name='reset-password'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
 ]
