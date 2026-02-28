@@ -1,3 +1,4 @@
+from .base_model import BaseModel
 from .application import Application
 from .chatroom import ChatRoom
 from .chatroom_participant import ChatroomParticipant
@@ -13,3 +14,4 @@ from .llm_model import LLMModel
 from .app_model import AppModel
 from .app_integration import AppIntegration
 from .account_status import AccountStatus
+from .ai_provider import AIProvider

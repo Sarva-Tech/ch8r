@@ -144,3 +144,8 @@ wcwidth==0.2.13
 websockets==15.0.1
 zope.interface==7.2
 zstandard==0.23.0
+pytest==8.3.4
+pytest-django==4.9.0
+pytest-cov==6.0.0
+factory-boy==3.3.1
+django-factory-boy==1.0.0

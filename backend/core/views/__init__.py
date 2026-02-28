@@ -15,3 +15,4 @@ from .custom_auth import CustomAuthToken
 from .app_model import ConfigureAppModelsView
 from .reset_password import ResetPasswordView, ResetPasswordVerifyView
 from .forgot_password import ForgotPasswordView
+from .ai_provider import AIProviderViewSet
