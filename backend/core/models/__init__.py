@@ -15,3 +15,4 @@ from .app_model import AppModel
 from .app_integration import AppIntegration
 from .account_status import AccountStatus
 from .ai_provider import AIProvider
+from .app_ai_provider import AppAIProvider

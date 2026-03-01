@@ -23,6 +23,7 @@ from core.views.app_model import ConfigureAppModelsView
 from core.views.forgot_password import ForgotPasswordView
 from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
 from core.views.ai_provider import AIProviderViewSet
+from core.views.app_ai_provider import AppAIProviderViewSet
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
@@ -33,6 +34,7 @@ router.register(r'integrations', IntegrationViewSet, basename='integration'),
 
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')
 nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='application-knowledge-bases')
+nested_router.register(r'ai-providers', AppAIProviderViewSet, basename='application-ai-providers')
 
 urlpatterns = [
     path('login/', CustomAuthToken.as_view(), name='api_login'),
