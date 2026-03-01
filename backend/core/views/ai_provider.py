@@ -6,6 +6,7 @@ from core.models import AIProvider
 
 class AIProviderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'uuid'
     http_method_names = ['get', 'post', 'put','patch', 'delete']
 
     queryset = AIProvider.objects.all()

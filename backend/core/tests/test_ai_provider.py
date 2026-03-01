@@ -95,7 +95,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         self.client.force_authenticate(user=user_a)
 
-        detail_url = f'/api/ai-providers/{provider_b.id}/'
+        detail_url = f'/api/ai-providers/{provider_b.uuid}/'
         response = self.client.get(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -109,7 +109,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         self.client.force_authenticate(user=user_a)
 
-        detail_url = f'/api/ai-providers/{provider_b.id}/'
+        detail_url = f'/api/ai-providers/{provider_b.uuid}/'
         update_data = {'name': 'Hacked Name'}
         response = self.client.patch(detail_url, update_data, format='json')
 
@@ -124,7 +124,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         self.client.force_authenticate(user=user_a)
 
-        detail_url = f'/api/ai-providers/{provider_b.id}/'
+        detail_url = f'/api/ai-providers/{provider_b.uuid}/'
         response = self.client.delete(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -163,7 +163,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         provider = AIProviderFactory(creator=user, name="Original Name")
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name'}
         response = self.client.patch(detail_url, update_data, format='json')
 
@@ -185,7 +185,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         provider = AIProviderFactory(creator=user, provider='openai', name="Original Name")
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {
             'name': 'Updated Name',
             'provider': 'anthropic'
@@ -205,7 +205,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         provider = AIProviderFactory(creator=user, name="Provider to Delete")
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         response = self.client.delete(detail_url)
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -221,7 +221,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         provider = AIProviderFactory(creator=user, name="Test Provider")
         original_api_key = provider.provider_api_key
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name'}
         response = self.client.patch(detail_url, update_data, format='json')
 
@@ -240,7 +240,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         original_api_key = provider.provider_api_key
         new_api_key = 'new-api-key-12345'
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name', 'provider_api_key': new_api_key}
         response = self.client.patch(detail_url, update_data, format='json')
 
@@ -259,7 +259,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         provider = AIProviderFactory(creator=user, name="Test Provider")
         original_api_key = provider.provider_api_key
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name', 'provider_api_key': ''}
         response = self.client.patch(detail_url, update_data, format='json')
 
@@ -277,7 +277,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         provider = AIProviderFactory(creator=user, name="Test Provider")
         original_api_key = provider.provider_api_key
 
-        detail_url = f'/api/ai-providers/{provider.id}/'
+        detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name', 'provider_api_key': '   '}
         response = self.client.patch(detail_url, update_data, format='json')
 
