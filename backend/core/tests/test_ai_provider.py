@@ -174,3 +174,104 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         with self.assertRaises(AIProvider.DoesNotExist):
             AIProvider.objects.get(id=provider.id)
+
+    def test_update_without_api_key_does_not_change_api_key(self):
+        """Test that update request without specifying provider api key does not update provider api key."""
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+
+        provider = AIProviderFactory(creator=user, name="Test Provider")
+        original_api_key = provider.provider_api_key
+
+        detail_url = f'/api/ai-providers/{provider.id}/'
+        update_data = {'name': 'Updated Name'}
+        response = self.client.patch(detail_url, update_data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        provider.refresh_from_db()
+        self.assertEqual(provider.name, 'Updated Name')
+        self.assertEqual(provider.provider_api_key, original_api_key)
+
+    def test_update_with_api_key_changes_api_key(self):
+        """Test that update request with provider api key updates the provider api key."""
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+
+        provider = AIProviderFactory(creator=user, name="Test Provider")
+        original_api_key = provider.provider_api_key
+        new_api_key = 'new-api-key-12345'
+
+        detail_url = f'/api/ai-providers/{provider.id}/'
+        update_data = {'name': 'Updated Name', 'provider_api_key': new_api_key}
+        response = self.client.patch(detail_url, update_data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        provider.refresh_from_db()
+        self.assertEqual(provider.name, 'Updated Name')
+        self.assertEqual(provider.provider_api_key, new_api_key)
+        self.assertNotEqual(provider.provider_api_key, original_api_key)
+
+    def test_update_with_empty_api_key_does_not_change_api_key(self):
+        """Test that update request with empty string provider api key does not update the provider api key."""
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+
+        provider = AIProviderFactory(creator=user, name="Test Provider")
+        original_api_key = provider.provider_api_key
+
+        detail_url = f'/api/ai-providers/{provider.id}/'
+        update_data = {'name': 'Updated Name', 'provider_api_key': ''}
+        response = self.client.patch(detail_url, update_data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        provider.refresh_from_db()
+        self.assertEqual(provider.name, 'Updated Name')
+        self.assertEqual(provider.provider_api_key, original_api_key)
+
+    def test_update_with_whitespace_api_key_does_not_change_api_key(self):
+        """Test that update request with whitespace-only provider api key does not update the provider api key."""
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+
+        provider = AIProviderFactory(creator=user, name="Test Provider")
+        original_api_key = provider.provider_api_key
+
+        detail_url = f'/api/ai-providers/{provider.id}/'
+        update_data = {'name': 'Updated Name', 'provider_api_key': '   '}
+        response = self.client.patch(detail_url, update_data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        provider.refresh_from_db()
+        self.assertEqual(provider.name, 'Updated Name')
+        self.assertEqual(provider.provider_api_key, original_api_key)
+
+    def test_api_key_is_encrypted_in_database(self):
+        """Test that provider_api_key is encrypted when stored in the database."""
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+
+        api_key = 'test-api-key-12345'
+        create_data = {
+            'name': 'Test Provider',
+            'provider': 'openai',
+            'base_url': 'https://api.openai.com/v1',
+            'provider_api_key': api_key
+        }
+
+        response = self.client.post(self.list_url, create_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        provider = AIProvider.objects.get(id=response.json()['id'])
+
+        self.assertEqual(provider.provider_api_key, api_key)
+
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT provider_api_key FROM core_aiprovider WHERE id = %s", [provider.id])
+            raw_db_value = cursor.fetchone()[0]
+            self.assertNotEqual(raw_db_value, api_key)
+            self.assertTrue(raw_db_value.startswith('gAAAAA'))  # Fernet encrypted strings start with this
