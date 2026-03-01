@@ -22,9 +22,11 @@ from core.views.notification_profile import NotificationProfileViewSet
 from core.views.app_model import ConfigureAppModelsView
 from core.views.forgot_password import ForgotPasswordView
 from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
+from core.views.ai_provider import AIProviderViewSet
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
+router.register(r'ai-providers', AIProviderViewSet, basename='ai-provider')
 router.register(r'notification-profiles', NotificationProfileViewSet, basename='notificationprofile')
 router.register(r'models', LLMModelViewSet, basename='model'),
 router.register(r'integrations', IntegrationViewSet, basename='integration'),

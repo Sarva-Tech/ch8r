@@ -1,10 +1,8 @@
 from django.db import models
 from core.models import Application, Integration
-import uuid
 
 class AppIntegration(models.Model):
     id = models.AutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     application = models.ForeignKey(
         Application, on_delete=models.CASCADE, related_name="app_integrations"
     )

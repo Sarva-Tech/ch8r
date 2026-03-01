@@ -11,33 +11,39 @@ from qdrant_client.http.models import PayloadSchemaType
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-connect_to_local = os.getenv("CONNECT_TO_LOCAL_VECTOR_DB", "false").lower() == "true"
-
-if connect_to_local:
-    print('Connecting to local vector db')
-    qdrant = QdrantClient(
-        host=os.getenv("QDRANT_LOCAL_HOST", "localhost"),
-        port=int(os.getenv("QDRANT_LOCAL_PORT", "6333")),
-        prefer_grpc=True,
-    )
+if os.getenv("DISABLE_VECTOR_DB", "false").lower() == "true":
+    qdrant = None
 else:
-    print('Connecting to remote vector db')
+    connect_to_local = os.getenv("CONNECT_TO_LOCAL_VECTOR_DB", "false").lower() == "true"
 
-    cloud_host = os.getenv("QDRANT_CLOUD_HOST")
-    cloud_port = os.getenv("QDRANT_CLOUD_PORT", "6333")
-    api_key = os.getenv("QDRANT_CLOUD_API_KEY")
+    if connect_to_local:
+        print('Connecting to local vector db')
+        qdrant = QdrantClient(
+            host=os.getenv("QDRANT_LOCAL_HOST", "localhost"),
+            port=int(os.getenv("QDRANT_LOCAL_PORT", "6333")),
+            prefer_grpc=True,
+        )
+    else:
+        print('Connecting to remote vector db')
 
-    full_url = f"{cloud_host}:{cloud_port}"
+        cloud_host = os.getenv("QDRANT_CLOUD_HOST")
+        cloud_port = os.getenv("QDRANT_CLOUD_PORT", "6333")
+        api_key = os.getenv("QDRANT_CLOUD_API_KEY")
 
-    qdrant = QdrantClient(
-        url=full_url,
-        api_key=api_key,
-        prefer_grpc=False,
-    )
+        full_url = f"{cloud_host}:{cloud_port}"
+
+        qdrant = QdrantClient(
+            url=full_url,
+            api_key=api_key,
+            prefer_grpc=False,
+        )
 
 COLLECTION_NAME = "advq"
 
 def init_qdrant(retries=3, delay=2):
+    if qdrant is None:
+        return
+
     for attempt in range(retries):
         try:
             if not qdrant.collection_exists(COLLECTION_NAME):

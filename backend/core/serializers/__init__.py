@@ -12,3 +12,4 @@ from .configure_app import LoadAppConfigurationSerializer, ConfigureAppIntegrati
 from .app_integration import AppIntegrationViewSerializer
 from .app_model import AppModelViewSerializer, ConfigureAppModelsSerializer
 from .password import ForgotPasswordSerializer, ResetPasswordSerializer
+from .ai_provider import AIProviderSerializer
