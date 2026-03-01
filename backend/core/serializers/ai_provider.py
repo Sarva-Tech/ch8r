@@ -19,6 +19,9 @@ class AIProviderCreateSerializer(serializers.ModelSerializer):
             self.fields['provider_api_key'].allow_blank = True
             self.fields.pop('provider', None)
 
+    def to_representation(self, instance):
+        return AIProviderSerializer(instance, context=self.context).data
+
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user
         return super().create(validated_data)
