@@ -43,6 +43,44 @@ class TestAIProviderAPI(BaseAPITestCase):
         for field in expected_fields:
             self.assertIn(field, provider_data)
 
+    def test_list_ai_providers_includes_builtin_and_user_owned(self):
+        """Test that authenticated users can list their AI providers plus builtin providers."""
+        user = UserFactory()
+        self.client.force_authenticate(user=user)
+
+        user_provider1 = AIProviderFactory(creator=user, name="User OpenAI Provider", is_builtin=False)
+        user_provider2 = AIProviderFactory(creator=user, name="User Anthropic Provider", is_builtin=False)
+
+        builtin_provider1 = AIProviderFactory(creator=user, name="Builtin OpenAI", is_builtin=True)
+        builtin_provider2 = AIProviderFactory(creator=user, name="Builtin Claude", is_builtin=True)
+
+        other_user = UserFactory()
+        other_user_provider = AIProviderFactory(creator=other_user, name="Other User Provider", is_builtin=False)
+
+        response = self.client.get(self.list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertEqual(len(data), 4)
+
+        provider_names = [provider['name'] for provider in data]
+        self.assertIn("User OpenAI Provider", provider_names)
+        self.assertIn("User Anthropic Provider", provider_names)
+        self.assertIn("Builtin OpenAI", provider_names)
+        self.assertIn("Builtin Claude", provider_names)
+        self.assertNotIn("Other User Provider", provider_names)
+
+        builtin_providers = [p for p in data if p['is_builtin']]
+        user_owned_providers = [p for p in data if not p['is_builtin']]
+
+        self.assertEqual(len(builtin_providers), 2)
+        self.assertEqual(len(user_owned_providers), 2)
+
+        builtin_names = [p['name'] for p in builtin_providers]
+        self.assertIn("Builtin OpenAI", builtin_names)
+        self.assertIn("Builtin Claude", builtin_names)
+
     def test_list_ai_providers_unauthenticated(self):
         """Test that unauthenticated users cannot list AI providers."""
         response = self.client.get(self.list_url)

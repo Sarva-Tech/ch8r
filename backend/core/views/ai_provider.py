@@ -1,5 +1,6 @@
 from rest_framework import status, viewsets, permissions
 from rest_framework.response import Response
+from django.db import models
 from core.serializers.ai_provider import AIProviderCreateSerializer, AIProviderSerializer
 from core.models import AIProvider
 
@@ -16,7 +17,9 @@ class AIProviderViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        return AIProvider.objects.filter(creator=user)
+        return AIProvider.objects.filter(
+            models.Q(creator=user) | models.Q(is_builtin=True)
+        )
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user)
