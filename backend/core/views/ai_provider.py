@@ -1,6 +1,6 @@
 from rest_framework import status, viewsets, permissions
 from rest_framework.response import Response
-from core.serializers.ai_provider import AIProviderCreateSerializer, AIProviderSerializer, AIProviderUpdateSerializer
+from core.serializers.ai_provider import AIProviderCreateSerializer, AIProviderSerializer
 from core.models import AIProvider
 
 class AIProviderViewSet(viewsets.ModelViewSet):
@@ -10,10 +10,8 @@ class AIProviderViewSet(viewsets.ModelViewSet):
     queryset = AIProvider.objects.all()
 
     def get_serializer_class(self):
-        if self.action == 'create':
+        if self.action in ['create', 'update', 'partial_update']:
             return AIProviderCreateSerializer
-        elif self.action in ['update', 'partial_update']:
-            return AIProviderUpdateSerializer
         return AIProviderSerializer
 
     def get_queryset(self):
