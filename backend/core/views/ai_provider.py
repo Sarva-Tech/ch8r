@@ -25,8 +25,53 @@ class AIProviderViewSet(viewsets.ModelViewSet):
             models.Q(creator=user) | models.Q(is_builtin=True)
         )
 
-    def perform_create(self, serializer):
-        serializer.save(creator=self.request.user)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        validated_data = serializer.validated_data
+        
+        from core.services.factories.ai_provider_factory import AIProviderFactory
+        
+        factory = AIProviderFactory()
+        try:
+            is_valid, models = factory.validate_provider(
+                provider_type=validated_data['provider'],
+                api_key=validated_data['provider_api_key'],
+                base_url=validated_data.get('base_url')
+            )
+            
+            if not is_valid:
+                return Response(
+                    {
+                        'error': 'Failed to validate AI provider connection',
+                        'details': 'Unable to connect to the AI provider with the provided credentials'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            ai_provider = serializer.save()
+            
+            response_serializer = AIProviderSerializer(ai_provider)
+            return Response(
+                {
+                    'ai_provider': response_serializer.data,
+                    'validation': {
+                        'is_valid': True,
+                        'models': models
+                    }
+                },
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return Response(
+                {
+                    'error': 'Failed to validate AI provider connection',
+                    'details': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)

@@ -1,5 +1,4 @@
-from rest_framework import viewsets, status, permissions
-from rest_framework.response import Response
+from rest_framework import viewsets, permissions
 from django.shortcuts import get_object_or_404
 
 from core.models.app_ai_provider import AppAIProvider

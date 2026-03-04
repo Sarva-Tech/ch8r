@@ -10,8 +10,8 @@ class AIProviderSerializer(serializers.ModelSerializer):
 class AIProviderCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = AIProvider
-        fields = ['name', 'provider', 'base_url', 'provider_api_key', 'creator']
-        read_only_fields = ['creator']
+        fields = ['uuid', 'name', 'provider', 'base_url', 'provider_api_key', 'creator']
+        read_only_fields = ['uuid', 'creator']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

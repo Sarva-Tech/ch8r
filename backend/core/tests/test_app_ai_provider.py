@@ -19,6 +19,9 @@ class AppAIProviderTest(APITestCase):
             creator=self.user
         )
 
+    def tearDown(self):
+        AppAIProvider.objects.all().delete()
+
     def test_create_app_ai_provider(self):
         self.client.force_authenticate(user=self.user)
         url = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
@@ -29,7 +32,6 @@ class AppAIProviderTest(APITestCase):
             'external_model_id': 'gpt-4'
         }
         response = self.client.post(url, data)
-        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['context'], 'widget')
         self.assertEqual(response.data['capability'], 'text')
@@ -50,8 +52,8 @@ class AppAIProviderTest(APITestCase):
         url = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['id'], config.id)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['id'], config.id)
 
     def test_filter_by_context(self):
         AppAIProvider.objects.create(
@@ -71,8 +73,8 @@ class AppAIProviderTest(APITestCase):
         url = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
         response = self.client.get(url, {'context': 'widget'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['context'], 'widget')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['context'], 'widget')
 
     def test_filter_by_capability(self):
         AppAIProvider.objects.create(
@@ -92,8 +94,8 @@ class AppAIProviderTest(APITestCase):
         url = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
         response = self.client.get(url, {'capability': 'text'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['capability'], 'text')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['capability'], 'text')
 
     def test_update_app_ai_provider(self):
         config = AppAIProvider.objects.create(

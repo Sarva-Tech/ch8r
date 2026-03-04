@@ -6,7 +6,16 @@
     <template #trigger>
       <C8Button label="Create New AI Provider" />
     </template>
+
     <form class="space-y-5" @submit.prevent="createNewAIProvider">
+      <Alert v-if="formError" variant="destructive">
+        <AlertCircleIcon />
+        <AlertTitle>{{ formError.error }}</AlertTitle>
+        <AlertDescription v-if="formError.details">
+          <p> {{ formError.details }} </p>
+        </AlertDescription>
+      </Alert>
+
       <FormField v-slot="{ componentField }" name="provider">
         <FormItem>
           <FormLabel class="flex items-center">
@@ -111,11 +120,16 @@ import { z } from 'zod'
 import { useForm } from 'vee-validate'
 import { setBackendErrors } from '~/lib/utils'
 import { useUniqueName } from '~/composables/useUniqueName'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles, AlertCircleIcon } from 'lucide-vue-next'
 
 const newAIProviderSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const AIProviderStore = useAIProviderStore()
 const { generateShortUniqueName } = useUniqueName()
+
+const formError = ref<{
+  error?: string
+  details?: string
+} | null>(null)
 
 const providerOptions = computed(() =>
   AIProviderStore.supportedAIProviders.map(p => ({ label: p.label, value: p.id, baseUrl: p.base_url }))
@@ -146,7 +160,6 @@ onMounted(async () => {
     const firstProvider = AIProviderStore.supportedAIProviders[0]
     setFieldValue('provider', firstProvider.id)
     setFieldValue('base_url', firstProvider.base_url)
-    // Auto-generate unique connection name
     const uniqueName = generateShortUniqueName('Connection')
     setFieldValue('name', uniqueName)
   }
@@ -167,14 +180,30 @@ const generateUniqueConnectionName = () => {
 }
 
 const createNewAIProvider = form.handleSubmit(async (values) => {
+  formError.value = null
+
   try {
     await AIProviderStore.create(values)
     newAIProviderSlideOver.value?.closeSlide()
     toast.success('AI provider created')
   } catch (error: unknown) {
-    const err = error as { errors?: Record<string, string[] | string> }
-    if (err.errors) {
-      setBackendErrors(form, err.errors)
+    const err = error as {
+      errors?: Record<string, string[] | string> | { error?: string; details?: string }
+    }
+
+    if (err.errors && typeof err.errors === 'object' && 'error' in err.errors) {
+      const errorObj = err.errors as { error?: string; details?: string }
+      formError.value = {
+        error: errorObj.error,
+        details: errorObj.details
+      }
+    } else if (err.errors && typeof err.errors === 'object') {
+      setBackendErrors(form, err.errors as Record<string, string[] | string>)
+    } else {
+      formError.value = {
+        error: 'Unexpected Error',
+        details: 'An unexpected error occurred while creating the AI provider'
+      }
     }
   }
 })

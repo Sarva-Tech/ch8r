@@ -13,3 +13,6 @@ class AIProvider(BaseModel):
     is_builtin = models.BooleanField(default=False, blank=True)
 
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ['created_at']

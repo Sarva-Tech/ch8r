@@ -3,3 +3,8 @@ from .file_extractors import extract_text_from_file
 from .notifications import notify_users
 from .encryption import encrypt, decrypt, generate_verification_token, verify_verification_token
 from .private_key_encryption import decrypt_with_private_key
+from .contracts.ai_provider_contract import AIProviderContract
+from .factories.ai_provider_factory import AIProviderFactory
+from .providers.ai.gemini_provider import GeminiProvider
+from .providers.ai.custom_provider import CustomProvider
+from .ai_service import AIService

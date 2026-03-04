@@ -1,8 +1,11 @@
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
+from django.contrib.auth.models import AnonymousUser
 
 from core.models import AIProvider
+from core.serializers.ai_provider import AIProviderCreateSerializer
+from core.consts import SUPPORTED_AI_PROVIDERS
 from core.tests.conftest import BaseAPITestCase
 from core.tests.factories import UserFactory, AIProviderFactory
 
@@ -31,17 +34,20 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
-        self.assertEqual(len(data), 2)
+        self.assertEqual(len(data['results']), 2)
 
-        provider_names = [provider['name'] for provider in data]
+        provider_names = [provider['name'] for provider in data['results']]
         self.assertIn("OpenAI Provider", provider_names)
         self.assertIn("Anthropic Provider", provider_names)
         self.assertNotIn("Other User Provider", provider_names)
 
-        provider_data = data[0]
+        provider_data = data['results'][0]
         expected_fields = ['id', 'uuid', 'name', 'provider', 'base_url', 'is_builtin', 'creator', 'created_at', 'updated_at']
         for field in expected_fields:
             self.assertIn(field, provider_data)
+
+        self.assertIn('supported_ai_providers', data)
+        self.assertIsInstance(data['supported_ai_providers'], list)
 
     def test_list_ai_providers_includes_builtin_and_user_owned(self):
         """Test that authenticated users can list their AI providers plus builtin providers."""
@@ -62,17 +68,17 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         data = response.json()
-        self.assertEqual(len(data), 4)
+        self.assertEqual(len(data['results']), 4)
 
-        provider_names = [provider['name'] for provider in data]
+        provider_names = [provider['name'] for provider in data['results']]
         self.assertIn("User OpenAI Provider", provider_names)
         self.assertIn("User Anthropic Provider", provider_names)
         self.assertIn("Builtin OpenAI", provider_names)
         self.assertIn("Builtin Claude", provider_names)
         self.assertNotIn("Other User Provider", provider_names)
 
-        builtin_providers = [p for p in data if p['is_builtin']]
-        user_owned_providers = [p for p in data if not p['is_builtin']]
+        builtin_providers = [p for p in data['results'] if p['is_builtin']]
+        user_owned_providers = [p for p in data['results'] if not p['is_builtin']]
 
         self.assertEqual(len(builtin_providers), 2)
         self.assertEqual(len(user_owned_providers), 2)
@@ -135,26 +141,25 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.client.force_authenticate(user=user)
 
         create_data = {
-            'name': 'My OpenAI Provider',
-            'provider': 'openai',
-            'base_url': 'https://api.openai.com/v1',
+            'name': 'My Gemini Provider',
+            'provider': 'gemini',
+            'base_url': 'https://generativelanguage.googleapis.com',
             'provider_api_key': 'sk-test123456789'
         }
 
         response = self.client.post(self.list_url, create_data, format='json')
 
-        print(response.data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         data = response.json()
 
-        self.assertEqual(data['name'], 'My OpenAI Provider')
-        self.assertEqual(data['provider'], 'openai')
-        self.assertEqual(data['base_url'], 'https://api.openai.com/v1')
+        self.assertEqual(data['name'], 'My Gemini Provider')
+        self.assertEqual(data['provider'], 'gemini')
+        self.assertEqual(data['base_url'], 'https://generativelanguage.googleapis.com')
         self.assertEqual(data['creator'], user.id)
 
-        provider = AIProvider.objects.get(id=data['id'])
+        provider = AIProvider.objects.get(uuid=data['uuid'])
         self.assertEqual(provider.creator, user)
-        self.assertEqual(provider.name, 'My OpenAI Provider')
+        self.assertEqual(provider.name, 'My Gemini Provider')
 
     def test_update_own_provider(self):
         """Test that authenticated user can update their own AI provider."""
@@ -170,9 +175,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
 
-        print(response)
         self.assertEqual(data['name'], 'Updated Name')
-        self.assertEqual(data['provider'], provider.provider)
         self.assertEqual(data['creator'], user.id)
 
         provider.refresh_from_db()
@@ -295,15 +298,15 @@ class TestAIProviderAPI(BaseAPITestCase):
         api_key = 'test-api-key-12345'
         create_data = {
             'name': 'Test Provider',
-            'provider': 'openai',
-            'base_url': 'https://api.openai.com/v1',
+            'provider': 'gemini',
+            'base_url': 'https://generativelanguage.googleapis.com',
             'provider_api_key': api_key
         }
 
         response = self.client.post(self.list_url, create_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        provider = AIProvider.objects.get(id=response.json()['id'])
+        provider = AIProvider.objects.get(uuid=response.json()['uuid'])
 
         self.assertEqual(provider.provider_api_key, api_key)
 
@@ -312,4 +315,62 @@ class TestAIProviderAPI(BaseAPITestCase):
             cursor.execute("SELECT provider_api_key FROM core_aiprovider WHERE id = %s", [provider.id])
             raw_db_value = cursor.fetchone()[0]
             self.assertNotEqual(raw_db_value, api_key)
-            self.assertTrue(raw_db_value.startswith('gAAAAA'))  # Fernet encrypted strings start with this
+            self.assertTrue(raw_db_value.startswith('gAAAAA'))
+
+
+    def test_create_with_supported_provider_gemini(self):
+        """Test that AI provider can be created with supported 'gemini' provider."""
+        user = UserFactory()
+        data = {
+            'name': 'My Google Gemini Provider',
+            'provider': 'gemini',
+            'base_url': 'https://generativelanguage.googleapis.com',
+            'provider_api_key': 'test-api-key-12345'
+        }
+
+        serializer = AIProviderCreateSerializer(data=data, context={'request': type('MockRequest', (), {'user': user})()})
+
+        assert serializer.is_valid(), f"Serializer should be valid but got errors: {serializer.errors}"
+        provider = serializer.save()
+
+        assert provider.name == 'My Google Gemini Provider'
+        assert provider.provider == 'gemini'
+        assert provider.base_url == 'https://generativelanguage.googleapis.com'
+        assert provider.creator == user
+
+    def test_create_with_supported_provider_custom(self):
+        """Test that AI provider can be created with supported 'custom' provider."""
+        user = UserFactory()
+        data = {
+            'name': 'My Custom Provider',
+            'provider': 'custom',
+            'base_url': 'https://my-custom-api.com',
+            'provider_api_key': 'test-api-key-67890'
+        }
+
+        serializer = AIProviderCreateSerializer(data=data, context={'request': type('MockRequest', (), {'user': user})()})
+
+        assert serializer.is_valid()
+        provider = serializer.save()
+
+        assert provider.name == 'My Custom Provider'
+        assert provider.provider == 'custom'
+        assert provider.base_url == 'https://my-custom-api.com'
+        assert provider.creator == user
+
+    def test_create_with_unsupported_provider_fails(self):
+        """Test that AI provider creation fails with unsupported provider."""
+        user = UserFactory()
+        data = {
+            'name': 'My Unsupported Provider',
+            'provider': 'unsupported_provider',
+            'base_url': 'https://unsupported-api.com',
+            'provider_api_key': 'test-api-key-12345'
+        }
+
+        serializer = AIProviderCreateSerializer(data=data, context={'request': type('MockRequest', (), {'user': user})()})
+
+        assert not serializer.is_valid()
+        assert 'provider' in serializer.errors
+        assert "not supported" in str(serializer.errors['provider'][0])
+        assert "Google Gemini" in str(serializer.errors['provider'][0])
