@@ -138,6 +138,7 @@ const schema = z.object({
   name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
   base_url: z
     .string()
+    .url()
     .nonempty({ message: 'Required' }),
   provider: z.string().nonempty({ message: 'Required' }),
   provider_api_key: z.string().nonempty({ message: 'Required' }),
@@ -149,7 +150,7 @@ const form = useForm({
     name: '',
     base_url: '',
     provider_api_key: '',
-    provider: ''
+    provider: '',
   }
 })
 const { isSubmitting, setFieldValue } = form

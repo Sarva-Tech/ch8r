@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class AIProviderContract(ABC):
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
+    def __init__(self, api_key: str, config: Optional[Dict[str, Any]] = None):
         self.api_key = api_key
-        self.base_url = base_url
+        self.config = config or {}
 
     @abstractmethod
     def generate_content(self, model: str, contents: str, **kwargs) -> str:

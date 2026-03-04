@@ -1,7 +1,6 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 from google import genai
 from ...contracts.ai_provider_contract import AIProviderContract
-
 
 class GeminiProvider(AIProviderContract):
     SUPPORTED_MODELS = [
@@ -11,8 +10,8 @@ class GeminiProvider(AIProviderContract):
         'gemini-pro-vision'
     ]
     
-    def __init__(self, api_key: str, base_url: Optional[str] = None):
-        super().__init__(api_key, base_url)
+    def __init__(self, api_key: str, config: Optional[Dict[str, Any]] = None):
+        super().__init__(api_key, config)
         
         try:
             self.client = genai.Client(api_key=api_key)

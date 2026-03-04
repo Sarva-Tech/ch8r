@@ -35,10 +35,20 @@ class AIProviderViewSet(viewsets.ModelViewSet):
         
         factory = AIProviderFactory()
         try:
+            main_fields = ['name', 'provider', 'provider_api_key']
+            config = {}
+            
+            for field, value in validated_data.items():
+                if field not in main_fields:
+                    if field == 'timeout':
+                        config[field] = int(value) if value is not None else None
+                    else:
+                        config[field] = str(value).strip() if value is not None else ''
+            
             is_valid, models = factory.validate_provider(
                 provider_type=validated_data['provider'],
                 api_key=validated_data['provider_api_key'],
-                base_url=validated_data.get('base_url')
+                config=config
             )
             
             if not is_valid:

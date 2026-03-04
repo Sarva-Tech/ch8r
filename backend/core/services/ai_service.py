@@ -1,5 +1,4 @@
-from typing import Optional, Any, Dict
-from django.db.models import Q
+from typing import Optional, Any
 
 from core.models import Application, AppAIProvider
 from .factories.ai_provider_factory import AIProviderFactory
@@ -37,7 +36,7 @@ class AIService:
             provider_instance = self.provider_factory.create_provider(
                 provider_type=ai_provider.provider,
                 api_key=ai_provider.provider_api_key,
-                base_url=ai_provider.base_url
+                config=ai_provider.metadata or {}
             )
 
             return provider_instance

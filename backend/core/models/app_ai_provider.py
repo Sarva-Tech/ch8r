@@ -21,7 +21,8 @@ class AppAIProvider(models.Model):
     capability = models.CharField(max_length=50, default='text')
     priority = models.PositiveIntegerField(default=100)
     external_model_id = models.CharField(max_length=255, blank=True, null=True)
-
+    metadata = models.JSONField(blank=True, null=True)
+    
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
