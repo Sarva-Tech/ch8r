@@ -31,10 +31,10 @@ import {
 import { computed } from 'vue'
 
 const props = defineProps<{
-  modelValue: { label: string; value: string | number } | null
+  modelValue?: string | null
   label?: string
   placeholder?: string
-  options: { label: string; value: string | number }[]
+  options: { label: string; value: string | number; logo?: string }[]
   disabled?: boolean
   containerClass?: string
   triggerClass?: string
@@ -43,10 +43,6 @@ const props = defineProps<{
 const emit = defineEmits(['update:modelValue'])
 
 const internalValue = computed({
-  get: () => props.modelValue?.value ?? null,
-  set: (val) => {
-    const option = props.options.find((opt) => opt.value === val) || null
-    emit('update:modelValue', option)
-  },
-})
-</script>
+  get: () => props.modelValue ?? null,
+  set: (val) => emit('update:modelValue', val),
+})</script>

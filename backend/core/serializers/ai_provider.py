@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from core.models.ai_provider import AIProvider
+from core.consts import SUPPORTED_AI_PROVIDERS
 
 class AIProviderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,8 +20,14 @@ class AIProviderCreateSerializer(serializers.ModelSerializer):
             self.fields['provider_api_key'].allow_blank = True
             self.fields.pop('provider', None)
 
-    def to_representation(self, instance):
-        return AIProviderSerializer(instance, context=self.context).data
+    def validate_provider(self, value):
+        supported_provider_ids = [p['id'] for p in SUPPORTED_AI_PROVIDERS]
+        if value not in supported_provider_ids:
+            supported_labels = [p['label'] for p in SUPPORTED_AI_PROVIDERS]
+            raise serializers.ValidationError(
+                f"Provider '{value}' is not supported. Supported providers are: {', '.join(supported_labels)}"
+            )
+        return value
 
     def create(self, validated_data):
         validated_data['creator'] = self.context['request'].user

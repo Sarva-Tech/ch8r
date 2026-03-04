@@ -6,3 +6,16 @@ AI_ROLE_HUMAN_AGENT="assistant"
 AI_ROLE_USER="user"
 AI_ROLE_SYSTEM="system"
 AI_ROLE_UNKNOWN="unknown"
+
+SUPPORTED_AI_PROVIDERS = [
+    {
+        'id': 'gemini',
+        'label': 'Google Gemini',
+        'base_url': 'https://generativelanguage.googleapis.com'
+    },
+    {
+        'id': 'custom',
+        'label': 'Custom Provider',
+        'base_url': ''
+    }
+]

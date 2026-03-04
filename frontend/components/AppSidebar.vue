@@ -215,7 +215,7 @@ async function initNewChat() {
               ]"
             >
               <NuxtLink
-                to="/settings/models"
+                to="/settings/ai-providers"
                 class="flex items-center gap-2 w-full"
                 @click="setActiveMenu('models')"
               >

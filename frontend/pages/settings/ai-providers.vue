@@ -3,7 +3,7 @@
     <div class="w-full space-y-4">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
-          <NewModel />
+          <NewAIProvider />
         </div>
       </div>
 
@@ -15,20 +15,20 @@
         :update-fn="updateModel"
       />
 
-      <UpdateModel ref="updateModelSlide" />
+      <UpdateAIProvider ref="updateModelSlide" />
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
-import NewModel from '~/components/Model/NewModel.vue'
-import UpdateModel from '~/components/Model/UpdateModel.vue'
+import NewAIProvider from '~/components/AIProvider/NewAIProvider.vue'
+import UpdateAIProvider from '~/components/AIProvider/UpdateAIProvider.vue'
 import { toast } from 'vue-sonner'
 
-const updateModelSlide = ref<InstanceType<typeof UpdateModel> | null>(null)
+const updateModelSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 
-const modelStore = useModelStore()
+const AIProviderStore = useAIProviderStore()
 const user = useUserStore()
 
 const loading = ref(false)
@@ -36,7 +36,7 @@ const loading = ref(false)
 onMounted(async () => {
   loading.value = true
   try {
-    await modelStore.load()
+    await AIProviderStore.load()
   } catch (e: unknown) {
     console.error(e)
     toast.error('Failed to load models')
@@ -46,7 +46,7 @@ onMounted(async () => {
 })
 
 const models = computed(() =>
-  modelStore.models.map((model) => ({
+    AIProviderStore.AIProviders.map((model) => ({
     ...model,
     canDelete: model.owner === user.authUser.id,
     canUpdate: model.owner === user.authUser.id,
@@ -76,11 +76,11 @@ const columns: ColumnDef<unknown, string | number>[] = [
   },
 ]
 
-function updateModel(model: LLMModel) {
-  updateModelSlide.value?.open(model)
+function updateModel(AIProvider: AIProvider) {
+  updateModelSlide.value?.open(AIProvider)
 }
 
 function deleteModel(uuid: string) {
-  modelStore.delete(uuid)
+  AIProviderStore.delete(uuid)
 }
 </script>
