@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from core.models.ai_provider import AIProvider
 from core.consts import SUPPORTED_AI_PROVIDERS
+from core.utils import extract_and_merge_fields
 
 class AIProviderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,17 +48,7 @@ class AIProviderCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        main_fields = ['name', 'provider', 'provider_api_key']
-        
-        metadata = {}
-        for field, value in validated_data.items():
-            if field not in main_fields:
-                metadata[field] = str(value).strip() if value is not None else ''
-        
-        for field in list(validated_data.keys()):
-            if field not in main_fields:
-                validated_data.pop(field)
-        
+        metadata = extract_and_merge_fields(validated_data, ['name', 'provider', 'provider_api_key'])
         validated_data['metadata'] = metadata
         validated_data['creator'] = self.context['request'].user
         
@@ -68,21 +59,8 @@ class AIProviderCreateSerializer(serializers.ModelSerializer):
         if api_key and isinstance(api_key, str) and api_key.strip():
             instance.provider_api_key = api_key
 
-        main_fields = ['name', 'provider']
-        
-        new_metadata = {}
-        for field, value in validated_data.items():
-            if field not in main_fields:
-                new_metadata[field] = str(value).strip() if value is not None else ''
-        
-        for field in list(validated_data.keys()):
-            if field not in main_fields:
-                validated_data.pop(field)
-        
-        existing_metadata = instance.metadata or {}
-        for field, value in new_metadata.items():
-            existing_metadata[field] = value
-        validated_data['metadata'] = existing_metadata
+        metadata = extract_and_merge_fields(validated_data, ['name', 'provider'], instance.metadata or {})
+        validated_data['metadata'] = metadata
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
