@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
 
-export type AIProviderType = 'text' | 'embedding' | 'image' | 'rerank' | 'other'
-
 export interface AIProvider {
   id: number
   uuid: string
@@ -13,6 +11,7 @@ export interface AIProvider {
   provider_api_key?: string | null
   base_url?: string | null
   provider: string
+  metadata?: Record<string, unknown> | null;
 
   is_builtin: boolean
 
@@ -50,12 +49,7 @@ export const useAIProviderStore = defineStore('aiProvider', {
 
     async create(values: Record<string, unknown>) {
         const { httpPost } = useHttpClient()
-        const response = await httpPost<AIProvider>('/ai-providers/', {
-          name: values.name,
-          provider_api_key: values.provider_api_key,
-          base_url: values.base_url,
-          provider: values.provider,
-        })
+        const response = await httpPost<AIProvider>('/ai-providers/', values)
         this.AIProviders = [...this.AIProviders, response]
         return response
     },
@@ -63,18 +57,7 @@ export const useAIProviderStore = defineStore('aiProvider', {
     async update(values: Record<string, unknown>) {
       const { httpPatch } = useHttpClient()
 
-      const body: Record<string, unknown> = {
-        name: values.name,
-        base_url: values.base_url,
-        model_name: values.model_name,
-      }
-
-      if (values.provider_api_key) {
-        body.provider_api_key = values.provider_api_key
-      }
-
-      const response = await httpPatch<AIProvider>(`/ai-providers/${values.uuid}/`, body)
-
+      const response = await httpPatch<AIProvider>(`/ai-providers/${values.uuid}/`, values)
       const index = this.AIProviders.findIndex(p => p.uuid === values.uuid)
       if (index !== -1 && response?.name) {
         this.AIProviders[index] = { ...this.AIProviders[index], ...response }
@@ -87,8 +70,8 @@ export const useAIProviderStore = defineStore('aiProvider', {
       const { httpDelete } = useHttpClient()
 
       const response = await httpDelete<{detail: string}>(`/ai-providers/${uuid}/`)
-
-      if (response?.detail === 'Deleted') {
+      
+      if (response?.detail === 'deleted') {
         this.AIProviders = this.AIProviders.filter((p) => p.uuid !== uuid)
       }
 

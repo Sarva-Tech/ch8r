@@ -1,11 +1,9 @@
 import pytest
 from rest_framework import status
-from rest_framework.test import APIClient
-from django.contrib.auth.models import AnonymousUser
+from unittest.mock import patch
 
 from core.models import AIProvider
 from core.serializers.ai_provider import AIProviderCreateSerializer
-from core.consts import SUPPORTED_AI_PROVIDERS
 from core.tests.conftest import BaseAPITestCase
 from core.tests.factories import UserFactory, AIProviderFactory
 
@@ -42,7 +40,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertNotIn("Other User Provider", provider_names)
 
         provider_data = data['results'][0]
-        expected_fields = ['id', 'uuid', 'name', 'provider', 'base_url', 'is_builtin', 'creator', 'created_at', 'updated_at']
+        expected_fields = ['id', 'uuid', 'name', 'provider', 'is_builtin', 'creator', 'created_at', 'updated_at', 'metadata']
         for field in expected_fields:
             self.assertIn(field, provider_data)
 
@@ -135,8 +133,11 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_create_ai_provider(self):
+    @patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider')
+    def test_create_ai_provider(self, mock_validate):
         """Test that authenticated user can create their own AI provider."""
+        mock_validate.return_value = (True, ['gemini-1.5-pro', 'gemini-1.5-flash'])
+        
         user = UserFactory()
         self.client.force_authenticate(user=user)
 
@@ -152,17 +153,23 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         data = response.json()
 
-        self.assertEqual(data['name'], 'My Gemini Provider')
-        self.assertEqual(data['provider'], 'gemini')
-        self.assertEqual(data['base_url'], 'https://generativelanguage.googleapis.com')
-        self.assertEqual(data['creator'], user.id)
+        self.assertEqual(data['ai_provider']['name'], 'My Gemini Provider')
+        self.assertEqual(data['ai_provider']['provider'], 'gemini')
+        self.assertEqual(data['ai_provider']['metadata']['base_url'], 'https://generativelanguage.googleapis.com')
+        self.assertEqual(data['ai_provider']['creator'], user.id)
+        self.assertTrue(data['validation']['is_valid'])
+        self.assertEqual(data['validation']['models'], ['gemini-1.5-pro', 'gemini-1.5-flash'])
 
-        provider = AIProvider.objects.get(uuid=data['uuid'])
+        provider = AIProvider.objects.get(uuid=data['ai_provider']['uuid'])
         self.assertEqual(provider.creator, user)
         self.assertEqual(provider.name, 'My Gemini Provider')
+        self.assertEqual(provider.metadata['base_url'], 'https://generativelanguage.googleapis.com')
 
-    def test_update_own_provider(self):
+    @patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider')
+    def test_update_own_provider(self, mock_validate):
         """Test that authenticated user can update their own AI provider."""
+        mock_validate.return_value = (True, ['gemini-1.5-pro', 'gemini-1.5-flash'])
+        
         user = UserFactory()
         self.client.force_authenticate(user=user)
 
@@ -211,7 +218,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         detail_url = f'/api/ai-providers/{provider.uuid}/'
         response = self.client.delete(detail_url)
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         with self.assertRaises(AIProvider.DoesNotExist):
             AIProvider.objects.get(id=provider.id)
@@ -234,8 +241,11 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertEqual(provider.name, 'Updated Name')
         self.assertEqual(provider.provider_api_key, original_api_key)
 
-    def test_update_with_api_key_changes_api_key(self):
+    @patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider')
+    def test_update_with_api_key_changes_api_key(self, mock_validate):
         """Test that update request with provider api key updates the provider api key."""
+        mock_validate.return_value = (True, ['gemini-1.5-pro', 'gemini-1.5-flash'])
+        
         user = UserFactory()
         self.client.force_authenticate(user=user)
 
@@ -290,8 +300,11 @@ class TestAIProviderAPI(BaseAPITestCase):
         self.assertEqual(provider.name, 'Updated Name')
         self.assertEqual(provider.provider_api_key, original_api_key)
 
-    def test_api_key_is_encrypted_in_database(self):
+    @patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider')
+    def test_api_key_is_encrypted_in_database(self, mock_validate):
         """Test that provider_api_key is encrypted when stored in the database."""
+        mock_validate.return_value = (True, ['gemini-1.5-pro', 'gemini-1.5-flash'])
+        
         user = UserFactory()
         self.client.force_authenticate(user=user)
 
@@ -306,7 +319,7 @@ class TestAIProviderAPI(BaseAPITestCase):
         response = self.client.post(self.list_url, create_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        provider = AIProvider.objects.get(uuid=response.json()['uuid'])
+        provider = AIProvider.objects.get(uuid=response.json()['ai_provider']['uuid'])
 
         self.assertEqual(provider.provider_api_key, api_key)
 
@@ -318,8 +331,11 @@ class TestAIProviderAPI(BaseAPITestCase):
             self.assertTrue(raw_db_value.startswith('gAAAAA'))
 
 
-    def test_create_with_supported_provider_gemini(self):
+    @patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider')
+    def test_create_with_supported_provider_gemini(self, mock_validate):
         """Test that AI provider can be created with supported 'gemini' provider."""
+        mock_validate.return_value = (True, ['gemini-1.5-pro', 'gemini-1.5-flash'])
+        
         user = UserFactory()
         data = {
             'name': 'My Google Gemini Provider',
@@ -335,11 +351,14 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         assert provider.name == 'My Google Gemini Provider'
         assert provider.provider == 'gemini'
-        assert provider.base_url == 'https://generativelanguage.googleapis.com'
+        assert provider.metadata['base_url'] == 'https://generativelanguage.googleapis.com'
         assert provider.creator == user
 
-    def test_create_with_supported_provider_custom(self):
+    @patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider')
+    def test_create_with_supported_provider_custom(self, mock_validate):
         """Test that AI provider can be created with supported 'custom' provider."""
+        mock_validate.return_value = (True, ['custom-model-1', 'custom-model-2'])
+        
         user = UserFactory()
         data = {
             'name': 'My Custom Provider',
@@ -355,7 +374,7 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         assert provider.name == 'My Custom Provider'
         assert provider.provider == 'custom'
-        assert provider.base_url == 'https://my-custom-api.com'
+        assert provider.metadata['base_url'] == 'https://my-custom-api.com'
         assert provider.creator == user
 
     def test_create_with_unsupported_provider_fails(self):

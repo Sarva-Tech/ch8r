@@ -1,6 +1,6 @@
 <template>
   <SlideOver
-    ref="newAIProviderSlideOver"
+    ref="newAIProviderSlide"
     title="Create New AI Provider"
   >
     <template #trigger>
@@ -8,13 +8,7 @@
     </template>
 
     <form class="space-y-5" @submit.prevent="createNewAIProvider">
-      <Alert v-if="formError" variant="destructive">
-        <AlertCircleIcon />
-        <AlertTitle>{{ formError.error }}</AlertTitle>
-        <AlertDescription v-if="formError.details">
-          <p> {{ formError.details }} </p>
-        </AlertDescription>
-      </Alert>
+      <C8APIAlert :api-error="apiError" />
 
       <FormField v-slot="{ componentField }" name="provider">
         <FormItem>
@@ -29,18 +23,19 @@
         </FormItem>
       </FormField>
 
-      <FormField v-slot="{ componentField }" name="base_url">
+      <FormField v-if="shouldShowBaseUrl" v-slot="{ componentField }" name="base_url">
         <FormItem>
           <FormLabel class="flex items-center">
             <div>
               Base URL
-              <RequiredLabel />
+              <RequiredLabel v-if="isCustomProvider" />
             </div>
           </FormLabel>
           <FormControl>
             <Input
               v-bind="componentField"
               placeholder="https://api.openai.com/v1"
+              :disabled="!isCustomProvider"
             />
           </FormControl>
           <FormMessage />
@@ -118,30 +113,49 @@ import {
 } from '~/components/ui/form'
 import { z } from 'zod'
 import { useForm } from 'vee-validate'
-import { setBackendErrors } from '~/lib/utils'
 import { useUniqueName } from '~/composables/useUniqueName'
-import { Sparkles, AlertCircleIcon } from 'lucide-vue-next'
+import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
+import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
+import { Sparkles } from 'lucide-vue-next'
+import C8APIAlert from '~/components/C8APIAlert.vue'
 
-const newAIProviderSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
+const newAIProviderSlide = ref<InstanceType<typeof SlideOver> | null>(null)
 const AIProviderStore = useAIProviderStore()
 const { generateShortUniqueName } = useUniqueName()
-
-const formError = ref<{
-  error?: string
-  details?: string
-} | null>(null)
+const { apiError, handleError, clearError } = useApiErrorHandling()
 
 const providerOptions = computed(() =>
-  AIProviderStore.supportedAIProviders.map(p => ({ label: p.label, value: p.id, baseUrl: p.base_url }))
+  AIProviderStore.supportedAIProviders.map(p => ({ 
+    label: p.label, 
+    value: p.id, 
+    baseUrl: p.base_url,
+    icon: useAIProviderIcon(p.id).value
+  }))
 )
+const isCustomProvider = computed(() => form.values.provider === 'custom')
+const shouldShowBaseUrl = computed(() => isCustomProvider.value || form.values.provider === '')
+
 const schema = z.object({
   name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
-  base_url: z
-    .string()
-    .url()
-    .nonempty({ message: 'Required' }),
+  base_url: z.string().optional(),
   provider: z.string().nonempty({ message: 'Required' }),
   provider_api_key: z.string().nonempty({ message: 'Required' }),
+}).superRefine((data, ctx) => {
+  if (data.provider === 'custom') {
+    if (!data.base_url || !data.base_url.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Custom provider requires base URL',
+        path: ['base_url']
+      })
+    } else if (!z.string().url().safeParse(data.base_url).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please enter a valid URL',
+        path: ['base_url']
+      })
+    }
+  }
 })
 
 const form = useForm({
@@ -170,7 +184,11 @@ watch(() => form.values.provider, (newProvider) => {
   if (newProvider) {
     const selectedProvider = AIProviderStore.supportedAIProviders.find(p => p.id === newProvider)
     if (selectedProvider) {
-      form.setFieldValue('base_url', selectedProvider.base_url)
+      if (newProvider === 'custom') {
+        form.setFieldValue('base_url', '')
+      } else {
+        form.setFieldValue('base_url', selectedProvider.base_url)
+      }
     }
   }
 })
@@ -181,39 +199,25 @@ const generateUniqueConnectionName = () => {
 }
 
 const createNewAIProvider = form.handleSubmit(async (values) => {
-  formError.value = null
+  clearError()
 
   try {
     await AIProviderStore.create(values)
-    newAIProviderSlideOver.value?.closeSlide()
+    newAIProviderSlide.value?.closeSlide()
     toast.success('AI provider created')
   } catch (error: unknown) {
-    const err = error as {
-      errors?: Record<string, string[] | string> | { error?: string; details?: string }
-    }
-
-    if (err.errors && typeof err.errors === 'object' && 'error' in err.errors) {
-      const errorObj = err.errors as { error?: string; details?: string }
-      formError.value = {
-        error: errorObj.error,
-        details: errorObj.details
-      }
-    } else if (err.errors && typeof err.errors === 'object') {
-      setBackendErrors(form, err.errors as Record<string, string[] | string>)
-    } else {
-      formError.value = {
-        error: 'Unexpected Error',
-        details: 'An unexpected error occurred while creating the AI provider'
-      }
-    }
+    handleError(error, form)
   }
 })
 
 const disabled = computed(() => {
   const values = form.values
+  const baseUrlValid = values.provider === 'custom' 
+    ? values.base_url?.trim() 
+    : true
   return !(
     values.name?.trim() &&
-    values.base_url?.trim() &&
+    baseUrlValid &&
     values.provider?.trim() &&
     values.provider_api_key?.trim()
   )

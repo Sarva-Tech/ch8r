@@ -1,4 +1,5 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 
 from core.models.app_ai_provider import AppAIProvider
@@ -52,3 +53,11 @@ class AppAIProviderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"detail": "deleted"},
+            status=status.HTTP_200_OK
+        )

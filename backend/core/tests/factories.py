@@ -30,6 +30,6 @@ class AIProviderFactory(factory.django.DjangoModelFactory):
     name = factory.Faker('company')
     provider = factory.Iterator(['openai', 'anthropic', 'google'])
     provider_api_key = factory.Faker('password')
-    base_url = factory.Faker('url')
+    metadata = factory.LazyAttribute(lambda obj: {'base_url': 'https://example.com'})
     is_builtin = False
     creator = factory.SubFactory(UserFactory)

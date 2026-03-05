@@ -37,12 +37,18 @@ class AIProviderCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        provider = attrs.get('provider')
-        base_url = attrs.get('base_url', '')
+        provider = attrs.get('provider') or (self.instance.provider if self.instance else None)
+        base_url = attrs.get('base_url')
         
-        if provider == 'custom' and not base_url.strip():
+        if self.instance is None and provider == 'custom':
+            if base_url is None or not base_url.strip():
+                raise serializers.ValidationError({
+                    'base_url': 'Custom provider requires base url'
+                })
+
+        if self.instance is not None and base_url is not None and provider == 'custom' and not base_url.strip():
             raise serializers.ValidationError({
-                'base_url': 'Custom provider requires base_url'
+                'base_url': 'Custom provider requires base url'
             })
         
         return attrs

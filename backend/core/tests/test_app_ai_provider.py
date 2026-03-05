@@ -14,8 +14,8 @@ class AppAIProviderTest(APITestCase):
         self.ai_provider = AIProvider.objects.create(
             name='Test Provider',
             provider='openai',
-            base_url='https://api.openai.com',
             provider_api_key='test-key',
+            metadata={'base_url': 'https://api.openai.com'},
             creator=self.user
         )
 
@@ -129,7 +129,7 @@ class AppAIProviderTest(APITestCase):
             'uuid': config.uuid
         })
         response = self.client.delete(url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(AppAIProvider.objects.filter(id=config.id).exists())
 
     def test_priority_auto_assignment(self):
@@ -163,8 +163,8 @@ class AppAIProviderTest(APITestCase):
         other_ai_provider = AIProvider.objects.create(
             name='Other AI Provider',
             provider='openai',
-            base_url='https://api.openai.com',
             provider_api_key='test',
+            metadata={'base_url': 'https://api.openai.com'},
             creator=other_user
         )
         other_config = AppAIProvider.objects.create(

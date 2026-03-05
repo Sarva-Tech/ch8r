@@ -7,31 +7,70 @@
         </div>
       </div>
 
-      <C8Table
-        :data="models"
-        :columns="columns"
-        :expandable="false"
-        :delete-fn="deleteModel"
-        :update-fn="updateModel"
-      />
+      <C8Item
+        v-for="(AIProvider, index) in AIProviders"
+        :key="index"
+        :icon="getAIProviderIcon(AIProvider.provider)"
+        container-class="w-full"
+        item-class="w-full"
+      >
+        <template #title>
+          {{ AIProvider.name }}
+        </template>
+        <template #details>
+          <ItemDescription>
+            <span class="inline-flex gap-2">
+              <span>Provider: {{ AIProvider.provider }}</span>
+              <span>Base URL: {{ AIProvider.metadata?.base_url }}</span>
+            </span>
+          </ItemDescription>
+        </template>
 
-      <UpdateAIProvider ref="updateModelSlide" />
+        <template #dropdown>
+          <DropdownMenuItem @click="updateAIProvider(AIProvider)">Update</DropdownMenuItem>
+          <DropdownMenuItem @click="openDeleteDialog(AIProvider)">Delete</DropdownMenuItem>
+        </template>
+      </C8Item>
+      <UpdateAIProvider ref="updateAIProviderSlide" />
+      
+      <C8Dialog
+        v-model:open="isDeleteDialogOpen"
+        :title="`Delete AI Provider ${providerToDelete?.name}`"
+        :confirm-text="'Delete'"
+        :destructive="true"
+        @confirm="confirmDelete"
+      >
+        <template #description>
+          <div>
+            Are you sure you want to delete the AI provider <span class="font-bold"> {{ providerToDelete?.name }} </span>?
+          </div>
+        </template>
+      </C8Dialog>
     </div>
   </div>
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { ColumnDef } from '@tanstack/vue-table'
 import NewAIProvider from '~/components/AIProvider/NewAIProvider.vue'
 import UpdateAIProvider from '~/components/AIProvider/UpdateAIProvider.vue'
+import C8Dialog from '~/components/C8Dialog.vue'
 import { toast } from 'vue-sonner'
-
-const updateModelSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
+import C8Item from "~/components/C8Item.vue";
+import {ItemDescription} from "~/components/ui/item";
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
+const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
+const isDeleteDialogOpen = ref(false)
+const providerToDelete = ref<AIProvider | null>(null)
 
 const AIProviderStore = useAIProviderStore()
 const user = useUserStore()
 
 const loading = ref(false)
+
+function getAIProviderIcon(provider: string) {
+  return useAIProviderIcon(provider).value
+}
 
 onMounted(async () => {
   loading.value = true
@@ -39,48 +78,38 @@ onMounted(async () => {
     await AIProviderStore.load()
   } catch (e: unknown) {
     console.error(e)
-    toast.error('Failed to load models')
+    toast.error('Failed to load AI providers')
   } finally {
     loading.value = false
   }
 })
 
-const models = computed(() =>
-    AIProviderStore.AIProviders.map((model) => ({
-    ...model,
-    canDelete: model.owner === user.authUser.id,
-    canUpdate: model.owner === user.authUser.id,
+const AIProviders = computed(() =>
+  AIProviderStore.AIProviders.map((AIProvider) => ({
+    ...AIProvider
   }))
 )
 
-const columns: ColumnDef<unknown, string | number>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: 'base_url',
-    header: 'Base URL',
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: 'model_name',
-    header: 'Model',
-    cell: (info) => info.getValue(),
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: () => '',
-  },
-]
-
-function updateModel(AIProvider: AIProvider) {
-  updateModelSlide.value?.open(AIProvider)
+function updateAIProvider(AIProvider: AIProvider) {
+  updateAIProviderSlide.value?.open(AIProvider)
 }
 
-function deleteModel(uuid: string) {
-  AIProviderStore.delete(uuid)
+function openDeleteDialog(AIProvider: AIProvider) {
+  providerToDelete.value = AIProvider
+  isDeleteDialogOpen.value = true
+}
+
+function confirmDelete() {
+  if (providerToDelete.value) {
+    deleteAIProvider(providerToDelete.value)
+  }
+}
+
+function deleteAIProvider(AIProvider: AIProvider) {
+  AIProviderStore.delete(AIProvider.uuid).then((response) => {
+    if (response?.detail === 'deleted') {
+      toast.success('AI provider deleted')
+    }
+  })
 }
 </script>
