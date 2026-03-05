@@ -5,7 +5,7 @@ export interface AIProvider {
   id: number
   uuid: string
 
-  owner: number
+  creator: number
 
   name: string
   provider_api_key?: string | null

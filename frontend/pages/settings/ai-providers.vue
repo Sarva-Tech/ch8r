@@ -27,8 +27,21 @@
         </template>
 
         <template #dropdown>
-          <DropdownMenuItem @click="updateAIProvider(AIProvider)">Update</DropdownMenuItem>
-          <DropdownMenuItem @click="openDeleteDialog(AIProvider)">Delete</DropdownMenuItem>
+          <DropdownMenuItem
+            :disabled="!canManageProvider(AIProvider)"
+            @click="updateAIProvider(AIProvider)"
+          >
+            <PencilLine class="h-4 w-4" />
+            Update
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            class="text-destructive"
+            :disabled="!canManageProvider(AIProvider)"
+            @click="openDeleteDialog(AIProvider)"
+          >
+            <Trash class="h-4 w-4 text-destructive" />
+            Delete
+          </DropdownMenuItem>
         </template>
       </C8Item>
       <UpdateAIProvider ref="updateAIProviderSlide" />
@@ -59,6 +72,7 @@ import C8Item from "~/components/C8Item.vue";
 import {ItemDescription} from "~/components/ui/item";
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
+import { PencilLine, Trash } from 'lucide-vue-next'
 const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 const isDeleteDialogOpen = ref(false)
 const providerToDelete = ref<AIProvider | null>(null)
@@ -70,6 +84,10 @@ const loading = ref(false)
 
 function getAIProviderIcon(provider: string) {
   return useAIProviderIcon(provider).value
+}
+
+function canManageProvider(AIProvider: AIProvider) {
+  return user.authUser?.id === AIProvider.creator
 }
 
 onMounted(async () => {

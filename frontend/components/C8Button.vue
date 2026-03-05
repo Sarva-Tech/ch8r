@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { defineProps, defineEmits, ref, onMounted } from 'vue'
+import type { Component } from 'vue'
 import { Loader2 } from 'lucide-vue-next'
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   size?: 'default' | 'sm' | 'lg' | 'icon'
   disabled?: boolean
   loading?: boolean
+  icon?: Component
 }
 
 const props = defineProps<Props>()
@@ -45,7 +47,8 @@ const handleClick = (event: MouseEvent) => {
         <Loader2 class="w-4 h-4 animate-spin" />
       </template>
       <template v-else>
-        <span ref="labelRef">
+        <span ref="labelRef" class="inline-flex items-center gap-2">
+          <component :is="props.icon" v-if="props.icon" class="w-4 h-4" />
           <slot>{{ props.label }}</slot>
         </span>
       </template>

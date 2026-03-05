@@ -1,10 +1,14 @@
 <template>
   <SlideOver
     ref="newAIProviderSlide"
-    title="Create New AI Provider"
+    title="Add New AI Provider"
   >
     <template #trigger>
-      <C8Button label="Create New AI Provider" />
+      <C8Button
+        label="Add AI Provider"
+        :icon="Plus"
+        @click="openSlideWithReset"
+      />
     </template>
 
     <form class="space-y-5" @submit.prevent="createNewAIProvider">
@@ -116,7 +120,7 @@ import { useForm } from 'vee-validate'
 import { useUniqueName } from '~/composables/useUniqueName'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles, Plus } from 'lucide-vue-next'
 import C8APIAlert from '~/components/C8APIAlert.vue'
 
 const newAIProviderSlide = ref<InstanceType<typeof SlideOver> | null>(null)
@@ -167,17 +171,11 @@ const form = useForm({
     provider: '',
   }
 })
-const { isSubmitting, setFieldValue } = form
+const { isSubmitting } = form
 
 onMounted(async () => {
   await AIProviderStore.load()
-  if (AIProviderStore.supportedAIProviders.length > 0) {
-    const firstProvider = AIProviderStore.supportedAIProviders[0]
-    setFieldValue('provider', firstProvider.id)
-    setFieldValue('base_url', firstProvider.base_url)
-    const uniqueName = generateShortUniqueName('Connection')
-    setFieldValue('name', uniqueName)
-  }
+  resetFormToDefaults()
 })
 
 watch(() => form.values.provider, (newProvider) => {
@@ -193,6 +191,25 @@ watch(() => form.values.provider, (newProvider) => {
   }
 })
 
+const resetFormToDefaults = () => {
+  if (AIProviderStore.supportedAIProviders.length > 0) {
+    const firstProvider = AIProviderStore.supportedAIProviders[0]
+    form.resetForm({
+      values: {
+        name: generateShortUniqueName('Connection'),
+        base_url: firstProvider.base_url,
+        provider_api_key: '',
+        provider: firstProvider.id,
+      }
+    })
+  }
+}
+
+const openSlideWithReset = () => {
+  resetFormToDefaults()
+  newAIProviderSlide.value?.openSlide()
+}
+
 const generateUniqueConnectionName = () => {
   const uniqueName = generateShortUniqueName('Connection')
   form.setFieldValue('name', uniqueName)
@@ -201,8 +218,13 @@ const generateUniqueConnectionName = () => {
 const createNewAIProvider = form.handleSubmit(async (values) => {
   clearError()
 
+  const submitValues = { ...values }
+  if (values.provider !== 'custom') {
+    delete submitValues.base_url
+  }
+
   try {
-    await AIProviderStore.create(values)
+    await AIProviderStore.create(submitValues)
     newAIProviderSlide.value?.closeSlide()
     toast.success('AI provider created')
   } catch (error: unknown) {

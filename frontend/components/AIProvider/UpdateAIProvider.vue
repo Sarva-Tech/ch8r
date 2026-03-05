@@ -158,6 +158,7 @@ const schema = z.object({
   }
 })
 
+
 const form = useForm({
   validationSchema: toTypedSchema(schema),
   initialValues: {
@@ -198,8 +199,13 @@ defineExpose({
 const updateAIProvider = form.handleSubmit(async (values) => {
   clearError()
 
+  const submitValues = { ...values }
+  if (values.provider !== 'custom') {
+    delete submitValues.base_url
+  }
+
   try {
-    await AIProviderStore.update(values)
+    await AIProviderStore.update(submitValues)
     updateAIProviderSlide.value?.closeSlide()
     toast.success('AI provider updated')
   } catch (error: unknown) {

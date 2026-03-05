@@ -37,10 +37,6 @@ const props = withDefaults(
 )
 
 const emit = defineEmits(['update:open'])
-defineExpose({
-  openSlide,
-  closeSlide
-})
 
 const internalOpen = ref(false)
 
@@ -66,6 +62,12 @@ function openSlide() {
 function closeSlide() {
   sheetOpen.value = false
 }
+
+defineExpose({
+  openSlide,
+  closeSlide,
+  sheetOpen
+})
 
 const widthClass = computed(() => {
   return props.width ? `!${props.width}` : ''
