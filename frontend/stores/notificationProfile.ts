@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
+import type { PaginatedResponse } from '~/lib/types'
 
 export type NotificationType = 'email' | 'slack' | 'discord'
 
@@ -19,6 +20,8 @@ export interface NotificationProfile {
   is_enabled?: boolean
 }
 
+export type NotificationProfileResponse = PaginatedResponse<NotificationProfile>
+
 export const useNotificationProfileStore = defineStore('notificationProfiles', {
   state: () => ({
     profiles: [] as NotificationProfile[],
@@ -29,8 +32,8 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
   actions: {
     async load() {
       const { httpGet } = useHttpClient()
-      const res = await httpGet<NotificationProfile>('/notification-profiles/')
-      this.profiles = Array.isArray(res) ? [...res] : []
+      const res = await httpGet<NotificationProfileResponse>('/notification-profiles/')
+      this.profiles = res.results || []
       return this.profiles
     },
 

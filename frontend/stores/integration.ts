@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
+import type {Application} from "~/stores/applications"
+import type { PaginatedResponse } from '~/lib/types';
 
 export type IntegrationType = "pms" | "crm" | "custom";
 
@@ -53,6 +55,8 @@ export type SupportedIntegrationsResponse = {
   };
 };
 
+export type FetchIntegrationsResponse = PaginatedResponse<Integration>
+
 export const useIntegrationStore = defineStore('integration', {
   state: () => ({
     supportedIntegrations: {} as SupportedIntegrationsResponse,
@@ -62,8 +66,8 @@ export const useIntegrationStore = defineStore('integration', {
   actions: {
     async load() {
       const { httpGet } = useHttpClient()
-      const response = await httpGet<Integration[]>(`/integrations/`)
-      this.integrations = response
+      const response = await httpGet<FetchIntegrationsResponse>(`/integrations/`)
+      this.integrations = response.results
       return response
     },
 

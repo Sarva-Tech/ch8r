@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
+import type { PaginatedResponse } from '~/lib/types'
 
 export interface AIProvider {
   id: number
@@ -24,11 +25,7 @@ export interface SupportedAIProvider {
   base_url: string
 }
 
-export interface AIProvidersResponse {
-  count: number
-  next: string | null
-  previous: string | null
-  results: AIProvider[]
+export interface AIProvidersResponse extends PaginatedResponse<AIProvider> {
   supported_ai_providers: SupportedAIProvider[]
 }
 

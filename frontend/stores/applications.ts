@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
 import { useKBDraftStore } from '~/stores/kbDraft'
+import type { PaginatedResponse } from '~/lib/types'
 
 export interface KnowledgeBaseItem {
   id: number
@@ -24,6 +25,8 @@ export interface Application {
   knowledge_base: KnowledgeBaseItem[]
 }
 
+export type FetchApplicationsResponse = PaginatedResponse<Application>
+
 export const useApplicationsStore = defineStore('applications', {
   state: () => ({
     applications: [] as Application[],
@@ -33,7 +36,8 @@ export const useApplicationsStore = defineStore('applications', {
   actions: {
     async fetchApplications() {
       const { httpGet } = useHttpClient()
-      this.applications = await httpGet<Application[]>('/applications/')
+      const response  = await httpGet<FetchApplicationsResponse>('/applications/')
+      this.applications = response.results
 
       if (!this.selectedApplication && this.applications.length > 0) {
         this.selectedApplication = this.applications[0]
