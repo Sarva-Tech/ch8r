@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 from core.models import Application, AppAIProvider
 from .factories.ai_provider_factory import AIProviderFactory
@@ -64,7 +64,7 @@ class AIService:
                 model = config.external_model_id
             else:
                 supported_models = provider.get_models()
-                model = supported_models[0] if supported_models else 'default'
+                model = supported_models[0]['name'] if supported_models else 'default'
 
         try:
             return provider.generate_content(model, contents, **kwargs)
@@ -74,7 +74,7 @@ class AIService:
 
     def validate_provider_connection(self, application: Application,
                                    context: str = 'widget',
-                                   capability: str = 'text') -> tuple[bool, list[str]]:
+                                   capability: str = 'text') -> tuple[bool, list[Dict[str, Any]]]:
         provider = self.get_provider_for_app(application, context, capability)
         if not provider:
             return False, []

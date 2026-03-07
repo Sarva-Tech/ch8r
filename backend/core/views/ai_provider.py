@@ -1,9 +1,10 @@
 from rest_framework import status, viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
 from django.db import models
 from core.serializers.ai_provider import AIProviderCreateSerializer, AIProviderSerializer
-from core.models import AIProvider
+from core.models import AIProvider, AIProviderModels
 from core.consts import SUPPORTED_AI_PROVIDERS
 
 class AIProviderViewSet(viewsets.ModelViewSet):
@@ -51,13 +52,13 @@ class AIProviderViewSet(viewsets.ModelViewSet):
             if field not in main_fields:
                 config[field] = str(value).strip() if value is not None else ''
         
-        is_valid, models = factory.validate_provider(
+        is_valid, provider_models = factory.validate_provider(
             provider_type=validation_data['provider'],
             api_key=validation_data['provider_api_key'],
             config=config
         )
         
-        return is_valid, models
+        return is_valid, provider_models
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -66,7 +67,7 @@ class AIProviderViewSet(viewsets.ModelViewSet):
         validated_data = serializer.validated_data
         
         try:
-            is_valid, models = self._validate_ai_provider(validated_data)
+            is_valid, provider_models = self._validate_ai_provider(validated_data)
             
             if not is_valid:
                 return Response(
@@ -79,13 +80,21 @@ class AIProviderViewSet(viewsets.ModelViewSet):
             
             ai_provider = serializer.save()
             
+            AIProviderModels.objects.update_or_create(
+                ai_provider=ai_provider,
+                defaults={
+                    'models_data': provider_models,
+                    'creator': request.user
+                }
+            )
+            
             response_serializer = AIProviderSerializer(ai_provider)
             return Response(
                 {
                     'ai_provider': response_serializer.data,
                     'validation': {
                         'is_valid': True,
-                        'models': models
+                        'models': provider_models
                     }
                 },
                 status=status.HTTP_201_CREATED
@@ -123,7 +132,7 @@ class AIProviderViewSet(viewsets.ModelViewSet):
         
         if api_key_to_validate and api_key_to_validate.strip():
             try:
-                is_valid, models = self._validate_ai_provider(validated_data, instance)
+                is_valid, provider_models = self._validate_ai_provider(validated_data, instance)
                 
                 if not is_valid:
                     return Response(
@@ -153,6 +162,14 @@ class AIProviderViewSet(viewsets.ModelViewSet):
         
         updated_instance = serializer.save()
         
+        AIProviderModels.objects.update_or_create(
+            ai_provider=updated_instance,
+            defaults={
+                'models_data': provider_models,
+                'creator': request.user
+            }
+        )
+        
         response_serializer = AIProviderSerializer(updated_instance)
         return Response(response_serializer.data)
 
@@ -163,3 +180,56 @@ class AIProviderViewSet(viewsets.ModelViewSet):
             {"detail": "deleted"},
             status=status.HTTP_200_OK
         )
+
+    @action(detail=True, methods=['get'])
+    def models(self, request, uuid=None):
+        ai_provider = self.get_object()
+        
+        try:
+            provider_models = AIProviderModels.objects.get(ai_provider=ai_provider)
+            return Response({
+                'ai_provider': AIProviderSerializer(ai_provider).data,
+                'ai_provider_models': {
+                    'id': provider_models.id,
+                    'models_data': provider_models.models_data,
+                    'created_at': provider_models.created_at,
+                    'updated_at': provider_models.updated_at
+                }
+            })
+        except AIProviderModels.DoesNotExist:
+            return Response({
+                'error': 'Models data not found for this AI provider'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': f'Failed to retrieve models: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'])
+    def all_models(self, request):
+        user = request.user
+        
+        ai_providers = self.get_queryset().filter(creator=user)
+        
+        result = []
+        for ai_provider in ai_providers:
+            try:
+                provider_models = AIProviderModels.objects.get(ai_provider=ai_provider)
+                result.append({
+                    'ai_provider': AIProviderSerializer(ai_provider).data,
+                    'ai_provider_models': {
+                        'id': provider_models.id,
+                        'models_data': provider_models.models_data,
+                        'created_at': provider_models.created_at,
+                        'updated_at': provider_models.updated_at
+                    }
+                })
+            except AIProviderModels.DoesNotExist:
+                continue
+            except Exception as e:
+                print(f"Error retrieving models for provider {ai_provider.uuid}: {str(e)}")
+                continue
+        
+        return Response({
+            'providers': result
+        })

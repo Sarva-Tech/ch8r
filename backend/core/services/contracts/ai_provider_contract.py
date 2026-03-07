@@ -12,9 +12,9 @@ class AIProviderContract(ABC):
         pass
 
     @abstractmethod
-    def validate_connection(self) -> tuple[bool, list[str]]:
+    def validate_connection(self) -> tuple[bool, list[Dict[str, Any]]]:
         pass
 
     @abstractmethod
-    def get_models(self) -> list[str]:
+    def get_models(self) -> list[Dict[str, Any]]:
         pass

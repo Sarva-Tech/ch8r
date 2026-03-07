@@ -33,16 +33,21 @@ class GeminiProvider(AIProviderContract):
         except Exception as e:
             raise ValueError(f"Gemini API error: {e}")
 
-    def validate_connection(self) -> tuple[bool, list[str]]:
+    def validate_connection(self) -> tuple[bool, list[Dict[str, Any]]]:
         try:
             models = self.get_models()
             return True, models
         except Exception as e:
             return False, []
 
-    def get_models(self) -> list[str]:
+    def get_models(self) -> list[Dict[str, Any]]:
         try:
             models = list(self.client.models.list())
-            return [model.name for model in models]
+            serializable_models = []
+            for model in models:
+                model_dict = vars(model).copy()
+                stringified_model = {key: str(value) for key, value in model_dict.items()}
+                serializable_models.append(stringified_model)
+            return serializable_models
         except Exception as e:
             raise ValueError(f"Failed to retrieve models from Gemini API: {e}")

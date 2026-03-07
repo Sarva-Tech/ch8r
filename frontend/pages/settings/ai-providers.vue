@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
-    <div class="w-full space-y-4">
+    <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
           <NewAIProvider />
@@ -19,10 +19,27 @@
         </template>
         <template #details>
           <ItemDescription>
-            <span class="inline-flex gap-2">
-              <span>Provider: {{ AIProvider.provider }}</span>
-              <span>Base URL: {{ AIProvider.metadata?.base_url }}</span>
-            </span>
+            <div class="inline-flex space-x-3">
+              <div
+                class="flex items-center space-x-1"
+              >
+                <Server class="w-4 h-4" />
+                <div> {{ providerDisplayName(AIProvider.provider) }} </div>
+              </div>
+              <div
+                v-if="AIProvider.metadata?.base_url"
+                class="flex items-center space-x-1"
+              >
+                <Globe class="w-4 h-4" />
+                <div>{{ AIProvider.metadata?.base_url }} </div>
+              </div>
+              <div
+                class="flex items-center space-x-1"
+              >
+                <FileBox class="w-4 h-4" />
+                <div> {{ AIProvider.modelsCount }} </div>
+              </div>
+            </div>
           </ItemDescription>
         </template>
 
@@ -72,12 +89,13 @@ import C8Item from "~/components/C8Item.vue";
 import {ItemDescription} from "~/components/ui/item";
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
-import { PencilLine, Trash } from 'lucide-vue-next'
+import { PencilLine, Trash, Globe, Server, FileBox } from 'lucide-vue-next'
 const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 const isDeleteDialogOpen = ref(false)
 const providerToDelete = ref<AIProvider | null>(null)
 
 const AIProviderStore = useAIProviderStore()
+const AIProviderModelsStore = useAIProviderModelsStore()
 const user = useUserStore()
 
 const loading = ref(false)
@@ -90,10 +108,29 @@ function canManageProvider(AIProvider: AIProvider) {
   return user.authUser?.id === AIProvider.creator
 }
 
+function providerDisplayName(provider: string) {
+  switch (provider.toLowerCase()) {
+    case 'gemini':
+      return 'Gemini'
+    case 'custom':
+      return 'Custom'
+    case 'openai':
+      return 'OpenAI'
+    case 'anthropic':
+      return 'Anthropic'
+    case 'cohere':
+      return 'Cohere'
+    default:
+      // Capitalize first letter for unknown providers
+      return provider.charAt(0).toUpperCase() + provider.slice(1)
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
     await AIProviderStore.load()
+    await AIProviderModelsStore.load()
   } catch (e: unknown) {
     console.error(e)
     toast.error('Failed to load AI providers')
@@ -103,9 +140,16 @@ onMounted(async () => {
 })
 
 const AIProviders = computed(() =>
-  AIProviderStore.AIProviders.map((AIProvider) => ({
-    ...AIProvider
-  }))
+  AIProviderStore.AIProviders.map((AIProvider) => {
+    const providerModelData = AIProviderModelsStore.providerModels.find(
+      (pm) => pm.ai_provider.uuid === AIProvider.uuid
+    )
+    return {
+      ...AIProvider,
+      models: providerModelData?.ai_provider_models?.models_data || [],
+      modelsCount: providerModelData?.ai_provider_models?.models_data?.length || 0
+    }
+  })
 )
 
 function updateAIProvider(AIProvider: AIProvider) {

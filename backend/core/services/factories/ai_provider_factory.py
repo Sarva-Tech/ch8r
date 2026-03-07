@@ -28,7 +28,7 @@ class AIProviderFactory:
             raise ValueError(f"Failed to create {provider_type} provider: {e}")
 
     @staticmethod
-    def validate_provider(provider_type: str, api_key: str, config: Optional[Dict[str, Any]] = None) -> tuple[bool, list[str]]:
+    def validate_provider(provider_type: str, api_key: str, config: Optional[Dict[str, Any]] = None) -> tuple[bool, list[Dict[str, Any]]]:
         provider_class = AIProviderFactory.PROVIDER_CLASSES.get(provider_type.lower())
         
         if provider_class is None:
