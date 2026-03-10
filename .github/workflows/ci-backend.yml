@@ -1,0 +1,180 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ch8rtests
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      qdrant:
+        image: qdrant/qdrant:v1.7.4
+        ports:
+          - 6333:6333
+          - 6334:6334
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Django migrations
+      run: |
+        cd backend
+        python manage.py migrate --settings=config.test_settings
+      env:
+        APP_SECRET_KEY: 'test-secret-key-for-ci'
+        DB_NAME: ch8rtests
+        DB_USER: testuser
+        DB_PASSWORD: testpass
+        DB_HOST: localhost
+        PORT: 5432
+        TEST_DB_NAME: ch8rtests
+        TEST_DB_USER: testuser
+        TEST_DB_PASSWORD: testpass
+        TEST_DB_HOST: localhost
+        TEST_DB_PORT: 5432
+        DJANGO_SETTINGS_MODULE: config.test_settings
+        CONNECT_TO_LOCAL_VECTOR_DB: 'true'
+        QDRANT_LOCAL_HOST: localhost
+        QDRANT_LOCAL_PORT: 6333
+        SECRET_ENCRYPTION_KEY: 'r5kAsRtMlZuP0b6UeRXdI9QqL_0uTTvTkT7jXsmkGxk='
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'test-key' }}
+        QDRANT_CLOUD_API_KEY: ${{ secrets.QDRANT_CLOUD_API_KEY || 'test-key' }}
+        MAILERSEND_API_KEY: ${{ secrets.MAILERSEND_API_KEY || 'test-key' }}
+        DISCORD_SIGNUP_WEBHOOK_URL: 'https://example.com'
+        WIDGET_URL: 'https://widget.ch8r.com'
+        API_BASE_URL: 'http://localhost:8000/api'
+        FRONTEND_URL: 'http://localhost:3000'
+        CLOSED_ALPHA_SIGN_UPS: '["test@example.com"]'
+        REQUIRE_ACCOUNT_APPROVAL: 'False'
+
+    - name: Run backend tests
+      run: |
+        cd backend
+        pytest --cov=core --cov-report=term-missing --cov-fail-under=80
+      env:
+        APP_SECRET_KEY: 'test-secret-key-for-ci'
+        DB_NAME: ch8rtests
+        DB_USER: testuser
+        DB_PASSWORD: testpass
+        DB_HOST: localhost
+        PORT: 5432
+        TEST_DB_NAME: ch8rtests
+        TEST_DB_USER: testuser
+        TEST_DB_PASSWORD: testpass
+        TEST_DB_HOST: localhost
+        TEST_DB_PORT: 5432
+        DJANGO_SETTINGS_MODULE: config.test_settings
+        CONNECT_TO_LOCAL_VECTOR_DB: 'true'
+        QDRANT_LOCAL_HOST: localhost
+        QDRANT_LOCAL_PORT: 6333
+        SECRET_ENCRYPTION_KEY: 'r5kAsRtMlZuP0b6UeRXdI9QqL_0uTTvTkT7jXsmkGxk='
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'test-key' }}
+        QDRANT_CLOUD_API_KEY: ${{ secrets.QDRANT_CLOUD_API_KEY || 'test-key' }}
+        MAILERSEND_API_KEY: ${{ secrets.MAILERSEND_API_KEY || 'test-key' }}
+        DISCORD_SIGNUP_WEBHOOK_URL: 'https://example.com'
+        WIDGET_URL: 'https://widget.ch8r.com'
+        API_BASE_URL: 'http://localhost:8000/api'
+        FRONTEND_URL: 'http://localhost:3000'
+        CLOSED_ALPHA_SIGN_UPS: '["test@example.com"]'
+        REQUIRE_ACCOUNT_APPROVAL: 'False'
+
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      with:
+        directory: ./backend/htmlcov
+        fail_ci_if_error: false
+
+    - name: Discord notification on success
+      if: success()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const { execSync } = require('child_process');
+          
+          let testResults = 'Tests completed successfully';
+          try {
+            const output = execSync('cd backend && python -m pytest --tb=no -q --disable-warnings', { encoding: 'utf8' });
+            const passed = (output.match(/passed/g) || []).length;
+            const failed = (output.match(/failed/g) || []).length;
+            testResults = `Tests passed: ${passed}, Failed: ${failed}`;
+          } catch (error) {
+            testResults = 'Tests completed successfully';
+          }
+
+          const payload = {
+            embeds: [{
+              title: 'Backend CI - Tests Passed',
+              description: `Branch: **${process.env.GITHUB_REF_NAME}**\nCommit: [${process.env.GITHUB_SHA.substring(0, 7)}](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA})\n${testResults}`,
+              color: 3066993,
+              timestamp: new Date().toISOString()
+            }]
+          };
+
+          const webhookUrl = process.env.DISCORD_TEST_WEBHOOK_URL;
+          if (webhookUrl) {
+            const response = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+              console.error('Failed to send Discord notification');
+            }
+          }
+
+    - name: Discord notification on failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const payload = {
+            embeds: [{
+              title: 'Backend CI - Tests Failed',
+              description: `Branch: **${process.env.GITHUB_REF_NAME}**\nCommit: [${process.env.GITHUB_SHA.substring(0, 7)}](${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/commit/${process.env.GITHUB_SHA})\nTests failed. Check the logs for details.`,
+              color: 15158332,
+              timestamp: new Date().toISOString()
+            }]
+          };
+
+          const webhookUrl = process.env.DISCORD_TEST_WEBHOOK_URL;
+          if (webhookUrl) {
+            const response = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            
+            if (!response.ok) {
+              console.error('Failed to send Discord notification');
+            }
+          }
