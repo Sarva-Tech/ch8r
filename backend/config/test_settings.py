@@ -5,6 +5,8 @@ DEBUG = False
 
 CONNECT_TO_LOCAL_VECTOR_DB = False
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
