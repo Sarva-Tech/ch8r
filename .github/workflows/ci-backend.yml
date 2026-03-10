@@ -92,12 +92,6 @@ jobs:
         cd backend
         pytest --cov=core --cov-report=term-missing --cov-fail-under=60 --json-report --json-report-file=test-results.json
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v4
-      with:
-        directory: ./backend/htmlcov
-        fail_ci_if_error: false
-
     - name: Discord notification on success
       if: success()
       uses: actions/github-script@v6
