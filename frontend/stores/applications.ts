@@ -36,7 +36,7 @@ export const useApplicationsStore = defineStore('applications', {
   actions: {
     async fetchApplications() {
       const { httpGet } = useHttpClient()
-      const response  = await httpGet<FetchApplicationsResponse>('/applications/')
+      const response = await httpGet<FetchApplicationsResponse>('/applications/')
       this.applications = response.results
 
       if (!this.selectedApplication && this.applications.length > 0) {
@@ -55,7 +55,8 @@ export const useApplicationsStore = defineStore('applications', {
         formData.append(`items[${index}].type`, item.type)
         if (item.type === 'file') {
           formData.append(`items[${index}].file`, item.value)
-        } else {
+        }
+        else {
           formData.append(`items[${index}].value`, item.value)
         }
       })

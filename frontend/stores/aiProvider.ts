@@ -12,7 +12,7 @@ export interface AIProvider {
   provider_api_key?: string | null
   base_url?: string | null
   provider: string
-  metadata?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null
 
   is_builtin: boolean
 
@@ -45,10 +45,10 @@ export const useAIProviderStore = defineStore('aiProvider', {
     },
 
     async create(values: Record<string, unknown>) {
-        const { httpPost } = useHttpClient()
-        const response = await httpPost<AIProvider>('/ai-providers/', values)
-        this.AIProviders = [...this.AIProviders, response]
-        return response
+      const { httpPost } = useHttpClient()
+      const response = await httpPost<AIProvider>('/ai-providers/', values)
+      this.AIProviders = [...this.AIProviders, response]
+      return response
     },
 
     async update(values: Record<string, unknown>) {
@@ -66,10 +66,10 @@ export const useAIProviderStore = defineStore('aiProvider', {
     async delete(uuid: string) {
       const { httpDelete } = useHttpClient()
 
-      const response = await httpDelete<{detail: string}>(`/ai-providers/${uuid}/`)
-      
+      const response = await httpDelete<{ detail: string }>(`/ai-providers/${uuid}/`)
+
       if (response?.detail === 'deleted') {
-        this.AIProviders = this.AIProviders.filter((p) => p.uuid !== uuid)
+        this.AIProviders = this.AIProviders.filter(p => p.uuid !== uuid)
       }
 
       return response

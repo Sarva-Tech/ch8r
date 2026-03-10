@@ -13,9 +13,9 @@ export function useAIProviderIcon(provider: string) {
           render() {
             return h(Sparkles, {
               size: 24,
-              class: 'text-gray-600'
+              class: 'text-gray-600',
             })
-          }
+          },
         })
     }
   })

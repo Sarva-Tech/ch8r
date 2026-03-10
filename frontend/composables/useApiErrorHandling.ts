@@ -7,20 +7,20 @@ export interface FormError {
   details?: string
 }
 
-export function useApiErrorHandling() {
+export function useApiErrorHandling<T extends Record<string, unknown> = Record<string, unknown>>() {
   const apiError = ref<FormError | null>(null)
 
   const handleError = (
     error: unknown,
-    form?: FormContext<any>,
+    form?: FormContext<T>,
     unexpectedErrorMessage?: string
   ) => {
     const err = error as {
-      errors?: Record<string, string[] | string> | { error?: string; details?: string }
+      errors?: Record<string, string[] | string> | { error?: string, details?: string }
     }
 
     if (err.errors && typeof err.errors === 'object' && 'error' in err.errors) {
-      const errorObj = err.errors as { error?: string; details?: string }
+      const errorObj = err.errors as { error?: string, details?: string }
       apiError.value = {
         error: errorObj.error,
         details: errorObj.details

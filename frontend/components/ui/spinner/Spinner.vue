@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue"
-import type { BadgeVariants } from "."
+import { Loader2Icon } from "lucide-vue-next"
 import { cn } from "@/lib/utils"
-import { badgeVariants } from "."
 
 const props = defineProps<{
-  variant?: BadgeVariants["variant"]
   class?: HTMLAttributes["class"]
 }>()
 </script>
 
 <template>
-  <div :class="cn(badgeVariants({ variant }), props.class)">
-    <slot />
-  </div>
+  <Loader2Icon
+    role="status"
+    aria-label="Loading"
+    :class="cn('size-4 animate-spin', props.class)"
+  />
 </template>

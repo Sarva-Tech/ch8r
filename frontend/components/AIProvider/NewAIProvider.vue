@@ -11,10 +11,16 @@
       />
     </template>
 
-    <form class="space-y-5" @submit.prevent="createNewAIProvider">
+    <form
+      class="space-y-5"
+      @submit.prevent="createNewAIProvider"
+    >
       <C8APIAlert :api-error="apiError" />
 
-      <FormField v-slot="{ componentField }" name="provider">
+      <FormField
+        v-slot="{ componentField }"
+        name="provider"
+      >
         <FormItem>
           <FormLabel class="flex items-center">
             AI Provider
@@ -27,7 +33,11 @@
         </FormItem>
       </FormField>
 
-      <FormField v-if="shouldShowBaseUrl" v-slot="{ componentField }" name="base_url">
+      <FormField
+        v-if="shouldShowBaseUrl"
+        v-slot="{ componentField }"
+        name="base_url"
+      >
         <FormItem>
           <FormLabel class="flex items-center">
             <div>
@@ -46,7 +56,10 @@
         </FormItem>
       </FormField>
 
-      <FormField v-slot="{ componentField }" name="provider_api_key">
+      <FormField
+        v-slot="{ componentField }"
+        name="provider_api_key"
+      >
         <FormItem>
           <FormLabel class="flex items-center">
             <div>
@@ -65,7 +78,10 @@
         </FormItem>
       </FormField>
 
-      <FormField v-slot="{ componentField }" name="name">
+      <FormField
+        v-slot="{ componentField }"
+        name="name"
+      >
         <FormItem>
           <FormLabel class="flex items-center">
             <div>
@@ -75,7 +91,11 @@
           </FormLabel>
           <FormControl>
             <div class="flex gap-2">
-              <Input v-bind="componentField" placeholder="Ch8r Dev" class="flex-1" />
+              <Input
+                v-bind="componentField"
+                placeholder="Ch8r Dev"
+                class="flex-1"
+              />
               <C8Button
                 variant="outline"
                 size="icon"
@@ -89,7 +109,6 @@
           <FormMessage />
         </FormItem>
       </FormField>
-
     </form>
 
     <template #submitBtn>
@@ -102,6 +121,7 @@
     </template>
   </SlideOver>
 </template>
+
 <script setup lang="ts">
 import SlideOver from '~/components/SlideOver.vue'
 import { toast } from 'vue-sonner'
@@ -129,12 +149,12 @@ const { generateShortUniqueName } = useUniqueName()
 const { apiError, handleError, clearError } = useApiErrorHandling()
 
 const providerOptions = computed(() =>
-  AIProviderStore.supportedAIProviders.map(p => ({ 
-    label: p.label, 
-    value: p.id, 
+  AIProviderStore.supportedAIProviders.map(p => ({
+    label: p.label,
+    value: p.id,
     baseUrl: p.base_url,
-    icon: useAIProviderIcon(p.id).value
-  }))
+    icon: useAIProviderIcon(p.id).value,
+  })),
 )
 const isCustomProvider = computed(() => form.values.provider === 'custom')
 const shouldShowBaseUrl = computed(() => isCustomProvider.value || form.values.provider === '')
@@ -150,13 +170,14 @@ const schema = z.object({
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Custom provider requires base URL',
-        path: ['base_url']
+        path: ['base_url'],
       })
-    } else if (!z.string().url().safeParse(data.base_url).success) {
+    }
+    else if (!z.string().url().safeParse(data.base_url).success) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Please enter a valid URL',
-        path: ['base_url']
+        path: ['base_url'],
       })
     }
   }
@@ -169,7 +190,7 @@ const form = useForm({
     base_url: '',
     provider_api_key: '',
     provider: '',
-  }
+  },
 })
 const { isSubmitting } = form
 
@@ -184,7 +205,8 @@ watch(() => form.values.provider, (newProvider) => {
     if (selectedProvider) {
       if (newProvider === 'custom') {
         form.setFieldValue('base_url', '')
-      } else {
+      }
+      else {
         form.setFieldValue('base_url', selectedProvider.base_url)
       }
     }
@@ -200,7 +222,7 @@ const resetFormToDefaults = () => {
         base_url: firstProvider.base_url,
         provider_api_key: '',
         provider: firstProvider.id,
-      }
+      },
     })
   }
 }
@@ -227,21 +249,22 @@ const createNewAIProvider = form.handleSubmit(async (values) => {
     await AIProviderStore.create(submitValues)
     newAIProviderSlide.value?.closeSlide()
     toast.success('AI provider created')
-  } catch (error: unknown) {
+  }
+  catch (error: unknown) {
     handleError(error, form)
   }
 })
 
 const disabled = computed(() => {
   const values = form.values
-  const baseUrlValid = values.provider === 'custom' 
-    ? values.base_url?.trim() 
+  const baseUrlValid = values.provider === 'custom'
+    ? values.base_url?.trim()
     : true
   return !(
-    values.name?.trim() &&
-    baseUrlValid &&
-    values.provider?.trim() &&
-    values.provider_api_key?.trim()
+    values.name?.trim()
+    && baseUrlValid
+    && values.provider?.trim()
+    && values.provider_api_key?.trim()
   )
 })
 </script>

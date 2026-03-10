@@ -26,9 +26,9 @@ export const useAIProviderModelsStore = defineStore('aiProviderModels', {
   actions: {
     async load() {
       const { httpGet } = useHttpClient()
-      const response = await httpGet<AIProviderModelsResponse>(`/ai-providers/all_models/`)
-      this.providerModels = response.providers || []
-      return response
+      const providerModels = await httpGet<AIProviderModelsResponse>(`/ai-providers/all_models/`)
+      this.providerModels = providerModels.providers || []
+      return providerModels
     },
   },
 })

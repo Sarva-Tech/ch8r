@@ -62,7 +62,6 @@
         </template>
       </C8Item>
       <UpdateAIProvider ref="updateAIProviderSlide" />
-      
       <C8Dialog
         v-model:open="isDeleteDialogOpen"
         :title="`Delete AI Provider ${providerToDelete?.name}`"
@@ -79,17 +78,19 @@
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import NewAIProvider from '~/components/AIProvider/NewAIProvider.vue'
 import UpdateAIProvider from '~/components/AIProvider/UpdateAIProvider.vue'
 import C8Dialog from '~/components/C8Dialog.vue'
 import { toast } from 'vue-sonner'
-import C8Item from "~/components/C8Item.vue";
-import {ItemDescription} from "~/components/ui/item";
+import C8Item from '~/components/C8Item.vue'
+import { ItemDescription } from '~/components/ui/item'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
 import { PencilLine, Trash, Globe, Server, FileBox } from 'lucide-vue-next'
+
 const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 const isDeleteDialogOpen = ref(false)
 const providerToDelete = ref<AIProvider | null>(null)
@@ -121,7 +122,6 @@ function providerDisplayName(provider: string) {
     case 'cohere':
       return 'Cohere'
     default:
-      // Capitalize first letter for unknown providers
       return provider.charAt(0).toUpperCase() + provider.slice(1)
   }
 }
@@ -131,10 +131,12 @@ onMounted(async () => {
   try {
     await AIProviderStore.load()
     await AIProviderModelsStore.load()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     console.error(e)
     toast.error('Failed to load AI providers')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 })
@@ -142,14 +144,14 @@ onMounted(async () => {
 const AIProviders = computed(() =>
   AIProviderStore.AIProviders.map((AIProvider) => {
     const providerModelData = AIProviderModelsStore.providerModels.find(
-      (pm) => pm.ai_provider.uuid === AIProvider.uuid
+      pm => pm.ai_provider.uuid === AIProvider.uuid,
     )
     return {
       ...AIProvider,
       models: providerModelData?.ai_provider_models?.models_data || [],
-      modelsCount: providerModelData?.ai_provider_models?.models_data?.length || 0
+      modelsCount: providerModelData?.ai_provider_models?.models_data?.length || 0,
     }
-  })
+  }),
 )
 
 function updateAIProvider(AIProvider: AIProvider) {
