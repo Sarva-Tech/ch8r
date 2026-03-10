@@ -214,3 +214,126 @@ class AppAIProviderTest(APITestCase):
         }
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_uniqueness_constraint_same_app_context_capability(self):
+        """Test that only one record exists for the same app/context/capability pair."""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
+
+        data1 = {
+            'ai_provider_id': self.ai_provider.id,
+            'context': 'text',
+            'capability': 'response',
+            'external_model_id': 'gpt-4'
+        }
+        response1 = self.client.post(url, data1)
+        self.assertEqual(response1.status_code, status.HTTP_201_CREATED)
+
+        data2 = {
+            'ai_provider_id': self.ai_provider.id,
+            'context': 'text',
+            'capability': 'response',
+            'external_model_id': 'gpt-3.5-turbo'
+        }
+        response2 = self.client.post(url, data2)
+        self.assertEqual(response2.status_code, status.HTTP_201_CREATED)
+
+        configs = AppAIProvider.objects.filter(
+            application=self.application,
+            context='text',
+            capability='response'
+        )
+        self.assertEqual(configs.count(), 1)
+
+        config = configs.first()
+        self.assertEqual(config.external_model_id, 'gpt-3.5-turbo')
+
+    def test_multiple_different_context_capability_pairs_allowed(self):
+        """Test that an app can have multiple records with different context/capability pairs."""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
+
+        data1 = {
+            'ai_provider_id': self.ai_provider.id,
+            'context': 'text',
+            'capability': 'response',
+            'external_model_id': 'gpt-4'
+        }
+        response1 = self.client.post(url, data1)
+        self.assertEqual(response1.status_code, status.HTTP_201_CREATED)
+
+        data2 = {
+            'ai_provider_id': self.ai_provider.id,
+            'context': 'embedding',
+            'capability': 'embedding',
+            'external_model_id': 'text-embedding-ada-002'
+        }
+        response2 = self.client.post(url, data2)
+        self.assertEqual(response2.status_code, status.HTTP_201_CREATED)
+
+        data3 = {
+            'ai_provider_id': self.ai_provider.id,
+            'context': 'widget',
+            'capability': 'text',
+            'external_model_id': 'gpt-3.5-turbo'
+        }
+        response3 = self.client.post(url, data3)
+        self.assertEqual(response3.status_code, status.HTTP_201_CREATED)
+
+        configs = AppAIProvider.objects.filter(application=self.application)
+        self.assertEqual(configs.count(), 3)
+
+        text_response = configs.filter(context='text', capability='response')
+        embedding_embedding = configs.filter(context='embedding', capability='embedding')
+        widget_text = configs.filter(context='widget', capability='text')
+
+        self.assertEqual(text_response.count(), 1)
+        self.assertEqual(embedding_embedding.count(), 1)
+        self.assertEqual(widget_text.count(), 1)
+
+        self.assertEqual(text_response.first().external_model_id, 'gpt-4')
+        self.assertEqual(embedding_embedding.first().external_model_id, 'text-embedding-ada-002')
+        self.assertEqual(widget_text.first().external_model_id, 'gpt-3.5-turbo')
+
+    def test_different_apps_can_have_same_context_capability(self):
+        """Test that different apps can have the same context/capability pairs independently."""
+        other_user = User.objects.create_user(username='other_user', password='test')
+        other_app = Application.objects.create(owner=other_user, name='Other App')
+        other_ai_provider = AIProvider.objects.create(
+            name='Other AI Provider',
+            provider='openai',
+            provider_api_key='test-key-2',
+            metadata={'base_url': 'https://api.openai.com'},
+            creator=other_user
+        )
+
+        self.client.force_authenticate(user=self.user)
+        url1 = reverse('application-ai-providers-list', kwargs={'application_uuid': self.application.uuid})
+        data1 = {
+            'ai_provider_id': self.ai_provider.id,
+            'context': 'text',
+            'capability': 'response',
+            'external_model_id': 'gpt-4'
+        }
+        response1 = self.client.post(url1, data1)
+        self.assertEqual(response1.status_code, status.HTTP_201_CREATED)
+
+        self.client.force_authenticate(user=other_user)
+        url2 = reverse('application-ai-providers-list', kwargs={'application_uuid': other_app.uuid})
+        data2 = {
+            'ai_provider_id': other_ai_provider.id,
+            'context': 'text',
+            'capability': 'response',
+            'external_model_id': 'gpt-3.5-turbo'
+        }
+        response2 = self.client.post(url2, data2)
+        self.assertEqual(response2.status_code, status.HTTP_201_CREATED)
+
+        app1_configs = AppAIProvider.objects.filter(application=self.application)
+        app2_configs = AppAIProvider.objects.filter(application=other_app)
+
+        self.assertEqual(app1_configs.count(), 1)
+        self.assertEqual(app2_configs.count(), 1)
+
+        self.assertEqual(app1_configs.first().external_model_id, 'gpt-4')
+        self.assertEqual(app2_configs.first().external_model_id, 'gpt-3.5-turbo')

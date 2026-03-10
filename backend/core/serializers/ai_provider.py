@@ -25,7 +25,9 @@ class AIProviderCreateSerializer(serializers.ModelSerializer):
         if self.instance is not None:
             self.fields['provider_api_key'].required = False
             self.fields['provider_api_key'].allow_blank = True
-            self.fields.pop('provider', None)
+            # Make provider read-only for updates instead of removing it
+            if 'provider' in self.fields:
+                self.fields['provider'].read_only = True
 
     def validate_provider(self, value):
         supported_provider_ids = [p['id'] for p in SUPPORTED_AI_PROVIDERS]

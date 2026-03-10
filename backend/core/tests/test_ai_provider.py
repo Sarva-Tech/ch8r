@@ -200,7 +200,9 @@ class TestAIProviderAPI(BaseAPITestCase):
             'name': 'Updated Name',
             'provider': 'anthropic'
         }
-        response = self.client.patch(detail_url, update_data, format='json')
+        with patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider') as mock_validate:
+            mock_validate.return_value = (True, ['gpt-3.5-turbo'])
+            response = self.client.patch(detail_url, update_data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -233,7 +235,9 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name'}
-        response = self.client.patch(detail_url, update_data, format='json')
+        with patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider') as mock_validate:
+            mock_validate.return_value = (True, ['gpt-3.5-turbo'])
+            response = self.client.patch(detail_url, update_data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -274,7 +278,9 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name', 'provider_api_key': ''}
-        response = self.client.patch(detail_url, update_data, format='json')
+        with patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider') as mock_validate:
+            mock_validate.return_value = (True, ['gpt-3.5-turbo'])
+            response = self.client.patch(detail_url, update_data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -292,7 +298,9 @@ class TestAIProviderAPI(BaseAPITestCase):
 
         detail_url = f'/api/ai-providers/{provider.uuid}/'
         update_data = {'name': 'Updated Name', 'provider_api_key': '   '}
-        response = self.client.patch(detail_url, update_data, format='json')
+        with patch('core.services.factories.ai_provider_factory.AIProviderFactory.validate_provider') as mock_validate:
+            mock_validate.return_value = (True, ['gpt-3.5-turbo'])
+            response = self.client.patch(detail_url, update_data, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
