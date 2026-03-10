@@ -80,7 +80,7 @@ jobs:
     - name: Run backend tests
       run: |
         cd backend
-        pytest --cov=core --cov-report=term-missing --cov-fail-under=60
+        pytest --cov=core --cov-report=term-missing --cov-fail-under=60 --json-report --json-report-file=test-results.json
       env:
         APP_SECRET_KEY: 'test-secret-key-for-ci'
         DB_NAME: ch8rtests
@@ -119,15 +119,17 @@ jobs:
       uses: actions/github-script@v6
       with:
         script: |
-          const { execSync } = require('child_process');
+          const fs = require('fs');
           
+          // Read test results from JSON file
           let testResults = 'Tests completed successfully';
           try {
-            const output = execSync('cd backend && python -m pytest --tb=no -q --disable-warnings', { encoding: 'utf8' });
-            const passed = (output.match(/passed/g) || []).length;
-            const failed = (output.match(/failed/g) || []).length;
+            const testData = JSON.parse(fs.readFileSync('backend/test-results.json', 'utf8'));
+            const passed = testData.summary.passed || 0;
+            const failed = testData.summary.failed || 0;
             testResults = `Tests passed: ${passed}, Failed: ${failed}`;
           } catch (error) {
+            console.log('Could not read test results:', error.message);
             testResults = 'Tests completed successfully';
           }
 
@@ -158,6 +160,8 @@ jobs:
           } else {
             console.log('Discord webhook URL not found');
           }
+      env:
+        DISCORD_TEST_WEBHOOK_URL: ${{ secrets.DISCORD_TEST_WEBHOOK_URL }}
 
     - name: Discord notification on failure
       if: failure()
@@ -191,3 +195,5 @@ jobs:
           } else {
             console.log('Discord webhook URL not found');
           }
+      env:
+        DISCORD_TEST_WEBHOOK_URL: ${{ secrets.DISCORD_TEST_WEBHOOK_URL }}
