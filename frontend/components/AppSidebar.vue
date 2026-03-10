@@ -285,11 +285,11 @@ async function initNewChat() {
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                 : '',
             ]"
-            @click="setActiveMenu('knowledge-base')"
           >
             <NuxtLink
               :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
               class="flex w-full items-center space-x-2"
+              @click="setActiveMenu('knowledge-base')"
             >
               <BookOpen class="size-4" />
               <div>Knowledge Base</div>
@@ -302,11 +302,11 @@ async function initNewChat() {
                 ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                 : '',
             ]"
-            @click="setActiveMenu('api-keys')"
           >
             <NuxtLink
               :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
-              class="flex w-full items-center space-x-2 w-full"
+              class="flex w-full items-center space-x-2"
+              @click="setActiveMenu('api-keys')"
             >
               <KeyRound class="size-4" />
               <div>API Keys & Widget</div>
