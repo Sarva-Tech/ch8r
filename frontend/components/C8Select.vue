@@ -1,5 +1,5 @@
 <template>
-  <div :class="containerClass" class="space-y-2">
+  <div :class="containerClass || 'space-y-2'">
     <div v-if="label">
       <label class="text-sm font-medium">{{ label }}</label>
     </div>

@@ -56,7 +56,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       }
     },
 
-    async sendMessage(applicationUuid: string, messageText: string, sendToUser = false) {
+    async sendMessage(applicationUuid: string, messageText: string, sendToUser = false, aiProvider?: number, model?: string) {
       const userStore = useUserStore()
       const sender = userStore.userIdentifier
 
@@ -85,7 +85,9 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           metadata: {
             source: 'web'
           },
-          send_to_user: sendToUser
+          send_to_user: sendToUser,
+          ai_provider: aiProvider,
+          model: model
         }
 
         return await httpPost<Message>(
