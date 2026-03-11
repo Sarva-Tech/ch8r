@@ -164,11 +164,11 @@ function getDisplayLabel(value: string) {
           variant="outline"
           role="combobox"
           :aria-expanded="open"
-          class="w-full justify-between min-h-10 h-auto"
+          class="w-full justify-between h-9"
         >
           <span
             v-if="props.multiple ? modelValue.length > 0 : selectedValue"
-            class="text-foreground"
+            class="text-foreground truncate flex-1 text-left"
           >
             <template v-if="props.multiple">
               {{ modelValue.length }} item{{ modelValue.length === 1 ? '' : 's' }} selected
@@ -179,7 +179,7 @@ function getDisplayLabel(value: string) {
           </span>
           <span
             v-else
-            class="text-muted-foreground"
+            class="text-muted-foreground truncate flex-1 text-left"
           >
             {{ placeholder }}
           </span>
