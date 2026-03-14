@@ -8,6 +8,8 @@ class Message(models.Model):
     message = models.TextField()
     sender_identifier = models.CharField(max_length=255)
     metadata = models.JSONField(blank=True, null=True)
+    ai_provider = models.ForeignKey('AIProvider', on_delete=models.SET_NULL, null=True, blank=True)
+    model = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

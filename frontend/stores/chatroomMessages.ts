@@ -2,14 +2,18 @@ import { defineStore } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useHttpClient } from '~/composables/useHttpClient'
 import { DUMMY_NEW_CHATROOM, NEW_CHAT } from '~/lib/consts'
+import type { AIProvider } from '@/stores/aiProvider'
 
-interface Message {
+export interface Message {
   id: number
   uuid: string
   sender_identifier: string
   message: string
   metadata: Record<string, unknown>
   created_at: string
+  chatroom_identifier?: string
+  ai_provider_id?: number | null
+  model?: string | null
 }
 
 interface ChatRoomMessagesResponse {
@@ -17,6 +21,8 @@ interface ChatRoomMessagesResponse {
   name: string
   application: Application
   messages: Message[]
+  ai_provider: AIProvider
+  ai_model: string | null
 }
 
 export const useChatroomMessagesStore = defineStore('chatroom', {
@@ -25,6 +31,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
     messages: [] as Message[],
     loading: false,
     error: null as string | null,
+    lastUsedAIProvider: undefined as AIProvider | undefined,
+    lastUsedAIModel: null as string | null
   }),
 
   actions: {
@@ -49,6 +57,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           name: data.name
         }
         this.messages = data.messages
+        this.lastUsedAIProvider = data.ai_provider
+        this.lastUsedAIModel = data.ai_model
       } catch (err: any) {
         this.error = err.message || 'Failed to load chatroom'
       } finally {
@@ -56,7 +66,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       }
     },
 
-    async sendMessage(applicationUuid: string, messageText: string, sendToUser = false, aiProvider?: number, model?: string) {
+    async sendMessage(applicationUuid: string, messageText: string, sendToParticipant = false, aiProvider?: number, model?: string) {
       const userStore = useUserStore()
       const sender = userStore.userIdentifier
 
@@ -85,7 +95,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           metadata: {
             source: 'web'
           },
-          send_to_user: sendToUser,
+          send_to_participant: sendToParticipant,
           ai_provider: aiProvider,
           model: model
         }

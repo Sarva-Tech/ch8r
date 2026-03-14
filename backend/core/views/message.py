@@ -38,7 +38,7 @@ class SendMessageView(APIView):
             if not app or str(app.uuid) != str(application_uuid):
                 return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
 
-        serializer = CreateMessageSerializer(data=request.data)
+        serializer = CreateMessageSerializer(data=request.data, app_owner=app.owner)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
@@ -47,8 +47,11 @@ class SendMessageView(APIView):
         message_text = data['message']
         metadata = data.get('metadata', {})
 
-        send_to_user = data['send_to_user']
-        metadata['send_to_user'] = send_to_user
+        send_to_participant = data['send_to_participant']
+        metadata['send_to_participant'] = send_to_participant
+
+        ai_provider_id = data.get('ai_provider')
+        model = data.get('model')
 
         if not chatroom_uuid and not sender_id:
             return Response(
@@ -58,6 +61,18 @@ class SendMessageView(APIView):
 
         if chatroom_uuid != 'new_chat':
             chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=app)
+
+            updated = False
+            if ai_provider_id is not None and ai_provider_id != chatroom.ai_provider_id:
+                chatroom.ai_provider_id = ai_provider_id
+                updated = True
+            if model is not None and model != chatroom.model:
+                if model.startswith('model/'):
+                    model = model[6:]
+                chatroom.model = model
+                updated = True
+            if updated:
+                chatroom.save()
 
             if sender_id and not ChatroomParticipant.objects.filter(chatroom=chatroom,
                                                                     user_identifier=sender_id).exists():
@@ -73,7 +88,9 @@ class SendMessageView(APIView):
             with transaction.atomic():
                 chatroom = ChatRoom.objects.create(
                     application=app,
-                    name=chatroom_name
+                    name=chatroom_name,
+                    ai_provider_id=ai_provider_id,
+                    model=model
                 )
 
                 ChatroomParticipant.objects.bulk_create([
@@ -85,10 +102,12 @@ class SendMessageView(APIView):
             chatroom=chatroom,
             sender_identifier=sender_id,
             message=message_text,
-            metadata=metadata
+            metadata=metadata,
+            ai_provider_id=ai_provider_id,
+            model=model
         )
 
-        if send_to_user:
+        if send_to_participant:
             channel_layer = get_channel_layer()
             participants = list(
                 message.chatroom.participants.filter(
@@ -110,7 +129,7 @@ class SendMessageView(APIView):
                     logger.warning(f"Failed to send message to {group_name}: {str(e)}")
 
         else:
-            generate_bot_response.delay(message.id, app.uuid)
+            generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
 
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'

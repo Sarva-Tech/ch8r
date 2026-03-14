@@ -25,90 +25,104 @@
       :style="{ left: isMobile ? '0' : sidebarWidth, right: '0' }"
     >
       <div class="w-full space-y-2">
-        <div class="flex gap-2">
-          <div class="w-50 min-w-0 max-w-50 overflow-hidden">
-            <FormField
-              v-slot="{ componentField }"
-              name="ai_provider"
-            >
-              <FormItem class="space-y-0">
-                <C8Select
-                  :options="configuredAIProviderOptions"
-                  placeholder="Select AI provider"
-                  container-class="space-y-0"
-                  trigger-class="h-9 w-full"
-                  v-bind="componentField"
-                />
-                <FormMessage />
-              </FormItem>
-            </FormField>
-          </div>
-
-          <div class="w-50 min-w-0 max-w-50 overflow-hidden">
-            <FormField
-              v-slot="{ componentField }"
-              name="models"
-            >
-              <FormItem class="space-y-0">
-                <div class="w-full overflow-hidden">
-                  <C8Combobox
+        <form
+          class="space-y-2"
+          @submit.prevent="send"
+        >
+          <C8APIAlert :api-error="apiError" />
+          <div class="flex gap-2">
+            <div class="w-50 min-w-0 max-w-50 overflow-hidden">
+              <FormField
+                v-slot="{ componentField }"
+                name="ai_provider"
+              >
+                <FormItem class="space-y-0">
+                  <C8Select
+                    :options="configuredAIProviderOptions"
+                    placeholder="Select AI provider"
+                    container-class="space-y-0"
+                    trigger-class="h-9 w-full"
                     v-bind="componentField"
-                    :options="getProviderModels(selectedProviderId)"
-                    :multiple="false"
                   />
-                </div>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-          </div>
-        </div>
-        <Textarea
-          v-model="currentMessage"
-          placeholder="Message"
-          class="max-h-40 overflow-y-auto resize-none"
-          @keydown.enter="send"
-        />
-        <div class="flex gap-4 items-end">
-          <div
-            class="flex gap-4 items-end flex-1 justify-between"
-          >
-            <FormField
-              v-slot="{ componentField }"
-              name="send_to_user"
-            >
-              <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                <Checkbox
-                  id="sendToUser"
-                  :default-value="true"
-                  v-bind="componentField"
-                />
-                <div class="grid gap-1">
-                  <Label for="sendToUser">Send to Participant</Label>
-                  <p
-                    v-if="form.values.send_to_user"
-                    class="text-muted-foreground text-sm"
-                  >
-                    Message will be forwarded to the participant.
-                  </p>
-                  <p
-                    v-else
-                    class="text-muted-foreground text-sm"
-                  >
-                    Message will be processed by AI model only.
-                  </p>
-                </div>
-              </FormItem>
-            </FormField>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+            </div>
 
-            <C8Button
-              label="Send"
-              :disabled="disabled"
-              :loading="isSubmitting"
-              type="submit"
-              @click="send"
-            />
+            <div class="w-50 min-w-0 max-w-50 overflow-hidden">
+              <FormField
+                v-slot="{ componentField }"
+                name="models"
+              >
+                <FormItem class="space-y-0">
+                  <div class="w-full overflow-hidden">
+                    <C8Combobox
+                      v-bind="componentField"
+                      :options="getProviderModels(selectedProviderId)"
+                      :multiple="false"
+                    />
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              </FormField>
+            </div>
           </div>
-        </div>
+          <FormField
+            v-slot="{ componentField }"
+            name="message"
+          >
+            <FormItem class="space-y-0">
+              <Textarea
+                v-bind="componentField"
+                placeholder="Message"
+                class="max-h-40 overflow-y-auto resize-none"
+              />
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <div class="flex gap-4 items-end">
+            <div
+              class="flex gap-4 items-end flex-1 justify-between"
+            >
+              <FormField
+                v-slot="{ componentField }"
+                name="send_to_participant"
+              >
+                <FormItem class="space-y-0 flex items-center space-x-2 self-center">
+                  <Checkbox
+                    id="sendToUser"
+                    :default-value="true"
+                    v-bind="componentField"
+                  />
+                  <div class="grid gap-1">
+                    <Label for="sendToUser">Send to Participant</Label>
+                    <p
+                      v-if="form.values.send_to_participant"
+                      class="text-muted-foreground text-sm"
+                    >
+                      Message will be forwarded to the participant.
+                    </p>
+                    <p
+                      v-else
+                      class="text-muted-foreground text-sm"
+                    >
+                      Message will be processed by AI model only.
+                    </p>
+                  </div>
+                </FormItem>
+              </FormField>
+
+              <C8Button
+                label="Send"
+                :disabled="disabled"
+                :loading="isSubmitting"
+                type="submit"
+                :icon="Send"
+                @click="send"
+              />
+            </div>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -145,13 +159,14 @@ const chatroomMessagesStore = useChatroomMessagesStore()
 const appStore = useApplicationsStore()
 const AIProviderStore = useAIProviderStore()
 const AIProviderModelsStore = useAIProviderModelsStore()
+const AppAIProviderStore = useAppAIProviderStore()
 
 const messages = computed(() => chatroomMessagesStore.messages)
 const selectedApp = computed(() => appStore.selectedApplication)
 const selectedChatroom = computed(() => chatroomMessagesStore.selectedChatroom)
+const lastUsedAIProvider = computed(() => chatroomMessagesStore.lastUsedAIProvider)
+const lastUsedAIModel = computed(() => chatroomMessagesStore.lastUsedAIModel)
 const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(form.values.ai_provider) : 0)
-
-const currentMessage = ref('')
 
 const { state, isMobile } = useSidebar()
 
@@ -167,6 +182,9 @@ const schema = z.object({
   ai_provider: z.string().min(1, { message: 'Please select an AI provider' }),
   models: z.array(z.string()).min(1, { message: 'Please select a model' }),
   send_to_participant: z.boolean(),
+  message: z.string().min(1, { message: 'Please enter a message' }),
+  sender_identifier: z.string(),
+  chatroom_identifier: z.string(),
 })
 
 const form = useForm({
@@ -174,13 +192,17 @@ const form = useForm({
   initialValues: {
     ai_provider: undefined as string | undefined,
     models: [] as string[],
-    message: undefined as string | undefined,
-    send_to_user: false as boolean | false
+    send_to_participant: false as boolean,
+    message: '',
+    sender_identifier: userStore.userIdentifier,
+    chatroom_identifier: chatroomId as string,
   } as {
     ai_provider: string | undefined
     models: string[]
-    message: string | undefined
-    send_to_user: boolean | false
+    send_to_participant: boolean
+    message: string
+    sender_identifier: string
+    chatroom_identifier: string
   }
 })
 
@@ -224,28 +246,32 @@ const getProviderModels = (providerId: number) => {
   })
 }
 
-async function send() {
-  if (!currentMessage.value.trim() || !selectedApp?.value?.uuid) return
+const send = form.handleSubmit(async (values) => {
+  if (!selectedApp?.value?.uuid) return
+  clearError()
+  try {
+    const response = await chatroomMessagesStore.sendMessage(
+      selectedApp.value.uuid,
+      values.message,
+      values.send_to_participant,
+      selectedProviderId.value,
+      values.models?.[0]
+    )
+    form.setFieldValue('message', '')
 
-  const response = await chatroomMessagesStore.sendMessage(
-    selectedApp.value.uuid,
-    currentMessage.value,
-    form.values.send_to_user,
-    selectedProviderId.value,
-    form.values.models?.[0]
-  )
-  currentMessage.value = ''
-
-  if (selectedChatroom?.value?.uuid === NEW_CHAT) {
-    const newChatroomId = response?.chatroom_identifier
-    if (newChatroomId) {
-      await navigateTo(
-        `/applications/${selectedApp.value.uuid}/messages/${newChatroomId}`,
-      )
-      await chatroomsStore.fetchChatrooms(selectedApp.value.uuid)
+    if (selectedChatroom?.value?.uuid === NEW_CHAT) {
+      const newChatroomId = response?.chatroom_identifier
+      if (newChatroomId) {
+        await navigateTo(
+          `/applications/${selectedApp.value.uuid}/messages/${newChatroomId}`,
+        )
+        await chatroomsStore.fetchChatrooms(selectedApp.value.uuid)
+      }
     }
+  } catch (error: unknown) {
+    handleError(error, form)
   }
-}
+})
 
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
   if (msg.type === NEW_MESSAGE_UPDATE && msg.data.chatroom_identifier === chatroomId) {
@@ -261,6 +287,23 @@ onMounted(async () => {
   try {
     await AIProviderStore.load()
     await AIProviderModelsStore.load()
+    await AppAIProviderStore.fetchAppAIProviderConfigs(selectedApp.value.uuid)
+
+    const lastUsedProvider = lastUsedAIProvider.value
+    const appProviders = AppAIProviderStore.existingAppAIProviderConfigs
+
+    if (lastUsedProvider) {
+      form.setFieldValue('ai_provider', lastUsedProvider.id.toString())
+      form.setFieldValue('models', [lastUsedAIModel.value ?? ''])
+    } else {
+      const responseTextProvider = appProviders.find(
+        config => config.context === 'response' && config.capability === 'text'
+      )
+      if (responseTextProvider) {
+        form.setFieldValue('ai_provider', responseTextProvider.ai_provider.id.toString())
+        form.setFieldValue('models', [responseTextProvider.external_model_id ?? ''])
+      }
+    }
   }
   catch (e: unknown) {
     console.error(e)

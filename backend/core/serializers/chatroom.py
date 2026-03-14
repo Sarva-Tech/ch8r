@@ -1,22 +1,26 @@
 from rest_framework import serializers
 
-from core.models import ChatroomParticipant
+from core.models import ChatroomParticipant, AIProvider
 from core.models.chatroom import ChatRoom
 from core.serializers import ApplicationViewSerializer
 from core.serializers.message import ViewMessageSerializer
+from core.serializers.ai_provider import AIProviderSerializer
 
 class ChatRoomViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name']
+        fields = ['uuid', 'name', 'ai_provider', 'model']
 
 class ChatRoomWithMessagesSerializer(serializers.ModelSerializer):
     application = ApplicationViewSerializer(read_only=True)
+    ai_provider = AIProviderSerializer(read_only=True)
+    ai_model = serializers.CharField(source='model', read_only=True)
     messages = ViewMessageSerializer(many=True, read_only=True)
+    chatroom = ChatRoomViewSerializer(read_only=True)
 
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'application', 'messages']
+        fields = ['uuid', 'name', 'application', 'messages', 'ai_provider', 'ai_model', 'chatroom']
 
 class ChatroomParticipantSerializer(serializers.ModelSerializer):
     class Meta:

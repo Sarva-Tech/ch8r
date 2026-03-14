@@ -10,7 +10,7 @@ class CustomProvider(AIProviderContract):
 
         raise NotImplementedError("Not implemented")
 
-    def generate_content(self, model: str, contents: str, **kwargs) -> str:
+    def generate_text(self, model: str, contents: str, **kwargs) -> str:
         raise NotImplementedError("Not implemented")
 
     def validate_connection(self) -> tuple[bool, List[Dict[str, Any]]]:

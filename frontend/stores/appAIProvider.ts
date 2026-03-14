@@ -51,11 +51,17 @@ export const useAppAIProviderStore = defineStore('appAIProvider', {
 
     async addAppModel(applicationUuid: string, aiProviderId: number, modelName: string, context: string = 'response', capability: string = 'text') {
       const { httpPost } = useHttpClient()
+
+      let finalModelName = modelName
+      if (modelName.startsWith('model/')) {
+        finalModelName = modelName.substring(6)
+      }
+
       return httpPost(`/applications/${applicationUuid}/ai-providers/`, {
         ai_provider_id: aiProviderId,
         context,
         capability,
-        external_model_id: modelName,
+        external_model_id: finalModelName,
       })
     },
 
