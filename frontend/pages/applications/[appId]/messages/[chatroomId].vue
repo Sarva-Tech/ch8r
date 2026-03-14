@@ -84,33 +84,28 @@
             <div
               class="flex gap-4 items-end flex-1 justify-between"
             >
-              <FormField
-                v-slot="{ componentField }"
-                name="send_to_participant"
-              >
-                <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                  <Checkbox
-                    id="sendToUser"
-                    :default-value="true"
-                    v-bind="componentField"
-                  />
-                  <div class="grid gap-1">
-                    <Label for="sendToUser">Send to Participant</Label>
-                    <p
-                      v-if="form.values.send_to_participant"
-                      class="text-muted-foreground text-sm"
-                    >
-                      Message will be forwarded to the participant.
-                    </p>
-                    <p
-                      v-else
-                      class="text-muted-foreground text-sm"
-                    >
-                      Message will be processed by AI model only.
-                    </p>
-                  </div>
-                </FormItem>
-              </FormField>
+              <div class="flex items-center space-x-2 self-center">
+                <Checkbox
+                  id="sendToUser"
+                  :checked="sendToParticipant === true"
+                  @update:checked="(val) => { sendToParticipant = val === true }"
+                />
+                <div class="grid gap-1">
+                  <Label for="sendToUser">Send to Participant</Label>
+                  <p
+                    v-if="sendToParticipant"
+                    class="text-muted-foreground text-sm"
+                  >
+                    Message will be forwarded to the participant.
+                  </p>
+                  <p
+                    v-else
+                    class="text-muted-foreground text-sm"
+                  >
+                    Message will be processed by AI model only.
+                  </p>
+                </div>
+              </div>
 
               <C8Button
                 label="Send"
@@ -138,10 +133,11 @@ import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
 import { Send } from 'lucide-vue-next'
 import { Button } from '~/components/ui/button'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
-import { FormField, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
+import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '~/components/ui/form'
+import { Checkbox } from '~/components/ui/checkbox'
 import C8Combobox from '~/components/C8Combobox.vue'
 import C8Button from '~/components/C8Button.vue'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
@@ -171,6 +167,8 @@ const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(for
 const { state, isMobile } = useSidebar()
 
 const md = new MarkdownIt()
+
+const sendToParticipant = ref(false)
 
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem',
@@ -253,7 +251,7 @@ const send = form.handleSubmit(async (values) => {
     const response = await chatroomMessagesStore.sendMessage(
       selectedApp.value.uuid,
       values.message,
-      values.send_to_participant,
+      sendToParticipant.value,
       selectedProviderId.value,
       values.models?.[0]
     )

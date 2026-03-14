@@ -68,11 +68,19 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
     try:
         answer = provider.generate_text(model, prompt)
-        metadata = {
-            "status": "SUCCESS",
-            "escalation": False,
-            "reason_for_escalation": "",
-        }
+        if not answer or not answer.strip():
+            answer = "I'm sorry, I couldn't generate a response."
+            metadata = {
+                "status": "ERROR",
+                "escalation": True,
+                "reason_for_escalation": "Empty AI response",
+            }
+        else:
+            metadata = {
+                "status": "SUCCESS",
+                "escalation": False,
+                "reason_for_escalation": "",
+            }
     except Exception as e:
         logger.error(f"Failed to generate content: {e}")
         answer = "I'm sorry, I encountered an error processing your request."
@@ -156,6 +164,8 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         sender_identifier=AGENT_IDENTIFIER,
         message=answer,
         metadata=metadata,
+        ai_provider_id=ai_provider_id,
+        model=model
     )
 
     channel_layer = get_channel_layer()

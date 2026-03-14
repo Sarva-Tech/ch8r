@@ -6,13 +6,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import Application, ChatRoom, Message, LLMModel, AppModel
+from core.models.chatroom_participant import ChatroomParticipant
 from core.permissions import HasAPIKeyPermission
 from core.serializers import ApplicationCreateSerializer, ApplicationViewSerializer
 from core.serializers.chatroom import ChatRoomPreviewSerializer
 from core.services.kb_utils import parse_kb_from_request
 from core.services.kb_utils import create_kb_records
 from core.tasks import process_kb
-from core.widget_auth import WidgetTokenAuthentication
+from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 
 
 class ApplicationViewSet(viewsets.ModelViewSet):
@@ -80,6 +81,66 @@ class ApplicationChatRoomsPreviewView(APIView):
         chatrooms = ChatRoom.objects.filter(application=application).annotate(
             last_message_time=Subquery(last_message_time_subquery, output_field=DateTimeField())
         ).order_by('-last_message_time', '-created_at').prefetch_related('messages')
+
+        serializer = ChatRoomPreviewSerializer(chatrooms, many=True)
+        return Response({'chatrooms': serializer.data})
+
+
+class UserChatRoomsView(APIView):
+    """
+    Returns chatrooms for a specific widget user (sender_identifier).
+    Supports optional ?type=human|ai filter based on participant roles.
+    """
+    authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrWidget | HasAPIKeyPermission]
+
+    def get(self, request, application_uuid):
+        if request.user and request.user.is_authenticated:
+            app = Application.objects.filter(uuid=application_uuid, owner=request.user).first()
+        else:
+            app = getattr(request, 'application', None)
+            if not app or str(app.uuid) != str(application_uuid):
+                return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
+
+        if not app:
+            return Response({'detail': 'Application not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        sender_identifier = request.query_params.get('sender_identifier')
+        if not sender_identifier:
+            return Response({'detail': 'sender_identifier is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        chat_type = request.query_params.get('type')  # 'human' or 'ai'
+
+        # Find chatrooms where this sender is a participant
+        chatroom_ids = ChatroomParticipant.objects.filter(
+            user_identifier=sender_identifier,
+            chatroom__application=app,
+        ).values_list('chatroom_id', flat=True)
+
+        chatrooms = ChatRoom.objects.filter(id__in=chatroom_ids)
+
+        if chat_type == 'human':
+            # Chatrooms that have a human_agent participant
+            human_chatroom_ids = ChatroomParticipant.objects.filter(
+                chatroom_id__in=chatroom_ids,
+                role='human_agent',
+            ).values_list('chatroom_id', flat=True)
+            chatrooms = chatrooms.filter(id__in=human_chatroom_ids)
+        elif chat_type == 'ai':
+            # Chatrooms that have an agent (AI) participant but NOT a human_agent
+            human_chatroom_ids = ChatroomParticipant.objects.filter(
+                chatroom_id__in=chatroom_ids,
+                role='human_agent',
+            ).values_list('chatroom_id', flat=True)
+            chatrooms = chatrooms.exclude(id__in=human_chatroom_ids)
+
+        last_message_time_subquery = Message.objects.filter(
+            chatroom=OuterRef('pk')
+        ).order_by('-created_at').values('created_at')[:1]
+
+        chatrooms = chatrooms.annotate(
+            last_message_time=Subquery(last_message_time_subquery, output_field=DateTimeField())
+        ).order_by('-last_message_time', '-created_at').distinct().prefetch_related('messages')
 
         serializer = ChatRoomPreviewSerializer(chatrooms, many=True)
         return Response({'chatrooms': serializer.data})

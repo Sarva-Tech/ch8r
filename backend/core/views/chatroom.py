@@ -1,23 +1,30 @@
 from rest_framework import status, permissions
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from core.permissions import HasAPIKeyPermission
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
+from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 
 from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer
 
 
 class ChatRoomMessagesView(APIView):
-    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
+    authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticatedOrWidget | HasAPIKeyPermission]
 
     def get(self, request, application_uuid, chatroom_uuid):
-        application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        if request.user and request.user.is_authenticated:
+            application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        else:
+            application = getattr(request, 'application', None)
+            if not application or str(application.uuid) != str(application_uuid):
+                return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
+
         chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=application)
-
         serializer = ChatRoomWithMessagesSerializer(chatroom)
-
         return Response(serializer.data)
 
 

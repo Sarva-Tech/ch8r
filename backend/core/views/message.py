@@ -14,6 +14,8 @@ from core.models.application import Application
 from core.models.chatroom import ChatRoom
 from core.models.chatroom_participant import ChatroomParticipant
 from core.models.message import Message
+from core.models.ai_provider import AIProvider
+from core.utils import normalize_model_name_by_provider
 
 from core.serializers.message import CreateMessageSerializer, ViewMessageSerializer
 from core.tasks import generate_bot_response
@@ -67,8 +69,16 @@ class SendMessageView(APIView):
                 chatroom.ai_provider_id = ai_provider_id
                 updated = True
             if model is not None and model != chatroom.model:
-                if model.startswith('model/'):
-                    model = model[6:]
+                # Get provider name for model normalization
+                provider_name = ''
+                if ai_provider_id:
+                    try:
+                        ai_provider = AIProvider.objects.only('provider').get(id=ai_provider_id)
+                        provider_name = ai_provider.provider
+                    except AIProvider.DoesNotExist:
+                        pass
+                
+                model = normalize_model_name_by_provider(model, provider_name)
                 chatroom.model = model
                 updated = True
             if updated:
@@ -93,9 +103,13 @@ class SendMessageView(APIView):
                     model=model
                 )
 
+                # Determine agent participant: human agent if send_to_participant, else AI agent
+                agent_identifier = metadata.get('human_agent_identifier', AGENT_IDENTIFIER)
+                agent_role = 'human_agent' if send_to_participant else 'agent'
+
                 ChatroomParticipant.objects.bulk_create([
                     ChatroomParticipant(chatroom=chatroom, user_identifier=sender_id, role='user'),
-                    ChatroomParticipant(chatroom=chatroom, user_identifier=AGENT_IDENTIFIER, role='agent'),
+                    ChatroomParticipant(chatroom=chatroom, user_identifier=agent_identifier, role=agent_role),
                 ])
 
         message = Message.objects.create(
@@ -109,9 +123,12 @@ class SendMessageView(APIView):
 
         if send_to_participant:
             channel_layer = get_channel_layer()
+            # Push to widget users (anon_) AND human agents (reg:) in the chatroom
             participants = list(
                 message.chatroom.participants.filter(
-                    Q(role='user') & Q(user_identifier__startswith='anon_')
+                    Q(user_identifier__startswith='anon_') | Q(role='human_agent')
+                ).exclude(
+                    user_identifier=sender_id  # don't echo back to sender
                 ).values_list('user_identifier', flat=True)
             )
 
@@ -134,5 +151,5 @@ class SendMessageView(APIView):
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'
         response_data['llm_processing'] = True
-        response_data['chatroom_identifier'] = chatroom.uuid
-        return Response(ViewMessageSerializer(message).data, status=status.HTTP_200_OK)
+        response_data['chatroom_identifier'] = str(chatroom.uuid)
+        return Response(response_data, status=status.HTTP_200_OK)
