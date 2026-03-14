@@ -1,17 +1,11 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
+import type { Message } from '~/stores/chatroomMessages'
 
 export interface ChatroomPreview {
   uuid: string
   name: string
-  last_message?: {
-    id: number
-    uuid: string
-    sender_identifier: string
-    message: string
-    metadata: Record<string, unknown> | null
-    created_at: string
-  } | null
+  last_message?: Message | null
 }
 
 interface ChatroomsResponse {

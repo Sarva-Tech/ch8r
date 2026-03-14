@@ -7,4 +7,3 @@ from .contracts.ai_provider_contract import AIProviderContract
 from .factories.ai_provider_factory import AIProviderFactory
 from .providers.ai.gemini_provider import GeminiProvider
 from .providers.ai.custom_provider import CustomProvider
-from .ai_service import AIService

@@ -8,7 +8,7 @@ class AIProviderContract(ABC):
         self.config = config or {}
 
     @abstractmethod
-    def generate_content(self, model: str, contents: str, **kwargs) -> str:
+    def generate_text(self, model: str, contents: str, **kwargs) -> str:
         pass
 
     @abstractmethod
