@@ -18,3 +18,6 @@ class CustomProvider(AIProviderContract):
 
     def get_models(self) -> List[Dict[str, Any]]:
         raise NotImplementedError("Not implemented")
+
+    def embed(self, model: str, texts: list[str]) -> list[list[float]]:
+        raise NotImplementedError("Not implemented")

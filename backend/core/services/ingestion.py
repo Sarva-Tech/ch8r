@@ -2,13 +2,13 @@ from fastembed import SparseTextEmbedding
 from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
 
-from core.llm_client import LLMClient
-from core.models import IngestedChunk, LLMModel
+from core.models import IngestedChunk
 from core.qdrant import qdrant, COLLECTION_NAME
 from qdrant_client.http.models import PointIdsList, PointStruct
 from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, \
     MatchValue as ModelsMatchValue
 from qdrant_client.models import Prefetch, SparseVector
+from core.services.ai_client_service import AIClientService
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -17,20 +17,19 @@ sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
 
 
 def embed_text(text_chunks: list[str], app) -> list[list[float]]:
-    embedding_model = app.get_model_by_type(LLMModel.ModelType.EMBEDDING)
+    ai_client_service = AIClientService()
+    provider, model = ai_client_service.get_client_and_model(
+        app=app,
+        context='response',
+        capability='embedding'
+    )
+
+    if not provider or not model:
+        logger.error("[embed_text] No embedding provider available")
+        return [[] for _ in text_chunks]
+
     try:
-        client = LLMClient(
-            base_url=embedding_model.base_url,
-            api_key=embedding_model.config,
-        )
-        response = client.embed(text_chunks, embedding_model.model_name)
-
-        if not response:
-            return [[] for _ in text_chunks]
-
-        if isinstance(response[0], float):
-            return [response]
-        return response
+        return provider.embed(model, text_chunks)
     except Exception as e:
         logger.error(f"[embed_text] Embedding failed: {e}")
         return [[] for _ in text_chunks]
