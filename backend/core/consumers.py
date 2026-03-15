@@ -32,3 +32,11 @@ class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
             "type": "kb_updates",
             "data": event["data"],
         })
+
+    async def send_unread_update(self, event):
+        await self.send_json({
+            "type": "unread_update",
+            "chatroom_uuid": event["chatroom_uuid"],
+            "has_unread": event["has_unread"],
+            "sender_identifier": event["sender_identifier"],
+        })

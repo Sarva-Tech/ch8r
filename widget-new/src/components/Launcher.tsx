@@ -1,5 +1,5 @@
 import { h } from 'preact';
-import { unreadHuman, unreadAI } from '../store/signals';
+import { unreadCount } from '../store/signals';
 
 interface LauncherProps {
   isOpen: boolean;
@@ -42,8 +42,11 @@ export function Launcher({ isOpen, position = 'bottom-right', iconUrl, onOpen }:
             </svg>
           )}
         </button>
-        {(unreadHuman.value > 0 || unreadAI.value > 0) && (
-          <span class="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white" />
+        {unreadCount.value > 0 && (
+          <span
+            aria-label="You have unread messages"
+            class="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"
+          />
         )}
       </div>
     </div>

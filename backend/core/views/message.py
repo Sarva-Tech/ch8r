@@ -10,6 +10,7 @@ from django.db.models import Q
 import logging
 
 from core.consts import LIVE_UPDATES_PREFIX
+from core.services.unread import mark_unread_for_participants, broadcast_unread_update
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
 from core.models.chatroom_participant import ChatroomParticipant
@@ -120,6 +121,10 @@ class SendMessageView(APIView):
             ai_provider_id=ai_provider_id,
             model=model
         )
+
+        unread_identifiers = mark_unread_for_participants(chatroom, sender_id)
+        for user_identifier in unread_identifiers:
+            broadcast_unread_update(user_identifier, str(chatroom.uuid), True, sender_id)
 
         if send_to_participant:
             channel_layer = get_channel_layer()

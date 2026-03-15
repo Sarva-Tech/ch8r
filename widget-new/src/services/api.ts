@@ -78,7 +78,7 @@ export class ApiClient {
       uuid: string; message: string; sender_identifier: string;
       chatroom_identifier: string; created_at: string;
     }> }>(
-      `${this.baseUrl}/api/applications/${appUuid}/chatrooms/${chatroomUuid}/messages/`,
+      `${this.baseUrl}/api/applications/${appUuid}/chatrooms/${chatroomUuid}/messages/?sender_identifier=${encodeURIComponent(senderIdentifier)}`,
       { method: 'GET' },
     ).then(r => {
       if (!r.ok) return r;

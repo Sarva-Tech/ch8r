@@ -49,6 +49,7 @@ export interface SupportFormErrors {
 export interface ChatroomPreview {
   uuid: string;
   name: string;
+  has_unread: boolean;
   last_message: {
     uuid: string;
     message: string;

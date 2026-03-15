@@ -17,7 +17,7 @@ import {
   Lock,
 } from 'lucide-vue-next'
 import SlideOver from '~/components/SlideOver.vue'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 
 import {
   Sidebar,
@@ -113,6 +113,33 @@ watch(
 const { isMobile } = useSidebar()
 const applicationsStore = useApplicationsStore()
 const chatroomStore = useChatroomStore()
+const liveUpdateStore = useLiveUpdateStore()
+
+// Subscribe to unread_update events from the WebSocket
+const unsubscribeUnread = liveUpdateStore.subscribe((msg) => {
+  if (msg.type === 'unread_update') {
+    const { chatroom_uuid, has_unread } = msg as any
+    if (has_unread) {
+      chatroomStore.markUnread(chatroom_uuid)
+    } else {
+      chatroomStore.markRead(chatroom_uuid)
+    }
+  }
+  if (msg.type === 'message') {
+    const data = (msg as any).data
+    if (data?.chatroom_identifier) {
+      chatroomStore.updateLastMessage(data.chatroom_identifier, data)
+    }
+  }
+})
+onBeforeUnmount(() => unsubscribeUnread())
+
+// Re-fetch chatrooms on WebSocket reconnect to reconcile unread state
+watch(() => liveUpdateStore.isConnected, (connected, wasConnected) => {
+  if (connected && wasConnected === false && selectedApplication.value?.uuid) {
+    chatroomStore.fetchChatrooms(selectedApplication.value.uuid)
+  }
+})
 
 const { selectAppAndNavigate } = useNavigation()
 const { ellipsis } = useTextUtils()
@@ -346,11 +373,11 @@ async function initNewChat() {
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 px-4 py-2 text-sm leading-tight whitespace-nowrap rounded-lg',
                 activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : ''
               ]"
-              @click="() => setActiveMenu(chatroom.uuid)"
+              @click="() => { chatroomStore.markRead(chatroom.uuid); setActiveMenu(chatroom.uuid) }"
             >
               <div class="flex w-full items-center gap-2">
                 <span>{{ ellipsis(chatroom.name, 30) }}</span>
-                <span v-if="chatroomStore.unreadChatroomIds.includes(chatroom.uuid)" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                <UnreadBadge v-if="chatroom.has_unread" />
                 <span class="ml-auto text-xs">
                 {{ $dayjs(chatroom.last_message?.created_at).fromNow() }}
                 </span>

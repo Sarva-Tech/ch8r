@@ -348,6 +348,9 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   chatroomsStore.markRead(chatroomId as string)
+  if (selectedApp.value?.uuid && chatroomId && chatroomId !== 'new_chat') {
+    await chatroomMessagesStore.selectChatroom(selectedApp.value.uuid, chatroomId as string)
+  }
   try {
     await AIProviderStore.load()
     await AIProviderModelsStore.load()

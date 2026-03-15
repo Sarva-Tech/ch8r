@@ -29,14 +29,25 @@ class ChatroomParticipantSerializer(serializers.ModelSerializer):
 
 class ChatRoomPreviewSerializer(serializers.ModelSerializer):
     last_message = serializers.SerializerMethodField()
+    has_unread = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'last_message']
+        fields = ['uuid', 'name', 'last_message', 'has_unread']
 
     def get_last_message(self, chatroom):
         last_msg = chatroom.messages.order_by('-created_at').first()
         return ViewMessageSerializer(last_msg).data if last_msg else None
+
+    def get_has_unread(self, chatroom):
+        user_identifier = self.context.get('user_identifier')
+        if not user_identifier:
+            return False
+        result = ChatroomParticipant.objects.filter(
+            chatroom=chatroom,
+            user_identifier=user_identifier
+        ).values_list('has_unread', flat=True).first()
+        return result if result is not None else False
 
 class ChatRoomDetailSerializer(serializers.ModelSerializer):
     participants = ChatroomParticipantSerializer(many=True, read_only=True)

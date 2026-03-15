@@ -6,6 +6,7 @@ export interface ChatroomPreview {
   uuid: string
   name: string
   last_message?: Message | null
+  has_unread: boolean
 }
 
 interface ChatroomsResponse {
@@ -17,7 +18,6 @@ export const useChatroomStore = defineStore('chatrooms', {
     chatrooms: [] as ChatroomPreview[],
     loading: false,
     error: null as string | null,
-    unreadChatroomIds: [] as string[],
   }),
 
   actions: {
@@ -40,13 +40,18 @@ export const useChatroomStore = defineStore('chatrooms', {
     },
 
     markUnread(chatroomId: string) {
-      if (!this.unreadChatroomIds.includes(chatroomId)) {
-        this.unreadChatroomIds.push(chatroomId)
-      }
+      const chatroom = this.chatrooms.find(c => c.uuid === chatroomId)
+      if (chatroom) chatroom.has_unread = true
     },
 
     markRead(chatroomId: string) {
-      this.unreadChatroomIds = this.unreadChatroomIds.filter(id => id !== chatroomId)
+      const chatroom = this.chatrooms.find(c => c.uuid === chatroomId)
+      if (chatroom) chatroom.has_unread = false
+    },
+
+    updateLastMessage(chatroomId: string, message: Message) {
+      const chatroom = this.chatrooms.find(c => c.uuid === chatroomId)
+      if (chatroom) chatroom.last_message = message
     },
   },
 })

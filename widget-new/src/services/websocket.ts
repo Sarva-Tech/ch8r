@@ -1,5 +1,11 @@
 import type { Message } from '../types/index';
 
+interface UnreadUpdateEvent {
+  chatroom_uuid: string;
+  has_unread: boolean;
+  sender_identifier: string;
+}
+
 class WebSocketManager {
   private ws: WebSocket | null = null;
   private retries = 0;
@@ -9,6 +15,8 @@ class WebSocketManager {
   private onMessageCallback: ((msg: Message) => void) | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private onMaxRetriesCallback: (() => void) | null = null;
+  private onUnreadUpdateCallback: ((event: UnreadUpdateEvent) => void) | null = null;
+  private onReconnectCallback: (() => void) | null = null;
   // Flag set during intentional disconnect so onclose doesn't trigger reconnect
   private intentionalClose = false;
 
@@ -60,6 +68,13 @@ class WebSocketManager {
           };
           this.onMessageCallback?.(msg);
         }
+        if (payload?.type === 'unread_update') {
+          this.onUnreadUpdateCallback?.({
+            chatroom_uuid: payload.chatroom_uuid,
+            has_unread: payload.has_unread,
+            sender_identifier: payload.sender_identifier,
+          });
+        }
       } catch { /* ignore malformed */ }
     };
 
@@ -72,6 +87,14 @@ class WebSocketManager {
       if (ws !== this.ws) return;
       // onclose will fire after onerror, so reconnect is handled there
     };
+  }
+
+  onUnreadUpdate(cb: (event: UnreadUpdateEvent) => void): void {
+    this.onUnreadUpdateCallback = cb;
+  }
+
+  onReconnect(cb: () => void): void {
+    this.onReconnectCallback = cb;
   }
 
   disconnect(): void {
@@ -110,6 +133,7 @@ class WebSocketManager {
     this.reconnectTimer = setTimeout(() => {
       if (this.senderIdentifier && this.onMessageCallback) {
         this.connect(this.senderIdentifier, this.onMessageCallback, this.onMaxRetriesCallback ?? undefined, this.apiBaseUrl);
+        this.onReconnectCallback?.();
       }
     }, delay);
   }
@@ -117,3 +141,4 @@ class WebSocketManager {
 
 export const wsManager = new WebSocketManager();
 export const wsManagerHuman = new WebSocketManager();
+export const wsManagerBackground = new WebSocketManager();

@@ -5,6 +5,7 @@ from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.consts import REGISTERED_USER_ID_PREFIX
 from core.models import Application, ChatRoom, Message, LLMModel, AppModel
 from core.models.chatroom_participant import ChatroomParticipant
 from core.permissions import HasAPIKeyPermission
@@ -82,7 +83,7 @@ class ApplicationChatRoomsPreviewView(APIView):
             last_message_time=Subquery(last_message_time_subquery, output_field=DateTimeField())
         ).order_by('-last_message_time', '-created_at').prefetch_related('messages')
 
-        serializer = ChatRoomPreviewSerializer(chatrooms, many=True)
+        serializer = ChatRoomPreviewSerializer(chatrooms, many=True, context={'user_identifier': f"{REGISTERED_USER_ID_PREFIX}_{request.user.id}"})
         return Response({'chatrooms': serializer.data})
 
 
@@ -142,5 +143,5 @@ class UserChatRoomsView(APIView):
             last_message_time=Subquery(last_message_time_subquery, output_field=DateTimeField())
         ).order_by('-last_message_time', '-created_at').distinct().prefetch_related('messages')
 
-        serializer = ChatRoomPreviewSerializer(chatrooms, many=True)
+        serializer = ChatRoomPreviewSerializer(chatrooms, many=True, context={'user_identifier': sender_identifier})
         return Response({'chatrooms': serializer.data})

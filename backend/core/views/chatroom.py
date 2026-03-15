@@ -7,6 +7,8 @@ from core.permissions import HasAPIKeyPermission
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
+from core.consts import REGISTERED_USER_ID_PREFIX
+from core.services.unread import mark_read_for_participant, broadcast_unread_update
 
 from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer
 
@@ -24,6 +26,19 @@ class ChatRoomMessagesView(APIView):
                 return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
 
         chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=application)
+
+        if request.user and request.user.is_authenticated:
+            user_identifier = f"{REGISTERED_USER_ID_PREFIX}_{request.user.id}"
+        else:
+            user_identifier = (
+                request.data.get('sender_identifier')
+                or request.query_params.get('sender_identifier')
+            )
+
+        if user_identifier:
+            mark_read_for_participant(chatroom, user_identifier)
+            broadcast_unread_update(user_identifier, str(chatroom.uuid), False, user_identifier)
+
         serializer = ChatRoomWithMessagesSerializer(chatroom)
         return Response(serializer.data)
 
