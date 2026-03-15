@@ -1,11 +1,11 @@
 import { h } from 'preact';
-import { activeMode } from '../store/signals';
+import { activeMode, unreadHuman, unreadAI } from '../store/signals';
 import type { ChatMode } from '../types/index';
 
 const TABS: { label: string; mode: ChatMode }[] = [
-  { label: 'Agent', mode: 'human' },
-  { label: 'AI Assistant', mode: 'ai' },
-  { label: 'Support', mode: 'form' },
+  { label: 'Talk to a Human', mode: 'human' },
+  { label: 'Ask AI', mode: 'ai' },
+  { label: 'Report Issue', mode: 'form' },
 ];
 
 export function ModeNav() {
@@ -19,7 +19,7 @@ export function ModeNav() {
             role="tab"
             aria-selected={isActive}
             onClick={() => { activeMode.value = mode; }}
-            class={`flex-1 py-2 text-xs font-medium transition-colors ${
+            class={`relative flex-1 py-2 text-xs font-medium transition-colors ${
               isActive
                 ? 'border-b-2 text-gray-900'
                 : 'text-gray-500 hover:text-gray-700'
@@ -27,6 +27,12 @@ export function ModeNav() {
             style={isActive ? { borderBottomColor: 'var(--ch8r-accent)', color: 'var(--ch8r-accent)' } : undefined}
           >
             {label}
+            {mode === 'human' && unreadHuman.value > 0 && (
+              <span class="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full" />
+            )}
+            {mode === 'ai' && unreadAI.value > 0 && (
+              <span class="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full" />
+            )}
           </button>
         );
       })}

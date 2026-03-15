@@ -17,6 +17,7 @@ export const useChatroomStore = defineStore('chatrooms', {
     chatrooms: [] as ChatroomPreview[],
     loading: false,
     error: null as string | null,
+    unreadChatroomIds: [] as string[],
   }),
 
   actions: {
@@ -36,6 +37,16 @@ export const useChatroomStore = defineStore('chatrooms', {
       } finally {
         this.loading = false
       }
+    },
+
+    markUnread(chatroomId: string) {
+      if (!this.unreadChatroomIds.includes(chatroomId)) {
+        this.unreadChatroomIds.push(chatroomId)
+      }
+    },
+
+    markRead(chatroomId: string) {
+      this.unreadChatroomIds = this.unreadChatroomIds.filter(id => id !== chatroomId)
     },
   },
 })

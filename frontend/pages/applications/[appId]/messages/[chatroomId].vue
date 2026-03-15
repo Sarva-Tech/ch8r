@@ -7,16 +7,64 @@
       <div
         v-for="message in messages"
         :key="message.id"
-        :class="
-          cn(
-            'flex w-fit max-w-[75%] lg:max-w-[60%] xl:max-w-[50%] flex-col gap-2 rounded-lg p-2 text-sm',
-            isMessageSentByCurrentUser(message.sender_identifier)
-              ? 'ml-auto bg-primary text-primary-foreground'
-              : 'bg-muted',
-          )
-        "
+        :class="cn('flex gap-3 items-start', isCurrentUser(message.sender_identifier) ? 'flex-row-reverse' : 'flex-row')"
       >
-        <div v-html="md.render(message.message)" />
+        <!-- Avatar -->
+        <div class="flex-shrink-0 mt-1">
+          <div
+            v-if="isLLMAgent(message.sender_identifier)"
+            class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center"
+          >
+            <Bot class="w-4 h-4 text-violet-600 dark:text-violet-300" />
+          </div>
+          <div
+            v-else-if="isRegisteredUser(message.sender_identifier)"
+            class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+          >
+            <UserRound class="w-4 h-4 text-blue-600 dark:text-blue-300" />
+          </div>
+          <div
+            v-else
+            class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center"
+          >
+            <Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+          </div>
+        </div>
+
+        <!-- Bubble -->
+        <div
+          class="flex flex-col gap-1 max-w-[70%] lg:max-w-[60%] xl:max-w-[50%]"
+          :class="isCurrentUser(message.sender_identifier) ? 'items-end' : 'items-start'"
+        >
+          <span class="text-xs text-muted-foreground px-1">{{ message.sender_identifier }}</span>
+          <div
+            :class="cn(
+              'rounded-lg px-3 py-2 text-sm',
+              isCurrentUser(message.sender_identifier)
+                ? 'bg-primary text-primary-foreground'
+                : isLLMAgent(message.sender_identifier)
+                  ? 'bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800'
+                  : 'bg-muted',
+            )"
+          >
+            <div v-html="md.render(message.message)" />
+          </div>
+          <div class="flex items-center gap-1 px-1">
+            <template v-if="message.ai_provider_id && message.model && !message.metadata?.send_to_participant">
+              <component
+                :is="useAIProviderIcon(getMessageProvider(message.ai_provider_id)?.provider ?? '').value"
+                class="w-3 h-3 shrink-0"
+              />
+            </template>
+            <span class="text-xs text-muted-foreground whitespace-nowrap">
+              <template v-if="message.ai_provider_id && message.model && !message.metadata?.send_to_participant">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+            </span>
+            <span
+              v-if="message.metadata?.send_to_participant"
+              class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded px-1 py-0.5 whitespace-nowrap"
+            >→ participant</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -84,28 +132,36 @@
             <div
               class="flex gap-4 items-end flex-1 justify-between"
             >
-              <div class="flex items-center space-x-2 self-center">
-                <Checkbox
-                  id="sendToUser"
-                  :checked="sendToParticipant === true"
-                  @update:checked="(val) => { sendToParticipant = val === true }"
-                />
-                <div class="grid gap-1">
-                  <Label for="sendToUser">Send to Participant</Label>
-                  <p
-                    v-if="sendToParticipant"
-                    class="text-muted-foreground text-sm"
-                  >
-                    Message will be forwarded to the participant.
-                  </p>
-                  <p
-                    v-else
-                    class="text-muted-foreground text-sm"
-                  >
-                    Message will be processed by AI model only.
-                  </p>
-                </div>
-              </div>
+              <FormField
+                v-slot="{ componentField, handleChange }"
+                name="send_to_participant"
+                type="checkbox"
+                :unchecked-value="false"
+              >
+                <FormItem class="space-y-0 flex items-center space-x-2 self-center">
+                  <Checkbox
+                    id="sendToParticipant"
+                    :default-value="true"
+                    v-bind="componentField"
+                    @update:checked="handleChange"
+                  />
+                  <div class="grid gap-1">
+                    <Label for="sendToParticipant">Send to Participant</Label>
+                    <p
+                      v-if="form.values.send_to_participant"
+                      class="text-muted-foreground text-sm"
+                    >
+                      Message will be forwarded to the participant.
+                    </p>
+                    <p
+                      v-else
+                      class="text-muted-foreground text-sm"
+                    >
+                      Message will be processed by AI model only.
+                    </p>
+                  </div>
+                </FormItem>
+              </FormField>
 
               <C8Button
                 label="Send"
@@ -131,7 +187,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Send } from 'lucide-vue-next'
+import { Send, Bot, UserRound, Globe } from 'lucide-vue-next'
+import GeminiIcon from '~/components/icons/GeminiIcon.vue'
 import { Button } from '~/components/ui/button'
 import { computed, onMounted, ref } from 'vue'
 import { toast } from 'vue-sonner'
@@ -214,8 +271,12 @@ const disabled = computed(() => {
   )
 })
 
-const isMessageSentByCurrentUser = (sender: string) => {
-  return sender === userStore.userIdentifier
+const isCurrentUser = (sender: string) => sender === userStore.userIdentifier
+const isLLMAgent = (sender: string) => sender.startsWith('agent_llm')
+const isRegisteredUser = (sender: string) => sender.startsWith('reg_')
+const getMessageProvider = (ai_provider_id: number | null) => {
+  if (!ai_provider_id) return null
+  return AIProviderStore.AIProviders.find(p => p.id === ai_provider_id) ?? null
 }
 
 const configuredAIProviderOptions = computed(() =>
@@ -251,7 +312,7 @@ const send = form.handleSubmit(async (values) => {
     const response = await chatroomMessagesStore.sendMessage(
       selectedApp.value.uuid,
       values.message,
-      sendToParticipant.value,
+      values.send_to_participant,
       selectedProviderId.value,
       values.models?.[0]
     )
@@ -272,8 +333,12 @@ const send = form.handleSubmit(async (values) => {
 })
 
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
-  if (msg.type === NEW_MESSAGE_UPDATE && msg.data.chatroom_identifier === chatroomId) {
-    chatroomMessagesStore.addMessage(msg.data)
+  if (msg.type === NEW_MESSAGE_UPDATE) {
+    if (msg.data.chatroom_identifier === chatroomId) {
+      chatroomMessagesStore.addMessage(msg.data)
+    } else {
+      chatroomsStore.markUnread(msg.data.chatroom_identifier)
+    }
   }
 })
 
@@ -282,6 +347,7 @@ onBeforeUnmount(() => {
 })
 
 onMounted(async () => {
+  chatroomsStore.markRead(chatroomId as string)
   try {
     await AIProviderStore.load()
     await AIProviderModelsStore.load()

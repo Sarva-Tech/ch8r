@@ -350,6 +350,7 @@ async function initNewChat() {
             >
               <div class="flex w-full items-center gap-2">
                 <span>{{ ellipsis(chatroom.name, 30) }}</span>
+                <span v-if="chatroomStore.unreadChatroomIds.includes(chatroom.uuid)" class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
                 <span class="ml-auto text-xs">
                 {{ $dayjs(chatroom.last_message?.created_at).fromNow() }}
                 </span>

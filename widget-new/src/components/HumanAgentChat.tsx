@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { wsManagerHuman } from '../services/websocket';
 import { sessionStore } from '../services/session';
 import { createApiClient } from '../services/api';
-import { humanMessages, wsStatus, sendError, agentInfo, config } from '../store/signals';
+import { humanMessages, wsStatus, sendError, agentInfo, config, isOpen, activeMode, unreadHuman } from '../store/signals';
 import type { AgentInfo, Message } from '../types/index';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -102,6 +102,10 @@ export function HumanAgentChat() {
       const updated = [...messagesRef.current, msg];
       messagesRef.current = updated;
       humanMessages.value = updated;
+      // Increment unread if widget is closed or user is on a different mode
+      if (!isOpen.value || activeMode.value !== 'human') {
+        unreadHuman.value += 1;
+      }
     };
 
     wsManagerHuman.connect(senderIdentifier, onMessage, () => {
@@ -112,6 +116,7 @@ export function HumanAgentChat() {
   }, [activeAgent]);
 
   const handleSelectAgent = () => {
+    unreadHuman.value = 0;
     setActiveAgent(agentInfo.value);
   };
 

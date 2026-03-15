@@ -150,6 +150,6 @@ class SendMessageView(APIView):
 
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'
-        response_data['llm_processing'] = True
+        response_data['llm_processing'] = not send_to_participant
         response_data['chatroom_identifier'] = str(chatroom.uuid)
         return Response(response_data, status=status.HTTP_200_OK)

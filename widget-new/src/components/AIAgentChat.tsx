@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { sessionStore } from '../services/session';
 import { createApiClient } from '../services/api';
 import { wsManager } from '../services/websocket';
-import { aiMessages, isTyping, sendError, wsStatus, config } from '../store/signals';
+import { aiMessages, isTyping, sendError, wsStatus, config, isOpen, activeMode, unreadAI } from '../store/signals';
 import type { ChatroomPreview, Message } from '../types/index';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -44,6 +44,10 @@ export function AIAgentChat() {
       const updated = [...messagesRef.current, msg];
       messagesRef.current = updated;
       aiMessages.value = updated;
+      // Increment unread if widget is closed or user is on a different mode
+      if (!isOpen.value || activeMode.value !== 'ai') {
+        unreadAI.value += 1;
+      }
     };
 
     if (isNew) {
@@ -85,6 +89,7 @@ export function AIAgentChat() {
   }, [activeChatroom]);
 
   const handleSelect = (chatroom: ChatroomPreview) => {
+    unreadAI.value = 0;
     setChatroomName(chatroom.name);
     setActiveChatroom(chatroom);
   };
