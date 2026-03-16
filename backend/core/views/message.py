@@ -128,10 +128,10 @@ class SendMessageView(APIView):
 
         if send_to_participant:
             channel_layer = get_channel_layer()
-            # Push to widget users (anon_) AND human agents (reg:) in the chatroom
+            # Push to widget users (anon_), human agents, AND registered dashboard users in the chatroom
             participants = list(
                 message.chatroom.participants.filter(
-                    Q(user_identifier__startswith='anon_') | Q(role='human_agent')
+                    Q(user_identifier__startswith='anon_') | Q(role='human_agent') | Q(user_identifier__startswith='reg_')
                 ).exclude(
                     user_identifier=sender_id  # don't echo back to sender
                 ).values_list('user_identifier', flat=True)

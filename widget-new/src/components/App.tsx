@@ -35,7 +35,7 @@ export function App({ shadowHost }: AppProps) {
     fetchAll();
 
     // Update both signals when an unread_update arrives
-    wsManagerBackground.onUnreadUpdate((event) => {
+    const unsubUnread = wsManagerBackground.onUnreadUpdate((event) => {
       chatroomsHuman.value = chatroomsHuman.value.map(c =>
         c.uuid === event.chatroom_uuid ? { ...c, has_unread: event.has_unread } : c
       );
@@ -43,10 +43,10 @@ export function App({ shadowHost }: AppProps) {
         c.uuid === event.chatroom_uuid ? { ...c, has_unread: event.has_unread } : c
       );
     });
-    wsManagerBackground.onReconnect(fetchAll);
+    const unsubReconnect = wsManagerBackground.onReconnect(fetchAll);
     wsManagerBackground.connect(senderIdentifier, () => {}, undefined, config.value?.apiBaseUrl);
 
-    return () => { wsManagerBackground.disconnect(); };
+    return () => { unsubUnread(); unsubReconnect(); wsManagerBackground.disconnect(); };
   }, []);
 
   return (

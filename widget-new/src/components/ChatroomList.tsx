@@ -59,12 +59,14 @@ export function ChatroomList({ onSelect, refreshKey, type }: ChatroomListProps) 
       );
     };
 
-    wsManager.onUnreadUpdate(handleUnreadUpdate);
-    wsManagerHuman.onUnreadUpdate(handleUnreadUpdate);
-    wsManagerBackground.onUnreadUpdate(handleUnreadUpdate);
-    wsManager.onReconnect(loadChatrooms);
-    wsManagerHuman.onReconnect(loadChatrooms);
-    wsManagerBackground.onReconnect(loadChatrooms);
+    const unsubA = wsManager.onUnreadUpdate(handleUnreadUpdate);
+    const unsubB = wsManagerHuman.onUnreadUpdate(handleUnreadUpdate);
+    const unsubC = wsManagerBackground.onUnreadUpdate(handleUnreadUpdate);
+    const unsubD = wsManager.onReconnect(loadChatrooms);
+    const unsubE = wsManagerHuman.onReconnect(loadChatrooms);
+    const unsubF = wsManagerBackground.onReconnect(loadChatrooms);
+
+    return () => { unsubA(); unsubB(); unsubC(); unsubD(); unsubE(); unsubF(); };
   }, [refreshKey]);
 
   if (loading) {

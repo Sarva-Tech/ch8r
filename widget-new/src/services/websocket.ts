@@ -15,8 +15,8 @@ class WebSocketManager {
   private onMessageCallback: ((msg: Message) => void) | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private onMaxRetriesCallback: (() => void) | null = null;
-  private onUnreadUpdateCallback: ((event: UnreadUpdateEvent) => void) | null = null;
-  private onReconnectCallback: (() => void) | null = null;
+  private onUnreadUpdateCallbacks: Set<(event: UnreadUpdateEvent) => void> = new Set();
+  private onReconnectCallbacks: Set<() => void> = new Set();
   // Flag set during intentional disconnect so onclose doesn't trigger reconnect
   private intentionalClose = false;
 
@@ -69,11 +69,12 @@ class WebSocketManager {
           this.onMessageCallback?.(msg);
         }
         if (payload?.type === 'unread_update') {
-          this.onUnreadUpdateCallback?.({
+          const evt = {
             chatroom_uuid: payload.chatroom_uuid,
             has_unread: payload.has_unread,
             sender_identifier: payload.sender_identifier,
-          });
+          };
+          this.onUnreadUpdateCallbacks.forEach(cb => cb(evt));
         }
       } catch { /* ignore malformed */ }
     };
@@ -89,12 +90,14 @@ class WebSocketManager {
     };
   }
 
-  onUnreadUpdate(cb: (event: UnreadUpdateEvent) => void): void {
-    this.onUnreadUpdateCallback = cb;
+  onUnreadUpdate(cb: (event: UnreadUpdateEvent) => void): () => void {
+    this.onUnreadUpdateCallbacks.add(cb);
+    return () => this.onUnreadUpdateCallbacks.delete(cb);
   }
 
-  onReconnect(cb: () => void): void {
-    this.onReconnectCallback = cb;
+  onReconnect(cb: () => void): () => void {
+    this.onReconnectCallbacks.add(cb);
+    return () => this.onReconnectCallbacks.delete(cb);
   }
 
   disconnect(): void {
@@ -133,7 +136,7 @@ class WebSocketManager {
     this.reconnectTimer = setTimeout(() => {
       if (this.senderIdentifier && this.onMessageCallback) {
         this.connect(this.senderIdentifier, this.onMessageCallback, this.onMaxRetriesCallback ?? undefined, this.apiBaseUrl);
-        this.onReconnectCallback?.();
+        this.onReconnectCallbacks.forEach(cb => cb());
       }
     }, delay);
   }

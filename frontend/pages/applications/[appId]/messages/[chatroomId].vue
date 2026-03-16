@@ -318,6 +318,17 @@ const send = form.handleSubmit(async (values) => {
     )
     form.setFieldValue('message', '')
 
+    // Update the sidebar preview immediately with the sent message
+    const targetChatroomId = response?.chatroom_identifier ?? chatroomId as string
+    chatroomsStore.updateLastMessage(targetChatroomId, {
+      id: Date.now(),
+      uuid: response?.uuid ?? '',
+      sender_identifier: userStore.userIdentifier,
+      message: values.message,
+      metadata: {},
+      created_at: new Date().toISOString(),
+    })
+
     if (selectedChatroom?.value?.uuid === NEW_CHAT) {
       const newChatroomId = response?.chatroom_identifier
       if (newChatroomId) {
