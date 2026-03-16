@@ -36,3 +36,4 @@ def extract_and_merge_fields(
         extracted_data[field] = str(value).strip() if value is not None else ''
 
     return extracted_data
+

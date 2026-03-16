@@ -11,7 +11,7 @@ export type KBTableRow = {
 export interface SelectOption {
   label: string
   value: string
-  selected: boolean
+  selected?: boolean
 }
 
 export interface PaginatedResponse<T> {

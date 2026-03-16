@@ -22,12 +22,24 @@
         </FormItem>
       </FormField>
 
-      <C8Select
-        :options="notificationTypes"
-        :model-value="selectedNotificationType"
-        label="Notification Type"
-        @update:model-value="(val) => (selectedNotificationType = val)"
-      />
+      <FormField
+        v-slot="{ componentField }"
+        name="type"
+      >
+        <FormItem>
+          <FormLabel class="flex items-center">
+            <div>
+              Notification Type
+              <RequiredLabel />
+            </div>
+          </FormLabel>
+          <C8Select
+            :options="notificationTypes"
+            v-bind="componentField"
+          />
+          <FormMessage />
+        </FormItem>
+      </FormField>
 
       <FormField
         v-slot="{ componentField }"
@@ -73,7 +85,7 @@ import { z } from 'zod'
 import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
 import RequiredLabel from '~/components/RequiredLabel.vue'
 import C8Select from '~/components/C8Select.vue'
-import { setBackendErrors } from '~/lib/utils'
+import { setBackendErrors, getErrorMessage } from '~/lib/utils'
 
 const newNotificationSlideOver = ref<InstanceType<typeof SlideOver> | null>(
   null,
@@ -110,10 +122,9 @@ const notificationTypes = [
   { label: 'Discord', value: 'discord' },
 ]
 
-const selectedNotificationType = ref(notificationTypes[0])
-
 const webhookPlaceholder = computed(() => {
-  switch (selectedNotificationType.value?.value) {
+  const currentType = form.values.type
+  switch (currentType) {
     case 'slack':
       return 'https://hooks.slack.com/services/...'
     case 'discord':
@@ -123,25 +134,16 @@ const webhookPlaceholder = computed(() => {
   }
 })
 
-const [type] = defineField('type')
-
 const createNewNotification = form.handleSubmit(async (values) => {
   try {
     await notificationProfileStore.create(values)
     newNotificationSlideOver.value?.closeSlide()
     toast.success(`Notification profile created`)
-  } catch (e: unknown) {
-    setBackendErrors(form, e.errors)
+  } catch (e: any) {
+    const message = notificationProfileStore.getBackendErrorMessage(e)
+    toast.error(message)
   }
 })
-
-watch(
-  selectedNotificationType,
-  (val) => {
-    type.value = val.value
-  },
-  { immediate: true },
-)
 
 const disabled = computed(() =>
   !meta.value.valid
