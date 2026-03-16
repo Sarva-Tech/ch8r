@@ -2,8 +2,10 @@ import factory
 from django.contrib.auth.models import User
 from core.models import (
     Application,
-    AIProvider
+    AIProvider,
+    NotificationProfile,
 )
+
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -15,6 +17,7 @@ class UserFactory(factory.django.DjangoModelFactory):
     last_name = factory.Faker('last_name')
     is_active = True
 
+
 class ApplicationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Application
@@ -22,6 +25,7 @@ class ApplicationFactory(factory.django.DjangoModelFactory):
     owner = factory.SubFactory(UserFactory)
     name = factory.Faker('company')
     uuid = factory.Faker('uuid4')
+
 
 class AIProviderFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -33,3 +37,14 @@ class AIProviderFactory(factory.django.DjangoModelFactory):
     metadata = factory.LazyAttribute(lambda obj: {'base_url': 'https://example.com'})
     is_builtin = False
     creator = factory.SubFactory(UserFactory)
+
+
+class NotificationProfileFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = NotificationProfile
+
+    owner = factory.SubFactory(UserFactory)
+    name = factory.Sequence(lambda n: f'Profile {n}')
+    type = 'slack'
+    config = factory.LazyAttribute(lambda o: {'webhookUrl': 'https://hooks.slack.com/services/T/B/test'})
+    is_enabled = True
