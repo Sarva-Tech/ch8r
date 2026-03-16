@@ -41,12 +41,5 @@ SUPPORTED_NOTIFICATION_PROVIDERS = [
         'description': 'Discord webhook notifications',
         'config_fields': ['webhookUrl'],
         'required_fields': ['webhookUrl']
-    },
-    {
-        'id': 'whatsapp',
-        'label': 'WhatsApp',
-        'description': 'WhatsApp notifications (future)',
-        'config_fields': ['phone', 'apiKey'],
-        'required_fields': ['phone', 'apiKey']
     }
 ]
