@@ -18,3 +18,7 @@ class AIProviderContract(ABC):
     @abstractmethod
     def get_models(self) -> list[Dict[str, Any]]:
         pass
+
+    @abstractmethod
+    def embed(self, model: str, texts: list[str]) -> list[list[float]]:
+        pass

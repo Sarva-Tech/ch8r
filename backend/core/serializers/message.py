@@ -8,7 +8,8 @@ class CreateMessageSerializer(serializers.Serializer):
     sender_identifier = serializers.CharField(required=False)
     message = serializers.CharField()
     metadata = serializers.JSONField(required=False)
-    send_to_participant = serializers.BooleanField(required=False, default=False)
+    is_internal = serializers.BooleanField(required=False, default=False)
+    mode = serializers.ChoiceField(choices=['ai', 'direct'], required=False, allow_null=True, default=None)
     ai_provider = serializers.IntegerField(required=False)
     model = serializers.CharField(required=False)
 
@@ -39,5 +40,6 @@ class ViewMessageSerializer(serializers.ModelSerializer):
             'metadata',
             'ai_provider_id',
             'model',
+            'is_internal',
             'created_at'
         ]

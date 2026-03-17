@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:host {
+  --ch8r-accent: #6366f1;
+  --ch8r-accent-fg: #ffffff;
+  --ch8r-radius: 0.5rem;
+  --ch8r-font: system-ui, sans-serif;
+}

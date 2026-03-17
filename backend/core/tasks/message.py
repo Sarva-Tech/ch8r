@@ -68,11 +68,19 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
     try:
         answer = provider.generate_text(model, prompt)
-        metadata = {
-            "status": "SUCCESS",
-            "escalation": False,
-            "reason_for_escalation": "",
-        }
+        if not answer or not answer.strip():
+            answer = "I'm sorry, I couldn't generate a response."
+            metadata = {
+                "status": "ERROR",
+                "escalation": True,
+                "reason_for_escalation": "Empty AI response",
+            }
+        else:
+            metadata = {
+                "status": "SUCCESS",
+                "escalation": False,
+                "reason_for_escalation": "",
+            }
     except Exception as e:
         logger.error(f"Failed to generate content: {e}")
         answer = "I'm sorry, I encountered an error processing your request."
@@ -151,19 +159,33 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     #         "reason_for_escalation": "Malformed LLM response",
     #     }
 
+    is_internal = user_message.is_internal
+
     bot_message = Message.objects.create(
         chatroom=chatroom,
         sender_identifier=AGENT_IDENTIFIER,
         message=answer,
         metadata=metadata,
+        ai_provider_id=ai_provider_id,
+        model=model,
+        is_internal=is_internal,
     )
 
     channel_layer = get_channel_layer()
-    participants = list(
-        user_message.chatroom.participants.exclude(
-            Q(role='agent')
-        ).values_list('user_identifier', flat=True)
-    )
+    if is_internal:
+        participants = list(
+            user_message.chatroom.participants.filter(
+                Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
+            ).exclude(
+                Q(role='agent')
+            ).values_list('user_identifier', flat=True)
+        )
+    else:
+        participants = list(
+            user_message.chatroom.participants.exclude(
+                Q(role='agent')
+            ).values_list('user_identifier', flat=True)
+        )
 
     for participant_id in participants:
         group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"

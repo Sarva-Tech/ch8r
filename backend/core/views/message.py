@@ -10,10 +10,13 @@ from django.db.models import Q
 import logging
 
 from core.consts import LIVE_UPDATES_PREFIX
+from core.services.unread import mark_unread_for_participants, broadcast_unread_update
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
 from core.models.chatroom_participant import ChatroomParticipant
 from core.models.message import Message
+from core.models.ai_provider import AIProvider
+from core.utils import normalize_model_name_by_provider
 
 from core.serializers.message import CreateMessageSerializer, ViewMessageSerializer
 from core.tasks import generate_bot_response
@@ -29,8 +32,8 @@ def generate_chatroom_name(a, b):
 class SendMessageView(APIView):
     authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticatedOrWidget | HasAPIKeyPermission]
+
     def post(self, request, application_uuid):
-        # Refactor
         if request.user and request.user.is_authenticated:
             app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
         else:
@@ -47,8 +50,8 @@ class SendMessageView(APIView):
         message_text = data['message']
         metadata = data.get('metadata', {})
 
-        send_to_participant = data['send_to_participant']
-        metadata['send_to_participant'] = send_to_participant
+        # is_internal is only honoured for authenticated (dashboard) users
+        is_internal = data.get('is_internal', False) if (request.user and request.user.is_authenticated) else False
 
         ai_provider_id = data.get('ai_provider')
         model = data.get('model')
@@ -67,15 +70,22 @@ class SendMessageView(APIView):
                 chatroom.ai_provider_id = ai_provider_id
                 updated = True
             if model is not None and model != chatroom.model:
-                if model.startswith('model/'):
-                    model = model[6:]
+                provider_name = ''
+                if ai_provider_id:
+                    try:
+                        ai_provider = AIProvider.objects.only('provider').get(id=ai_provider_id)
+                        provider_name = ai_provider.provider
+                    except AIProvider.DoesNotExist:
+                        pass
+                model = normalize_model_name_by_provider(model, provider_name)
                 chatroom.model = model
                 updated = True
             if updated:
                 chatroom.save()
 
-            if sender_id and not ChatroomParticipant.objects.filter(chatroom=chatroom,
-                                                                    user_identifier=sender_id).exists():
+            if sender_id and not ChatroomParticipant.objects.filter(
+                chatroom=chatroom, user_identifier=sender_id
+            ).exists():
                 ChatroomParticipant.objects.create(
                     chatroom=chatroom,
                     user_identifier=sender_id,
@@ -83,6 +93,8 @@ class SendMessageView(APIView):
                 )
 
         else:
+            # New chatroom: use mode from validated data; None defaults to 'ai' for chatroom-level setting
+            mode = data.get('mode') or 'ai'
             chatroom_name = generate_chatroom_name(sender_id, AGENT_IDENTIFIER)
 
             with transaction.atomic():
@@ -90,12 +102,15 @@ class SendMessageView(APIView):
                     application=app,
                     name=chatroom_name,
                     ai_provider_id=ai_provider_id,
-                    model=model
+                    model=model,
+                    mode=mode,
                 )
+
+                agent_identifier = metadata.get('human_agent_identifier', AGENT_IDENTIFIER)
 
                 ChatroomParticipant.objects.bulk_create([
                     ChatroomParticipant(chatroom=chatroom, user_identifier=sender_id, role='user'),
-                    ChatroomParticipant(chatroom=chatroom, user_identifier=AGENT_IDENTIFIER, role='agent'),
+                    ChatroomParticipant(chatroom=chatroom, user_identifier=agent_identifier, role='agent'),
                 ])
 
         message = Message.objects.create(
@@ -103,18 +118,63 @@ class SendMessageView(APIView):
             sender_identifier=sender_id,
             message=message_text,
             metadata=metadata,
+            is_internal=is_internal,
             ai_provider_id=ai_provider_id,
-            model=model
+            model=model,
         )
 
-        if send_to_participant:
-            channel_layer = get_channel_layer()
+        unread_identifiers = mark_unread_for_participants(chatroom, sender_id, is_internal=is_internal)
+        for user_identifier in unread_identifiers:
+            broadcast_unread_update(user_identifier, str(chatroom.uuid), True, sender_id)
+
+        channel_layer = get_channel_layer()
+
+        # Determine effective mode for this send operation.
+        # Dashboard users can pass a per-message mode override; widget users always use chatroom.mode.
+        send_mode = chatroom.mode
+        if request.user and request.user.is_authenticated:
+            per_message_mode = data.get('mode')  # None | 'ai' | 'direct'
+            # Only override if the client explicitly sent a mode key in the request body
+            if 'mode' in request.data:
+                send_mode = per_message_mode  # None means "no AI, just deliver"
+
+        if is_internal:
+            # Broadcast only to dashboard_ and human_agent participants (NOT widget_)
             participants = list(
                 message.chatroom.participants.filter(
-                    Q(role='user') & Q(user_identifier__startswith='anon_')
+                    Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
+                ).exclude(
+                    user_identifier=sender_id
                 ).values_list('user_identifier', flat=True)
             )
+            for participant_id in participants:
+                group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
+                try:
+                    async_to_sync(channel_layer.group_send)(
+                        group_name,
+                        {
+                            "type": "send.message",
+                            "message": ViewMessageSerializer(message).data,
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send message to {group_name}: {str(e)}")
 
+            # Only trigger AI if mode is explicitly 'ai' (internal + direct or None = no AI)
+            if send_mode == 'ai':
+                generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
+
+        elif send_mode == 'direct' or send_mode is None:
+            # Broadcast to widget_ + dashboard_ + human_agent participants; no AI
+            participants = list(
+                message.chatroom.participants.filter(
+                    Q(user_identifier__startswith='widget_') |
+                    Q(user_identifier__startswith='dashboard_') |
+                    Q(role='human_agent')
+                ).exclude(
+                    user_identifier=sender_id
+                ).values_list('user_identifier', flat=True)
+            )
             for participant_id in participants:
                 group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
                 try:
@@ -129,10 +189,11 @@ class SendMessageView(APIView):
                     logger.warning(f"Failed to send message to {group_name}: {str(e)}")
 
         else:
+            # send_mode == 'ai': trigger bot response
             generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
 
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'
-        response_data['llm_processing'] = True
-        response_data['chatroom_identifier'] = chatroom.uuid
-        return Response(ViewMessageSerializer(message).data, status=status.HTTP_200_OK)
+        response_data['chatroom_identifier'] = str(chatroom.uuid)
+        response_data['mode'] = chatroom.mode
+        return Response(response_data, status=status.HTTP_200_OK)

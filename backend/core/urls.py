@@ -11,12 +11,13 @@ from core.views import (
 from core.views.change_password import ChangePasswordView
 from core.views.resend_verification import ResendVerificationView
 from core.views.custom_auth import CustomAuthToken
-from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView
-from core.views.chatroom import ChatRoomDetailView
+from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView, UserChatRoomsView
+from core.views.chatroom import ChatRoomDetailView, ChatRoomModeView
 from core.views.configure_app import ConfigureAppIntegrationView, LoadAppConfigurationView
 from core.views.integration import supported_integrations
 from core.views.llm_model import LLMModelViewSet
 from core.views.message import SendMessageView
+from core.views.human_agent import HumanAgentInfoView
 from core.views.ingestion import IngestApplicationKBView
 from core.views.notification_profile import NotificationProfileViewSet
 from core.views.app_model import ConfigureAppModelsView
@@ -58,8 +59,18 @@ urlpatterns = [
         name='chatroom-messages'
     ),
 
+    path(
+        'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/mode/',
+        ChatRoomModeView.as_view(),
+        name='chatroom-mode'
+    ),
+
     path('applications/<uuid:application_uuid>/chatrooms/', ApplicationChatRoomsPreviewView.as_view(),
          name='application-chatroom-previews'),
+    path('applications/<uuid:application_uuid>/user-chatrooms/', UserChatRoomsView.as_view(),
+         name='user-chatrooms'),
+    path('applications/<uuid:application_uuid>/human-agent/', HumanAgentInfoView.as_view(),
+         name='human-agent-info'),
     path('chatrooms/<uuid:chatroom_uuid>/', ChatRoomDetailView.as_view(), name='chatroom-detail'),
 
     path('applications/<uuid:application_uuid>/ingests/', IngestApplicationKBView.as_view(), name='application-ingest'),

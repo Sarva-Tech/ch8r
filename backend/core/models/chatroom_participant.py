@@ -14,6 +14,7 @@ class ChatroomParticipant(models.Model):
     user_identifier = models.CharField(max_length=255)
     metadata = models.JSONField(blank=True, null=True)
     role = models.CharField(max_length=15, choices=ROLE_CHOICES, default='user')
+    has_unread = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Participant {self.user_identifier} in ChatRoom {self.chatroom_id}"

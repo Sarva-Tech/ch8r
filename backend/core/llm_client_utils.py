@@ -5,8 +5,8 @@ from openai.types.shared_params import ResponseFormatJSONSchema
 
 AI_ROLE_MAP = {
     "agent_llm": AI_ROLE_AI_AGENT,
-    "reg_": AI_ROLE_USER,
-    "anon_": AI_ROLE_USER
+    "dashboard_": AI_ROLE_USER,
+    "widget_": AI_ROLE_USER,
 }
 
 def messages_to_llm_conversation(messages_queryset):

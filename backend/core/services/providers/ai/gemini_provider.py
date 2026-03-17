@@ -41,3 +41,10 @@ class GeminiProvider(AIProviderContract):
             return serializable_models
         except Exception as e:
             raise ValueError(f"Failed to retrieve models from Gemini API: {e}")
+
+    def embed(self, model: str, texts: list[str]) -> list[list[float]]:
+        try:
+            result = self.client.models.embed_content(model=model, contents=texts)
+            return [e.values for e in result.embeddings]
+        except Exception as e:
+            raise ValueError(f"Gemini embedding error: {e}")
