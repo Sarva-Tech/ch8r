@@ -1,6 +1,12 @@
+import logging
+
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from core.consts import LIVE_UPDATES_PREFIX
+
+logger = logging.getLogger(__name__)
+
+VALID_CLIENT_ID_PREFIXES = ('widget_', 'dashboard_')
 
 
 class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
@@ -9,6 +15,14 @@ class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
         self.group_name = f"{LIVE_UPDATES_PREFIX}_{self.client_id}"
 
         if not self.client_id:
+            await self.close()
+            return
+
+        if not self.client_id.startswith(VALID_CLIENT_ID_PREFIXES):
+            logger.warning(
+                "LiveUpdatesConsumer: rejected connection with invalid client_id prefix: %s",
+                self.client_id,
+            )
             await self.close()
             return
 

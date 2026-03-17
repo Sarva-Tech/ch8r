@@ -1,17 +1,15 @@
-import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { config, activeMode } from '../store/signals';
+import { config } from '../store/signals';
 import { Header } from './Header';
-import { ModeNav } from './ModeNav';
-import { HumanAgentChat } from './HumanAgentChat';
-import { AIAgentChat } from './AIAgentChat';
+import { AssistantChat } from './AssistantChat';
 import { SupportForm } from './SupportForm';
 
 interface ChatPanelProps {
   onClose: () => void;
+  showSupportForm?: boolean;
 }
 
-export function ChatPanel({ onClose }: ChatPanelProps) {
+export function ChatPanel({ onClose, showSupportForm = false }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,11 +54,8 @@ export function ChatPanel({ onClose }: ChatPanelProps) {
         appLogoUrl={config.value?.appLogoUrl}
         onClose={onClose}
       />
-      <ModeNav />
       <div class="flex-1 overflow-hidden flex flex-col">
-        {activeMode.value === 'human' && <HumanAgentChat />}
-        {activeMode.value === 'ai' && <AIAgentChat />}
-        {activeMode.value === 'form' && <SupportForm />}
+        {showSupportForm ? <SupportForm /> : <AssistantChat />}
       </div>
     </div>
   );

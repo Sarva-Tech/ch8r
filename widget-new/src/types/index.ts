@@ -1,4 +1,4 @@
-export type ChatMode = 'human' | 'ai' | 'form';
+export type ChatMode = 'assistant' | 'form';
 
 export interface WidgetConfig {
   appUuid: string;
@@ -13,6 +13,7 @@ export interface WidgetConfig {
   appName?: string;
   appDescription?: string;
   appLogoUrl?: string;
+  defaultMode?: 'ai' | 'direct';
 }
 
 export interface Message {
@@ -22,6 +23,7 @@ export interface Message {
   chatroomIdentifier: string;
   createdAt: string;
   isOwn: boolean;
+  isInternal?: boolean;
 }
 
 export interface AgentInfo {
@@ -50,6 +52,7 @@ export interface ChatroomPreview {
   uuid: string;
   name: string;
   has_unread: boolean;
+  mode: 'ai' | 'direct';
   last_message: {
     uuid: string;
     message: string;
@@ -64,7 +67,8 @@ export interface SendMessageRequest {
   message: string;
   sender_identifier: string;
   chatroom_identifier: string | 'new_chat';
-  send_to_participant: boolean;
+  is_internal?: boolean;
+  mode?: 'ai' | 'direct';
   metadata?: Record<string, unknown>;
 }
 
@@ -75,6 +79,8 @@ export interface SendMessageResponse {
   chatroom_identifier: string;
   created_at: string;
   message_status: string;
+  llm_processing?: boolean;
+  mode?: string;
 }
 
 export interface SupportFormRequest {

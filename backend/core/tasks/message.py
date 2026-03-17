@@ -159,21 +159,33 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     #         "reason_for_escalation": "Malformed LLM response",
     #     }
 
+    is_internal = user_message.is_internal
+
     bot_message = Message.objects.create(
         chatroom=chatroom,
         sender_identifier=AGENT_IDENTIFIER,
         message=answer,
         metadata=metadata,
         ai_provider_id=ai_provider_id,
-        model=model
+        model=model,
+        is_internal=is_internal,
     )
 
     channel_layer = get_channel_layer()
-    participants = list(
-        user_message.chatroom.participants.exclude(
-            Q(role='agent')
-        ).values_list('user_identifier', flat=True)
-    )
+    if is_internal:
+        participants = list(
+            user_message.chatroom.participants.filter(
+                Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
+            ).exclude(
+                Q(role='agent')
+            ).values_list('user_identifier', flat=True)
+        )
+    else:
+        participants = list(
+            user_message.chatroom.participants.exclude(
+                Q(role='agent')
+            ).values_list('user_identifier', flat=True)
+        )
 
     for participant_id in participants:
         group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"

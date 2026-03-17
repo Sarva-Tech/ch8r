@@ -143,5 +143,4 @@ class WebSocketManager {
 }
 
 export const wsManager = new WebSocketManager();
-export const wsManagerHuman = new WebSocketManager();
 export const wsManagerBackground = new WebSocketManager();

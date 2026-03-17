@@ -2,21 +2,21 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { sessionStore } from '../services/session';
 import { createApiClient } from '../services/api';
 import { wsManager } from '../services/websocket';
-import { aiMessages, isTyping, sendError, wsStatus, config, isOpen, activeMode, unreadAI } from '../store/signals';
+import { chatrooms, isTyping, sendError, wsStatus, config } from '../store/signals';
 import type { ChatroomPreview, Message } from '../types/index';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { ChatroomList } from './ChatroomList';
 
-export function AIAgentChat() {
+export function AssistantChat() {
   const [activeChatroom, setActiveChatroom] = useState<ChatroomPreview | null>(null);
-  // Bump this to force ChatroomList to re-fetch (e.g. after a new chat is created)
   const [listRefreshKey, setListRefreshKey] = useState(0);
-  const messagesRef = useRef<Message[]>([]);
-  // Track the real chatroom ID separately — updating this does NOT re-trigger the WS effect
-  const chatroomIdRef = useRef<string>('new_chat');
-  // Track the display name separately so we can update it without re-connecting WS
+  const [chatroomMode, setChatroomMode] = useState<'ai' | 'direct'>(config.value?.defaultMode ?? 'ai');
   const [chatroomName, setChatroomName] = useState<string>('');
+  const messagesRef = useRef<Message[]>([]);
+  const localMessages = useRef<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const chatroomIdRef = useRef<string>('new_chat');
 
   useEffect(() => {
     return () => {
@@ -26,7 +26,7 @@ export function AIAgentChat() {
     };
   }, []);
 
-  // Connect WS and load messages only when a chatroom is selected
+  // Connect WS and load messages when a chatroom is selected
   useEffect(() => {
     if (!activeChatroom) return;
 
@@ -37,17 +37,14 @@ export function AIAgentChat() {
     chatroomIdRef.current = isNew ? 'new_chat' : activeChatroom.uuid;
 
     const onMessage = (msg: Message) => {
-      // Only accept messages belonging to the active AI chatroom
+      // Only accept messages belonging to the active chatroom
       if (msg.chatroomIdentifier && chatroomIdRef.current !== 'new_chat' &&
           msg.chatroomIdentifier !== chatroomIdRef.current) return;
       isTyping.value = false;
-      const updated = [...messagesRef.current, msg];
+      const updated = [...localMessages.current, msg];
+      localMessages.current = updated;
       messagesRef.current = updated;
-      aiMessages.value = updated;
-      // Increment unread if widget is closed or user is on a different mode
-      if (!isOpen.value || activeMode.value !== 'ai') {
-        unreadAI.value += 1;
-      }
+      setMessages(updated);
     };
 
     if (isNew) {
@@ -61,48 +58,71 @@ export function AIAgentChat() {
           createdAt: new Date().toISOString(),
           isOwn: false,
         };
-        aiMessages.value = [greeting];
+        localMessages.current = [greeting];
         messagesRef.current = [greeting];
+        setMessages([greeting]);
       } else {
-        aiMessages.value = [];
+        localMessages.current = [];
         messagesRef.current = [];
+        setMessages([]);
       }
       wsManager.connect(senderIdentifier, onMessage, () => { wsStatus.value = 'error'; }, config.value?.apiBaseUrl);
     } else {
       // Existing chatroom — fetch history from backend
-      aiMessages.value = [];
+      localMessages.current = [];
       messagesRef.current = [];
+      setMessages([]);
+
       const apiClient = createApiClient(
         config.value?.apiBaseUrl ?? window.location.origin,
         config.value?.token ?? '',
       );
+
       apiClient.loadHistory(appUuid, activeChatroom.uuid, senderIdentifier).then(result => {
         if (result.ok) {
-          aiMessages.value = result.data;
+          localMessages.current = result.data;
           messagesRef.current = result.data;
+          setMessages(result.data);
+        } else {
+          // Stale chatroom ID — reset to new_chat
+          chatroomIdRef.current = 'new_chat';
+          sessionStore.setChatroomId(appUuid, 'new_chat');
+          localMessages.current = [];
+          messagesRef.current = [];
+          setMessages([]);
         }
       });
+
       wsManager.connect(senderIdentifier, onMessage, () => { wsStatus.value = 'error'; }, config.value?.apiBaseUrl);
+    }
+
+    // Set mode from chatroom data if available
+    if (activeChatroom.mode) {
+      setChatroomMode(activeChatroom.mode);
     }
 
     return () => { wsManager.disconnect(); };
   }, [activeChatroom]);
 
   const handleSelect = (chatroom: ChatroomPreview) => {
-    unreadAI.value = 0;
+    // Optimistically clear unread for this chatroom
+    chatrooms.value = chatrooms.value.map(c =>
+      c.uuid === chatroom.uuid ? { ...c, has_unread: false } : c
+    );
     setChatroomName(chatroom.name);
     setActiveChatroom(chatroom);
   };
 
   const handleBack = () => {
     wsManager.disconnect();
-    aiMessages.value = [];
+    localMessages.current = [];
     messagesRef.current = [];
+    setMessages([]);
     chatroomIdRef.current = 'new_chat';
     isTyping.value = false;
     sendError.value = null;
     setChatroomName('');
-    // Always bump so ChatroomList re-fetches fresh data when we return
+    setChatroomMode('ai');
     setListRefreshKey(k => k + 1);
     setActiveChatroom(null);
   };
@@ -120,9 +140,10 @@ export function AIAgentChat() {
       createdAt: new Date().toISOString(),
       isOwn: true,
     };
-    const withUser = [...messagesRef.current, userMsg];
+    const withUser = [...localMessages.current, userMsg];
+    localMessages.current = withUser;
     messagesRef.current = withUser;
-    aiMessages.value = withUser;
+    setMessages(withUser);
 
     isTyping.value = true;
     sendError.value = null;
@@ -132,20 +153,34 @@ export function AIAgentChat() {
       config.value?.token ?? '',
     );
 
+    const defaultMode = config.value?.defaultMode ?? 'ai';
+
     const result = await apiClient.sendMessage(appUuid, {
       message,
       sender_identifier: senderIdentifier,
       chatroom_identifier: chatroomId,
-      send_to_participant: false,
+      is_internal: false,
+      mode: chatroomId === 'new_chat' ? chatroomMode : undefined,
     });
 
     if (result.ok) {
       const newChatroomId = String(result.data.chatroom_identifier);
       const wasNew = chatroomIdRef.current === 'new_chat';
       chatroomIdRef.current = newChatroomId;
-      sessionStore.setChatroomId(appUuid, newChatroomId, 'ai');
+      sessionStore.setChatroomId(appUuid, newChatroomId);
+
+      // Update chatroomMode from server response
+      if (result.data.mode === 'direct' || result.data.mode === 'ai') {
+        setChatroomMode(result.data.mode);
+      }
+
       if (wasNew) {
         setChatroomName(`Chat ${new Date().toLocaleDateString()}`);
+      }
+
+      // For direct mode, typing indicator should stop immediately (no AI response)
+      if (result.data.mode === 'direct') {
+        isTyping.value = false;
       }
     } else {
       sendError.value = result.error;
@@ -154,8 +189,43 @@ export function AIAgentChat() {
   };
 
   if (!activeChatroom) {
-    return <ChatroomList onSelect={handleSelect} refreshKey={listRefreshKey} type="ai" />;
+    return <ChatroomList onSelect={handleSelect} refreshKey={listRefreshKey} />;
   }
+
+  const isNewChat = chatroomIdRef.current === 'new_chat';
+
+  const handleModeToggle = async () => {
+    const newMode = chatroomMode === 'ai' ? 'direct' : 'ai';
+    if (isNewChat) {
+      setChatroomMode(newMode);
+      return;
+    }
+    const appUuid = config.value?.appUuid ?? '';
+    const senderIdentifier = sessionStore.getSenderIdentifier(config.value?.userIdentifier, appUuid);
+    const apiClient = createApiClient(
+      config.value?.apiBaseUrl ?? window.location.origin,
+      config.value?.token ?? '',
+    );
+    const result = await apiClient.updateChatroomMode(appUuid, chatroomIdRef.current, newMode, senderIdentifier);
+    if (result.ok) {
+      setChatroomMode(newMode);
+    }
+  };
+
+  const modeToggle = (
+    <button
+      onClick={handleModeToggle}
+      aria-label={`Switch to ${chatroomMode === 'ai' ? 'direct' : 'AI'} mode`}
+      title={chatroomMode === 'ai' ? 'AI mode — click to switch to Direct' : 'Direct mode — click to switch to AI'}
+      class={`text-xs px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+        chatroomMode === 'direct'
+          ? 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100'
+          : 'text-purple-600 bg-purple-50 border-purple-200 hover:bg-purple-100'
+      }`}
+    >
+      {chatroomMode === 'direct' ? 'Direct' : 'AI'}
+    </button>
+  );
 
   return (
     <div class="flex flex-col h-full">
@@ -169,19 +239,20 @@ export function AIAgentChat() {
             <path fill-rule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clip-rule="evenodd" />
           </svg>
         </button>
-        <span class="text-sm font-medium text-gray-700 truncate">
+        <span class="text-sm font-medium text-gray-700 truncate flex-1">
           {chatroomName || activeChatroom.name}
         </span>
+        {modeToggle}
       </div>
 
       {sendError.value && (
         <div class="bg-red-50 px-4 py-2 text-sm text-red-700">
-          AI is temporarily unavailable. Please try again.
+          Failed to send message. Please try again.
         </div>
       )}
 
-      <MessageList messages={aiMessages.value} isTyping={isTyping.value} />
-      <MessageInput onSend={handleSend} disabled={isTyping.value} />
+      <MessageList messages={messages} isTyping={isTyping.value} />
+      <MessageInput onSend={handleSend} disabled={false} />
     </div>
   );
 }

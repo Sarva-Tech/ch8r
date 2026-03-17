@@ -2,7 +2,7 @@ from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
 
-from core.consts import REGISTERED_USER_ID_PREFIX, LIVE_UPDATES_PREFIX
+from core.consts import DASHBOARD_USER_ID_PREFIX, LIVE_UPDATES_PREFIX
 from core.models import KnowledgeBase
 from core.models.knowledge_base import KBStatus
 from core.services import extract_text_from_file, ingest_kb
@@ -12,7 +12,7 @@ def send_kb_update(kb, status):
     channel_layer = get_channel_layer()
     owner_id = kb.application.owner.id
 
-    group_name = f"{LIVE_UPDATES_PREFIX}_{REGISTERED_USER_ID_PREFIX}_{owner_id}"
+    group_name = f"{LIVE_UPDATES_PREFIX}_{DASHBOARD_USER_ID_PREFIX}_{owner_id}"
 
     data = {
         "id": str(kb.id),

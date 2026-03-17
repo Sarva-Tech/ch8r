@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from core.models.application import Application
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.permissions import HasAPIKeyPermission
-from core.consts import REGISTERED_USER_ID_PREFIX
+from core.consts import DASHBOARD_USER_ID_PREFIX
 
 
 class HumanAgentInfoView(APIView):
@@ -27,7 +27,7 @@ class HumanAgentInfoView(APIView):
 
         owner = app.owner
         return Response({
-            'user_identifier': f"{REGISTERED_USER_ID_PREFIX}:{owner.id}",
+            'user_identifier': f"{DASHBOARD_USER_ID_PREFIX}:{owner.id}",
             'name': owner.get_full_name() or owner.username,
             'email': owner.email,
             'is_online': True,  # always online for now; can be extended with presence tracking

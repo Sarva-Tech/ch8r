@@ -44,7 +44,7 @@ export function Launcher({ isOpen, position = 'bottom-right', iconUrl, onOpen }:
         </button>
         {unreadCount.value > 0 && (
           <span
-            aria-label="You have unread messages"
+            aria-label="Unread messages"
             class="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"
           />
         )}

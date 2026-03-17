@@ -50,19 +50,19 @@
             <div v-html="md.render(message.message)" />
           </div>
           <div class="flex items-center gap-1 px-1">
-            <template v-if="message.ai_provider_id && message.model && !message.metadata?.send_to_participant">
+            <template v-if="message.ai_provider_id && message.model && !message.is_internal">
               <component
                 :is="useAIProviderIcon(getMessageProvider(message.ai_provider_id)?.provider ?? '').value"
                 class="w-3 h-3 shrink-0"
               />
             </template>
             <span class="text-xs text-muted-foreground whitespace-nowrap">
-              <template v-if="message.ai_provider_id && message.model && !message.metadata?.send_to_participant">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+              <template v-if="message.ai_provider_id && message.model && !message.is_internal">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
             </span>
             <span
-              v-if="message.metadata?.send_to_participant"
-              class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 rounded px-1 py-0.5 whitespace-nowrap"
-            >→ participant</span>
+              v-if="message.is_internal"
+              class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded px-1 py-0.5 whitespace-nowrap"
+            >internal</span>
           </div>
         </div>
       </div>
@@ -132,36 +132,44 @@
             <div
               class="flex gap-4 items-end flex-1 justify-between"
             >
-              <FormField
-                v-slot="{ componentField, handleChange }"
-                name="send_to_participant"
-                type="checkbox"
-                :unchecked-value="false"
-              >
-                <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                  <Checkbox
-                    id="sendToParticipant"
-                    :default-value="true"
-                    v-bind="componentField"
-                    @update:checked="handleChange"
-                  />
-                  <div class="grid gap-1">
-                    <Label for="sendToParticipant">Send to Participant</Label>
-                    <p
-                      v-if="form.values.send_to_participant"
-                      class="text-muted-foreground text-sm"
-                    >
-                      Message will be forwarded to the participant.
-                    </p>
-                    <p
-                      v-else
-                      class="text-muted-foreground text-sm"
-                    >
-                      Message will be processed by AI model only.
-                    </p>
-                  </div>
-                </FormItem>
-              </FormField>
+              <div class="flex items-center gap-4">
+                <FormField
+                  v-slot="{ componentField, handleChange }"
+                  name="is_internal"
+                  type="checkbox"
+                  :unchecked-value="false"
+                >
+                  <FormItem class="space-y-0 flex items-center space-x-2 self-center">
+                    <Checkbox
+                      id="isInternal"
+                      v-bind="componentField"
+                      @update:checked="handleChange"
+                    />
+                    <div class="grid gap-0.5">
+                      <Label for="isInternal">Internal</Label>
+                      <p class="text-muted-foreground text-xs">
+                        {{ form.values.is_internal ? 'Only visible to dashboard users' : 'Visible to all participants' }}
+                      </p>
+                    </div>
+                  </FormItem>
+                </FormField>
+
+                <FormField
+                  v-slot="{ componentField }"
+                  name="mode"
+                >
+                  <FormItem class="space-y-0 flex items-center space-x-2 self-center">
+                    <Label class="text-sm whitespace-nowrap">Mode</Label>
+                    <C8Select
+                      :options="modeOptions"
+                      placeholder="Mode"
+                      container-class="space-y-0"
+                      trigger-class="h-8 w-28"
+                      v-bind="componentField"
+                    />
+                  </FormItem>
+                </FormField>
+              </div>
 
               <C8Button
                 label="Send"
@@ -190,7 +198,7 @@ import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
 import { Send, Bot, UserRound, Globe } from 'lucide-vue-next'
 import GeminiIcon from '~/components/icons/GeminiIcon.vue'
 import { Button } from '~/components/ui/button'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '~/components/ui/form'
@@ -219,13 +227,12 @@ const selectedApp = computed(() => appStore.selectedApplication)
 const selectedChatroom = computed(() => chatroomMessagesStore.selectedChatroom)
 const lastUsedAIProvider = computed(() => chatroomMessagesStore.lastUsedAIProvider)
 const lastUsedAIModel = computed(() => chatroomMessagesStore.lastUsedAIModel)
-const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(form.values.ai_provider) : 0)
 
 const { state, isMobile } = useSidebar()
 
 const md = new MarkdownIt()
 
-const sendToParticipant = ref(false)
+const chatroomMode = computed(() => chatroomMessagesStore.chatroomMode)
 
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem',
@@ -236,7 +243,8 @@ const { apiError, handleError, clearError } = useApiErrorHandling()
 const schema = z.object({
   ai_provider: z.string().min(1, { message: 'Please select an AI provider' }),
   models: z.array(z.string()).min(1, { message: 'Please select a model' }),
-  send_to_participant: z.boolean(),
+  is_internal: z.boolean(),
+  mode: z.enum(['ai', 'direct']).nullable().optional(),
   message: z.string().min(1, { message: 'Please enter a message' }),
   sender_identifier: z.string(),
   chatroom_identifier: z.string(),
@@ -247,14 +255,16 @@ const form = useForm({
   initialValues: {
     ai_provider: undefined as string | undefined,
     models: [] as string[],
-    send_to_participant: false as boolean,
+    is_internal: false as boolean,
+    mode: null as 'ai' | 'direct' | null,
     message: '',
     sender_identifier: userStore.userIdentifier,
     chatroom_identifier: chatroomId as string,
   } as {
     ai_provider: string | undefined
     models: string[]
-    send_to_participant: boolean
+    is_internal: boolean
+    mode: 'ai' | 'direct' | null
     message: string
     sender_identifier: string
     chatroom_identifier: string
@@ -262,6 +272,27 @@ const form = useForm({
 })
 
 const { isSubmitting } = form
+
+const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(form.values.ai_provider) : 0)
+
+// When internal is checked, Direct mode is not applicable — reset to null (no AI)
+watch(() => form.values.is_internal, (isInternal) => {
+  if (isInternal && form.values.mode === 'direct') {
+    form.setFieldValue('mode', null)
+  }
+})
+
+// Mode options: Direct is hidden when internal is checked
+const modeOptions = computed(() => {
+  const opts: { label: string; value: string | null }[] = [
+    { label: 'None', value: null },
+    { label: 'AI', value: 'ai' },
+  ]
+  if (!form.values.is_internal) {
+    opts.push({ label: 'Direct', value: 'direct' })
+  }
+  return opts
+})
 
 const disabled = computed(() => {
   const values = form.values
@@ -273,7 +304,7 @@ const disabled = computed(() => {
 
 const isCurrentUser = (sender: string) => sender === userStore.userIdentifier
 const isLLMAgent = (sender: string) => sender.startsWith('agent_llm')
-const isRegisteredUser = (sender: string) => sender.startsWith('reg_')
+const isRegisteredUser = (sender: string) => sender.startsWith('dashboard_')
 const getMessageProvider = (ai_provider_id: number | null) => {
   if (!ai_provider_id) return null
   return AIProviderStore.AIProviders.find(p => p.id === ai_provider_id) ?? null
@@ -312,9 +343,10 @@ const send = form.handleSubmit(async (values) => {
     const response = await chatroomMessagesStore.sendMessage(
       selectedApp.value.uuid,
       values.message,
-      values.send_to_participant,
+      values.is_internal,
       selectedProviderId.value,
-      values.models?.[0]
+      values.models?.[0],
+      values.mode ?? undefined,
     )
     form.setFieldValue('message', '')
 
@@ -369,6 +401,9 @@ onMounted(async () => {
 
     const lastUsedProvider = lastUsedAIProvider.value
     const appProviders = AppAIProviderStore.existingAppAIProviderConfigs
+
+    // Sync mode from loaded chatroom (default to null = no AI for dashboard sends)
+    form.setFieldValue('mode', null)
 
     if (lastUsedProvider) {
       form.setFieldValue('ai_provider', lastUsedProvider.id.toString())

@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'preact/hooks';
 import { createApiClient } from '../services/api';
 import { sessionStore } from '../services/session';
-import { config, chatroomsHuman, chatroomsAI } from '../store/signals';
-import { wsManager, wsManagerHuman, wsManagerBackground } from '../services/websocket';
+import { config, chatrooms } from '../store/signals';
+import { wsManagerBackground } from '../services/websocket';
 import { UnreadBadge } from './UnreadBadge';
 import type { ChatroomPreview } from '../types/index';
-import { Signal } from '@preact/signals';
 
 interface ChatroomListProps {
   onSelect: (chatroom: ChatroomPreview) => void;
   refreshKey?: number;
-  type?: 'human' | 'ai';
 }
 
 function timeAgo(iso: string): string {
@@ -23,12 +21,9 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export function ChatroomList({ onSelect, refreshKey, type }: ChatroomListProps) {
+export function ChatroomList({ onSelect, refreshKey }: ChatroomListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Use the correct signal based on type
-  const signal: Signal<ChatroomPreview[]> = type === 'human' ? chatroomsHuman : chatroomsAI;
 
   const loadChatrooms = () => {
     setLoading(true);
@@ -40,9 +35,9 @@ export function ChatroomList({ onSelect, refreshKey, type }: ChatroomListProps) 
       config.value?.token ?? '',
     );
 
-    apiClient.loadChatrooms(appUuid, senderIdentifier, type).then(result => {
+    apiClient.loadChatrooms(appUuid, senderIdentifier).then(result => {
       if (result.ok) {
-        signal.value = result.data;
+        chatrooms.value = result.data;
       } else {
         setError(result.error);
       }
@@ -54,19 +49,15 @@ export function ChatroomList({ onSelect, refreshKey, type }: ChatroomListProps) 
     loadChatrooms();
 
     const handleUnreadUpdate = (event: { chatroom_uuid: string; has_unread: boolean }) => {
-      signal.value = signal.value.map(c =>
+      chatrooms.value = chatrooms.value.map(c =>
         c.uuid === event.chatroom_uuid ? { ...c, has_unread: event.has_unread } : c
       );
     };
 
-    const unsubA = wsManager.onUnreadUpdate(handleUnreadUpdate);
-    const unsubB = wsManagerHuman.onUnreadUpdate(handleUnreadUpdate);
-    const unsubC = wsManagerBackground.onUnreadUpdate(handleUnreadUpdate);
-    const unsubD = wsManager.onReconnect(loadChatrooms);
-    const unsubE = wsManagerHuman.onReconnect(loadChatrooms);
-    const unsubF = wsManagerBackground.onReconnect(loadChatrooms);
+    const unsubUnread = wsManagerBackground.onUnreadUpdate(handleUnreadUpdate);
+    const unsubReconnect = wsManagerBackground.onReconnect(loadChatrooms);
 
-    return () => { unsubA(); unsubB(); unsubC(); unsubD(); unsubE(); unsubF(); };
+    return () => { unsubUnread(); unsubReconnect(); };
   }, [refreshKey]);
 
   if (loading) {
@@ -85,11 +76,10 @@ export function ChatroomList({ onSelect, refreshKey, type }: ChatroomListProps) 
     );
   }
 
-  const rooms = signal.value;
+  const rooms = chatrooms.value;
 
   return (
     <div class="flex-1 overflow-y-auto flex flex-col">
-      {/* New chat button */}
       <button
         onClick={() => onSelect({ uuid: 'new_chat', name: 'New conversation', last_message: null, has_unread: false })}
         class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left"
@@ -113,7 +103,7 @@ export function ChatroomList({ onSelect, refreshKey, type }: ChatroomListProps) 
         <button
           key={room.uuid}
           onClick={() => {
-            signal.value = signal.value.map(c =>
+            chatrooms.value = chatrooms.value.map(c =>
               c.uuid === room.uuid ? { ...c, has_unread: false } : c
             );
             onSelect(room);

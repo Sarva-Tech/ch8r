@@ -9,29 +9,28 @@ from core.consts import LIVE_UPDATES_PREFIX
 logger = logging.getLogger(__name__)
 
 
-def mark_unread_for_participants(chatroom, sender_identifier: str) -> list[str]:
+def mark_unread_for_participants(
+    chatroom, sender_identifier: str, is_internal: bool = False
+) -> list[str]:
     """
     Atomically set has_unread=True on all ChatroomParticipant records
     for the given chatroom, excluding the sender.
 
+    When is_internal=True, only dashboard_ participants are updated
+    (internal messages are not visible to widget users).
+
     Returns the list of user_identifier values that were updated,
     for use in broadcasting unread notifications.
     """
-    ChatroomParticipant.objects.filter(
+    qs = ChatroomParticipant.objects.filter(
         chatroom=chatroom
     ).exclude(
         user_identifier=sender_identifier
-    ).update(has_unread=True)
-
-    updated_identifiers = list(
-        ChatroomParticipant.objects.filter(
-            chatroom=chatroom
-        ).exclude(
-            user_identifier=sender_identifier
-        ).values_list("user_identifier", flat=True)
     )
-
-    return updated_identifiers
+    if is_internal:
+        qs = qs.filter(user_identifier__startswith='dashboard_')
+    qs.update(has_unread=True)
+    return list(qs.values_list('user_identifier', flat=True))
 
 
 def broadcast_unread_update(

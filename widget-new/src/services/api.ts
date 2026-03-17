@@ -94,6 +94,13 @@ export class ApiClient {
     });
   }
 
+  updateChatroomMode(appUuid: string, chatroomUuid: string, mode: 'ai' | 'direct', senderIdentifier: string): Promise<ApiResult<{ uuid: string; mode: string }>> {
+    return this.request<{ uuid: string; mode: string }>(
+      `${this.baseUrl}/api/applications/${appUuid}/chatrooms/${chatroomUuid}/mode/`,
+      { method: 'PATCH', body: JSON.stringify({ mode, sender_identifier: senderIdentifier }) },
+    );
+  }
+
   submitSupportForm(appUuid: string, req: SupportFormRequest): Promise<ApiResult<void>> {
     return this.request<void>(
       `${this.baseUrl}/api/apps/${appUuid}/support/`,

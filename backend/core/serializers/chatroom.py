@@ -9,18 +9,22 @@ from core.serializers.ai_provider import AIProviderSerializer
 class ChatRoomViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'ai_provider', 'model']
+        fields = ['uuid', 'name', 'ai_provider', 'model', 'mode']
 
 class ChatRoomWithMessagesSerializer(serializers.ModelSerializer):
     application = ApplicationViewSerializer(read_only=True)
     ai_provider = AIProviderSerializer(read_only=True)
     ai_model = serializers.CharField(source='model', read_only=True)
-    messages = ViewMessageSerializer(many=True, read_only=True)
+    messages = serializers.SerializerMethodField()
     chatroom = ChatRoomViewSerializer(read_only=True)
 
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'application', 'messages', 'ai_provider', 'ai_model', 'chatroom']
+        fields = ['uuid', 'name', 'application', 'messages', 'ai_provider', 'ai_model', 'chatroom', 'mode']
+
+    def get_messages(self, chatroom):
+        messages_qs = self.context.get('messages_qs', chatroom.messages.all())
+        return ViewMessageSerializer(messages_qs, many=True).data
 
 class ChatroomParticipantSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,10 +37,16 @@ class ChatRoomPreviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'last_message', 'has_unread']
+        fields = ['uuid', 'name', 'last_message', 'has_unread', 'mode']
 
     def get_last_message(self, chatroom):
-        last_msg = chatroom.messages.order_by('-created_at').first()
+        # Widget users (non-dashboard) must not see internal messages in the preview
+        user_identifier = self.context.get('user_identifier', '')
+        is_dashboard = user_identifier.startswith('dashboard_')
+        qs = chatroom.messages.order_by('-created_at')
+        if not is_dashboard:
+            qs = qs.filter(is_internal=False)
+        last_msg = qs.first()
         return ViewMessageSerializer(last_msg).data if last_msg else None
 
     def get_has_unread(self, chatroom):
