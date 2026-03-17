@@ -4,11 +4,12 @@ from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from core.models import KnowledgeBase, Application, IngestedChunk, LLMModel
+from core.models import KnowledgeBase, Application, IngestedChunk
 from core.serializers import KnowledgeBaseCreateSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
 from core.permissions import HasAPIKeyPermission
 from core.services.ingestion import delete_vectors_from_qdrant
 from core.services.kb_utils import create_kb_records, parse_kb_from_request, format_text_uri
+from core.services.ai_client_service import AIClientService
 
 from core.tasks import process_kb
 import logging
@@ -58,18 +59,19 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
             created_kbs = create_kb_records(application, items)
 
-            # TODO: May be we need a better error handling approach here
-            # TODO: Serializer with validator might work
-            errors = {}
-            text_model = application.get_model_by_type(LLMModel.ModelType.TEXT)
-            if not text_model:
-                errors[
-                    "text_model"] = f"Text model not found for application {application.name}. Please configure a TEXT model."
+            ai_client_service = AIClientService()
+            _, embedding_model = ai_client_service.get_client_and_model(
+                app=application, context='response', capability='embedding'
+            )
+            _, text_model = ai_client_service.get_client_and_model(
+                app=application, context='response', capability='text'
+            )
 
-            embedding_model = application.get_model_by_type(LLMModel.ModelType.EMBEDDING)
+            errors = {}
+            if not text_model:
+                errors["text_model"] = f"Text model not found for application {application.name}. Please configure a TEXT model."
             if not embedding_model:
-                errors[
-                    "embedding_model"] = f"Embedding model not found for application {application.name}. Please configure an EMBEDDING model."
+                errors["embedding_model"] = f"Embedding model not found for application {application.name}. Please configure an EMBEDDING model."
 
             if errors:
                 return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)

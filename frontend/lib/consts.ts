@@ -18,7 +18,7 @@ export const AVAILABLE_COLORS = [
 ]
 export const DEFAULT_COLOR = AVAILABLE_COLORS[0]
 
-export const USER_ID_PREFIX = 'reg'
+export const USER_ID_PREFIX = 'dashboard'
 
 export const SUPPORTED_FILE_EXTENSIONS = [
   { id: '.pdf', label: 'PDF', mime: 'application/pdf' },

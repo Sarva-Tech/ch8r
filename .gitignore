@@ -30,3 +30,5 @@ __pycache__/
 .DS_Store
 qdrant_storage
 .env
+.kiro/
+backend/.hypothesis

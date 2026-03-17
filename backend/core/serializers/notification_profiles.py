@@ -5,6 +5,48 @@ from core.consts import SUPPORTED_NOTIFICATION_PROVIDERS
 PROVIDER_MAP = {p['id']: p for p in SUPPORTED_NOTIFICATION_PROVIDERS}
 
 
+class BaseProviderValidator:
+    def validate(self, config):
+        pass
+
+
+class EmailProviderValidator(BaseProviderValidator):
+    def validate(self, config):
+        email = config.get('email', '').strip()
+        if '@' not in email or '.' not in email.split('@')[-1]:
+            raise serializers.ValidationError({'config': {'email': 'Enter a valid email address.'}})
+
+
+class WebhookProviderValidator(BaseProviderValidator):
+    webhook_domain = None
+
+    def validate(self, config):
+        url = config.get('webhookUrl', '').strip()
+        if not url.startswith(('http://', 'https://')):
+            raise serializers.ValidationError(
+                {'config': {'webhookUrl': 'Must be a valid http/https URL.'}}
+            )
+        if self.webhook_domain and self.webhook_domain not in url:
+            raise serializers.ValidationError(
+                {'config': {'webhookUrl': f"Webhooks must contain '{self.webhook_domain}'."}}
+            )
+
+
+class SlackProviderValidator(WebhookProviderValidator):
+    webhook_domain = 'hooks.slack.com'
+
+
+class DiscordProviderValidator(WebhookProviderValidator):
+    webhook_domain = 'discord.com'
+
+
+_VALIDATOR_REGISTRY = {
+    'email': EmailProviderValidator(),
+    'slack': SlackProviderValidator(),
+    'discord': DiscordProviderValidator(),
+}
+
+
 def validate_config_for_type(provider_type, config):
     if not isinstance(config, dict):
         raise serializers.ValidationError({'config': 'Must be a JSON object.'})
@@ -19,31 +61,12 @@ def validate_config_for_type(provider_type, config):
             {'config': f"Missing required fields: {', '.join(missing)}"}
         )
 
-    if provider_type == 'email':
-        email = config.get('email', '').strip()
-        if '@' not in email or '.' not in email.split('@')[-1]:
-            raise serializers.ValidationError({'config': {'email': 'Enter a valid email address.'}})
-
-    if provider_type in ('slack', 'discord'):
-        url = config.get('webhookUrl', '').strip()
-        if not url.startswith(('http://', 'https://')):
-            raise serializers.ValidationError(
-                {'config': {'webhookUrl': 'Must be a valid http/https URL.'}}
-            )
-        if provider_type == 'slack' and 'hooks.slack.com' not in url:
-            raise serializers.ValidationError(
-                {'config': {'webhookUrl': "Slack webhooks must contain 'hooks.slack.com'."}}
-            )
-        if provider_type == 'discord' and 'discord.com' not in url:
-            raise serializers.ValidationError(
-                {'config': {'webhookUrl': "Discord webhooks must contain 'discord.com'."}}
-            )
+    validator = _VALIDATOR_REGISTRY.get(provider_type, BaseProviderValidator())
+    validator.validate(config)
 
 
 class NotificationProfileSerializer(serializers.ModelSerializer):
-    # Write-only: accepts config on create/update but never echoes it back
     config = serializers.JSONField(write_only=True)
-    # Read-only: safe representation with no sensitive values
     config_meta = serializers.SerializerMethodField()
 
     class Meta:

@@ -14,6 +14,7 @@ export interface Message {
   chatroom_identifier?: string
   ai_provider_id?: number | null
   model?: string | null
+  is_internal?: boolean
 }
 
 interface ChatRoomMessagesResponse {
@@ -23,6 +24,7 @@ interface ChatRoomMessagesResponse {
   messages: Message[]
   ai_provider: AIProvider
   ai_model: string | null
+  mode: 'ai' | 'direct'
 }
 
 export const useChatroomMessagesStore = defineStore('chatroom', {
@@ -32,7 +34,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
     loading: false,
     error: null as string | null,
     lastUsedAIProvider: undefined as AIProvider | undefined,
-    lastUsedAIModel: null as string | null
+    lastUsedAIModel: null as string | null,
+    chatroomMode: 'ai' as 'ai' | 'direct',
   }),
 
   actions: {
@@ -59,6 +62,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         this.messages = data.messages
         this.lastUsedAIProvider = data.ai_provider
         this.lastUsedAIModel = data.ai_model
+        this.chatroomMode = data.mode ?? 'ai'
       } catch (err: any) {
         this.error = err.message || 'Failed to load chatroom'
       } finally {
@@ -66,7 +70,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       }
     },
 
-    async sendMessage(applicationUuid: string, messageText: string, sendToParticipant = false, aiProvider?: number, model?: string) {
+    async sendMessage(applicationUuid: string, messageText: string, isInternal = false, aiProvider?: number, model?: string, mode?: string) {
       const userStore = useUserStore()
       const sender = userStore.userIdentifier
 
@@ -88,17 +92,16 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       try {
         const { httpPost } = useHttpClient()
 
-        const body = {
+        const body: Record<string, unknown> = {
           chatroom_identifier: this.selectedChatroom.uuid,
           message: messageText,
           sender_identifier: sender,
-          metadata: {
-            source: 'web'
-          },
-          send_to_participant: sendToParticipant,
+          metadata: { source: 'web' },
+          is_internal: isInternal,
           ai_provider: aiProvider,
-          model: model
+          model: model,
         }
+        if (mode) body.mode = mode
 
         return await httpPost<Message>(
           `/applications/${applicationUuid}/chatrooms/send-message/`,

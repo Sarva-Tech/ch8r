@@ -135,6 +135,34 @@
       height: 300px;
     }
 
+    .ch8r-message-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .ch8r-message-row.user {
+      flex-direction: row-reverse;
+    }
+
+    .ch8r-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ch8r-avatar.agent {
+      background-color: #ede9fe;
+    }
+
+    .ch8r-avatar.user {
+      background-color: #d1fae5;
+    }
+
     .ch8r-message {
       max-width: 75%;
       padding: 10px 14px;
@@ -147,14 +175,12 @@
     .ch8r-message.user {
       background-color: #3b82f6;
       color: white;
-      align-self: flex-end;
       border-bottom-right-radius: 6px;
     }
 
     .ch8r-message.agent {
       background-color: #e5e7eb;
       color: #1f2937;
-      align-self: flex-start;
       border-bottom-left-radius: 6px;
     }
 
@@ -323,11 +349,7 @@
       const messageElements = messagesContainer.querySelectorAll('.ch8r-message');
       messageElements.forEach(msgEl => {
         const sender = msgEl.classList.contains('user') ? 'user' : 'agent';
-        messages.push({
-          text: msgEl.textContent,
-          sender: sender,
-          timestamp: Date.now()
-        });
+        messages.push({ text: msgEl.textContent, sender });
       });
       localStorage.setItem(getMessagesKey(), JSON.stringify(messages));
     }
@@ -395,10 +417,25 @@
     }
 
     function addMessageToDOM(text, sender) {
+      const row = document.createElement('div');
+      row.classList.add('ch8r-message-row', sender);
+
+      const avatar = document.createElement('div');
+      avatar.classList.add('ch8r-avatar', sender);
+
+      if (sender === 'agent') {
+        avatar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
+      } else {
+        avatar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>`;
+      }
+
       const msgEl = document.createElement('div');
       msgEl.classList.add('ch8r-message', sender);
       msgEl.textContent = text;
-      messagesContainer.appendChild(msgEl);
+
+      row.appendChild(avatar);
+      row.appendChild(msgEl);
+      messagesContainer.appendChild(row);
       scrollToBottom();
     }
 

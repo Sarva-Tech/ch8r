@@ -37,3 +37,21 @@ def extract_and_merge_fields(
 
     return extracted_data
 
+
+def normalize_model_name_by_provider(model: str, provider: str) -> str:
+    """
+    Normalize model name based on provider.
+
+    Args:
+        model: The model name to normalize
+        provider: The AI provider name
+
+    Returns:
+        Normalized model name
+    """
+    if provider.lower() == 'gemini':
+        # Remove 'model/' prefix for Gemini models
+        if model.startswith('model/'):
+            return model[6:]
+    # For other providers, return as-is
+    return model
