@@ -41,8 +41,8 @@ def _make_app(user=None):
     return Application.objects.create(owner=user, name="TestApp")
 
 
-def _make_chatroom(app, mode='ai'):
-    return ChatRoom.objects.create(application=app, name="TestRoom", mode=mode)
+def _make_chatroom(app):
+    return ChatRoom.objects.create(application=app, name="TestRoom")
 
 
 def _make_message(chatroom, sender_id="widget_abc", text="hello", is_internal=False):

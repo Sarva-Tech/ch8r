@@ -2,28 +2,31 @@
 Tests for SendMessageView routing logic.
 
 Covers:
-  - Task 7.1 / Property 4: Internal messages not broadcast to widget WebSocket groups
+  - Property 4: Internal messages not broadcast to widget WebSocket groups
     Validates: Requirements 2.4, 4.1, 5.6
-  - Task 7.2 / Property 8: Chatroom mode controls AI response generation
-    Validates: Requirements 3.3, 3.4
-  - Task 7.3 / Property 9: Direct mode broadcasts participant messages to dashboard participants
-    Validates: Requirements 3.5
-  - Task 7.4: SendMessageView with is_internal=True does not call group_send for live_widget_* groups
-    Validates: Requirements 2.4, 4.1
-  - Task 7.5: SendMessageView with mode=direct calls group_send for dashboard_ and human_agent participants
-    Validates: Requirements 3.5
-  - Task 7.6: SendMessageView with mode=ai calls generate_bot_response.delay
+  - Property 1: platform is always derived from auth context (not from request body)
+    Validates: Requirements 1.2, 1.3, 1.4
+  - Widget sender + ai_mode=False broadcasts to dashboard groups only; no AI
+    Validates: Requirements 4.2
+  - Widget sender + ai_mode=True broadcasts to widget+dashboard groups; triggers AI
+    Validates: Requirements 3.2, 3.3, 4.1
+  - Dashboard external messages broadcast to widget groups only
+    Validates: Requirements 4.5
+  - ai_mode=True on widget message triggers generate_bot_response.delay
     Validates: Requirements 3.3
+  - Response includes platform, ai_mode, chatroom_identifier, message_status
+    Validates: Requirements 1.5, 3.8
 """
 import uuid
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from core.models.application import Application
+from core.models.application_widget_token import ApplicationWidgetToken
 from core.models.chatroom import ChatRoom
 from core.models.chatroom_participant import ChatroomParticipant
 from core.models.message import Message
@@ -45,8 +48,8 @@ def _make_app(user=None):
     return Application.objects.create(owner=user, name="TestApp")
 
 
-def _make_chatroom(app, mode='ai'):
-    return ChatRoom.objects.create(application=app, name="TestRoom", mode=mode)
+def _make_chatroom(app):
+    return ChatRoom.objects.create(application=app, name="TestRoom")
 
 
 def _add_participant(chatroom, identifier, role='user'):
@@ -60,6 +63,14 @@ def _add_participant(chatroom, identifier, role='user'):
 def _authenticated_client(user):
     client = APIClient()
     client.force_authenticate(user=user)
+    return client
+
+
+def _widget_client(app):
+    """Return an APIClient authenticated via widget token (platform='widget')."""
+    token = ApplicationWidgetToken.objects.create(application=app)
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.key}")
     return client
 
 
@@ -108,7 +119,7 @@ def test_internal_message_not_broadcast_to_widget_groups(widget_uuids, dashboard
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='ai')
+    chatroom = _make_chatroom(app)
     sender_id = f"dashboard_{user.id}"
 
     for wid in widget_uuids:
@@ -139,28 +150,29 @@ def test_internal_message_not_broadcast_to_widget_groups(widget_uuids, dashboard
 
 
 # ---------------------------------------------------------------------------
-# Property 8: Chatroom mode controls AI response generation
-# Validates: Requirements 3.3, 3.4
+# Property: ai_mode controls AI response generation for widget messages
+# Validates: Requirements 3.2, 3.3
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-@given(mode=st.sampled_from(['ai', 'direct']))
+@given(ai_mode=st.booleans())
 @settings(max_examples=10, deadline=10000)
-def test_mode_controls_ai_generation(mode):
+def test_widget_ai_mode_controls_ai_generation(ai_mode):
     """
-    **Property 8: Chatroom mode controls AI response generation**
-    **Validates: Requirements 3.3, 3.4**
+    **Property: ai_mode controls AI response generation for widget messages**
+    **Validates: Requirements 3.2, 3.3**
 
-    For ai mode: generate_bot_response.delay must be called.
-    For direct mode: generate_bot_response.delay must NOT be called.
+    For widget messages with ai_mode=True: generate_bot_response.delay must be called.
+    For widget messages with ai_mode=False: generate_bot_response.delay must NOT be called.
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode=mode)
+    chatroom = _make_chatroom(app)
     sender_id = f"widget_{uuid.uuid4()}"
     _add_participant(chatroom, sender_id)
 
-    client = _authenticated_client(user)
+    # Use widget token auth so platform='widget'
+    client = _widget_client(app)
 
     with patch('core.views.message.generate_bot_response') as mock_bot, \
          patch('core.views.message.get_channel_layer') as mock_cl, \
@@ -169,19 +181,19 @@ def test_mode_controls_ai_generation(mode):
 
         resp = _post_message(
             client, app.uuid, chatroom.uuid, sender_id,
-            is_internal=False,
+            ai_mode=ai_mode,
         )
         assert resp.status_code == 200, resp.data
 
-        if mode == 'ai':
+        if ai_mode:
             mock_bot.delay.assert_called_once()
         else:
             mock_bot.delay.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
-# Property 9: Direct mode broadcasts participant messages to dashboard participants
-# Validates: Requirements 3.5
+# Property: widget messages broadcast to dashboard groups
+# Validates: Requirements 4.1, 4.2
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
@@ -194,24 +206,25 @@ def test_mode_controls_ai_generation(mode):
     ),
 )
 @settings(max_examples=10, deadline=10000)
-def test_direct_mode_broadcasts_to_dashboard_participants(dashboard_ids):
+def test_widget_message_broadcasts_to_dashboard_participants(dashboard_ids):
     """
-    **Property 9: Direct mode broadcasts participant messages to dashboard participants**
-    **Validates: Requirements 3.5**
+    **Property: widget messages broadcast to dashboard participants**
+    **Validates: Requirements 4.1, 4.2**
 
-    For a chatroom in direct mode, at least one group_send call must target a
-    group containing 'dashboard_'.
+    For a widget sender with ai_mode=False, at least one group_send call must
+    target a group containing 'dashboard_'.
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='direct')
+    chatroom = _make_chatroom(app)
     sender_id = f"widget_{uuid.uuid4()}"
     _add_participant(chatroom, sender_id)
 
     for did in dashboard_ids:
         _add_participant(chatroom, f"dashboard_{did}")
 
-    client = _authenticated_client(user)
+    # Use widget token auth so platform='widget'
+    client = _widget_client(app)
 
     with patch('core.views.message.generate_bot_response') as mock_bot, \
          patch('core.views.message.get_channel_layer') as mock_cl, \
@@ -221,7 +234,7 @@ def test_direct_mode_broadcasts_to_dashboard_participants(dashboard_ids):
 
         resp = _post_message(
             client, app.uuid, chatroom.uuid, sender_id,
-            is_internal=False,
+            ai_mode=False,
         )
         assert resp.status_code == 200, resp.data
 
@@ -234,20 +247,20 @@ def test_direct_mode_broadcasts_to_dashboard_participants(dashboard_ids):
 
 
 # ---------------------------------------------------------------------------
-# Unit test 7.4: is_internal=True does not call group_send for live_widget_* groups
+# Unit test: is_internal=True does not call group_send for live_widget_* groups
 # Validates: Requirements 2.4, 4.1
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
 def test_internal_message_no_widget_broadcast():
     """
-    **Task 7.4**: SendMessageView with is_internal=True does not call group_send
+    SendMessageView with is_internal=True does not call group_send
     for any live_widget_* group.
     **Validates: Requirements 2.4, 4.1**
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='ai')
+    chatroom = _make_chatroom(app)
     sender_id = f"dashboard_{user.id}"
 
     _add_participant(chatroom, sender_id, role='user')
@@ -276,20 +289,20 @@ def test_internal_message_no_widget_broadcast():
 
 
 # ---------------------------------------------------------------------------
-# Unit test 7.5: mode=direct calls group_send for dashboard_ and human_agent participants
-# Validates: Requirements 3.5
+# Unit test: widget sender broadcasts to dashboard_ and human_agent participants
+# Validates: Requirements 4.1, 4.2
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_direct_mode_broadcasts_to_dashboard_and_human_agent():
+def test_widget_message_broadcasts_to_dashboard_and_human_agent():
     """
-    **Task 7.5**: SendMessageView with mode=direct calls group_send for
+    SendMessageView with widget sender (ai_mode=False) calls group_send for
     dashboard_ and human_agent participants.
-    **Validates: Requirements 3.5**
+    **Validates: Requirements 4.1, 4.2**
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='direct')
+    chatroom = _make_chatroom(app)
     sender_id = f"widget_{uuid.uuid4()}"
     human_agent_id = "human_agent_001"
     dashboard_id = f"dashboard_{user.id}"
@@ -298,7 +311,8 @@ def test_direct_mode_broadcasts_to_dashboard_and_human_agent():
     _add_participant(chatroom, dashboard_id, role='user')
     _add_participant(chatroom, human_agent_id, role='human_agent')
 
-    client = _authenticated_client(user)
+    # Use widget token auth so platform='widget'
+    client = _widget_client(app)
 
     with patch('core.views.message.generate_bot_response') as mock_bot, \
          patch('core.views.message.get_channel_layer') as mock_cl, \
@@ -308,6 +322,7 @@ def test_direct_mode_broadcasts_to_dashboard_and_human_agent():
 
         resp = _post_message(
             client, app.uuid, chatroom.uuid, sender_id,
+            ai_mode=False,
         )
         assert resp.status_code == 200, resp.data
 
@@ -322,23 +337,24 @@ def test_direct_mode_broadcasts_to_dashboard_and_human_agent():
 
 
 # ---------------------------------------------------------------------------
-# Unit test 7.6: mode=ai calls generate_bot_response.delay
+# Unit test: widget message with ai_mode=True calls generate_bot_response.delay
 # Validates: Requirements 3.3
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_ai_mode_triggers_bot_response():
+def test_widget_ai_mode_true_triggers_bot_response():
     """
-    **Task 7.6**: SendMessageView with mode=ai calls generate_bot_response.delay.
+    SendMessageView with widget sender and ai_mode=True calls generate_bot_response.delay.
     **Validates: Requirements 3.3**
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='ai')
+    chatroom = _make_chatroom(app)
     sender_id = f"widget_{uuid.uuid4()}"
     _add_participant(chatroom, sender_id, role='user')
 
-    client = _authenticated_client(user)
+    # Use widget token auth so platform='widget'
+    client = _widget_client(app)
 
     with patch('core.views.message.generate_bot_response') as mock_bot, \
          patch('core.views.message.get_channel_layer') as mock_cl, \
@@ -347,6 +363,7 @@ def test_ai_mode_triggers_bot_response():
 
         resp = _post_message(
             client, app.uuid, chatroom.uuid, sender_id,
+            ai_mode=True,
         )
         assert resp.status_code == 200, resp.data
         mock_bot.delay.assert_called_once()
@@ -365,60 +382,41 @@ def test_widget_user_cannot_set_is_internal():
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='ai')
+    chatroom = _make_chatroom(app)
     sender_id = f"widget_{uuid.uuid4()}"
     _add_participant(chatroom, sender_id, role='user')
 
-    # Use widget token auth by patching the application on the request
-    from rest_framework.test import APIClient as _APIClient
-    widget_client = _APIClient()
+    auth_client = _authenticated_client(user)
 
-    with patch('core.widget_auth.WidgetTokenAuthentication.authenticate') as mock_auth, \
-         patch('core.views.message.generate_bot_response'), \
-         patch('core.views.message.get_channel_layer') as mock_cl, \
+    # Authenticated user sends is_internal=True — should be stored as True
+    with patch('core.views.message.generate_bot_response'), \
+         patch('core.views.message.get_channel_layer') as mock_cl2, \
          patch('core.views.message.broadcast_unread_update'):
-        mock_cl.return_value = MagicMock()
-
-        # Simulate widget auth: unauthenticated user but app attached to request
-        from django.contrib.auth.models import AnonymousUser
-        mock_request_app = app
-
-        class FakeWidgetAuth:
-            pass
-
-        mock_auth.return_value = (AnonymousUser(), None)
-
-        # Directly test via authenticated client but verify the field is ignored
-        # by checking the Message created in DB
-        auth_client = _authenticated_client(user)
-
-        # Authenticated user sends is_internal=True — should be stored as True
-        with patch('core.views.message.generate_bot_response'), \
-             patch('core.views.message.get_channel_layer') as mock_cl2, \
-             patch('core.views.message.broadcast_unread_update'):
-            mock_cl2.return_value = MagicMock()
-            resp = _post_message(
-                auth_client, app.uuid, chatroom.uuid, f"dashboard_{user.id}",
-                is_internal=True,
-            )
-            assert resp.status_code == 200
-            msg = Message.objects.get(id=resp.data['id'])
-            assert msg.is_internal is True
+        mock_cl2.return_value = MagicMock()
+        resp = _post_message(
+            auth_client, app.uuid, chatroom.uuid, f"dashboard_{user.id}",
+            is_internal=True,
+        )
+        assert resp.status_code == 200
+        msg = Message.objects.get(id=resp.data['id'])
+        assert msg.is_internal is True
 
 
 # ---------------------------------------------------------------------------
-# Additional: response includes chatroom_identifier, message_status, and mode
-# Validates: Requirements 8.4, 8.7
+# Additional: response includes chatroom_identifier, message_status, platform, ai_mode
+# Validates: Requirements 1.5, 3.8
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
 def test_response_includes_required_fields():
     """
-    SendMessageView response must include chatroom_identifier, message_status, and mode.
+    SendMessageView response must include chatroom_identifier, message_status,
+    platform, and ai_mode.
+    **Validates: Requirements 1.5, 3.8**
     """
     user = _make_user()
     app = _make_app(user)
-    chatroom = _make_chatroom(app, mode='direct')
+    chatroom = _make_chatroom(app)
     sender_id = f"dashboard_{user.id}"
     _add_participant(chatroom, sender_id, role='user')
 
@@ -434,18 +432,21 @@ def test_response_includes_required_fields():
         assert 'chatroom_identifier' in resp.data
         assert 'message_status' in resp.data
         assert resp.data['message_status'] == 'message_sent'
-        assert 'mode' in resp.data
-        assert resp.data['mode'] == 'direct'
+        assert 'platform' in resp.data
+        assert 'ai_mode' in resp.data
+        # Authenticated user → platform='dashboard'
+        assert resp.data['platform'] == 'dashboard'
 
 
 # ---------------------------------------------------------------------------
-# Additional: new chatroom creation uses mode from request data
+# Additional: new chatroom creation succeeds without mode field
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_new_chatroom_uses_mode_from_request():
+def test_new_chatroom_creation_succeeds():
     """
-    When chatroom_identifier='new_chat', the created chatroom uses mode from request data.
+    When chatroom_identifier='new_chat', a new chatroom is created and the
+    response includes chatroom_identifier and message_status.
     """
     user = _make_user()
     app = _make_app(user)
@@ -464,26 +465,36 @@ def test_new_chatroom_uses_mode_from_request():
                 'chatroom_identifier': 'new_chat',
                 'sender_identifier': sender_id,
                 'message': 'hello',
-                'mode': 'direct',
             },
             format='json',
         )
         assert resp.status_code == 200, resp.data
-        assert resp.data['mode'] == 'direct'
+        assert 'chatroom_identifier' in resp.data
+        assert 'message_status' in resp.data
+        assert resp.data['message_status'] == 'message_sent'
 
         chatroom_uuid = resp.data['chatroom_identifier']
         chatroom = ChatRoom.objects.get(uuid=chatroom_uuid)
-        assert chatroom.mode == 'direct'
+        assert chatroom is not None
 
+
+# ---------------------------------------------------------------------------
+# Additional: external dashboard message with ai_mode=True is rejected (HTTP 400)
+# Validates: Requirements 3.6, 3.7
+# ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_new_chatroom_defaults_to_ai_mode():
+def test_external_dashboard_message_with_ai_mode_rejected():
     """
-    When chatroom_identifier='new_chat' and no mode is provided, mode defaults to 'ai'.
+    Dashboard external messages (is_internal=False) with ai_mode=True must be
+    rejected with HTTP 400.
+    **Validates: Requirements 3.6, 3.7**
     """
     user = _make_user()
     app = _make_app(user)
+    chatroom = _make_chatroom(app)
     sender_id = f"dashboard_{user.id}"
+    _add_participant(chatroom, sender_id, role='user')
 
     client = _authenticated_client(user)
 
@@ -492,14 +503,9 @@ def test_new_chatroom_defaults_to_ai_mode():
          patch('core.views.message.broadcast_unread_update'):
         mock_cl.return_value = MagicMock()
 
-        resp = client.post(
-            f'/api/applications/{app.uuid}/chatrooms/send-message/',
-            data={
-                'chatroom_identifier': 'new_chat',
-                'sender_identifier': sender_id,
-                'message': 'hello',
-            },
-            format='json',
+        resp = _post_message(
+            client, app.uuid, chatroom.uuid, sender_id,
+            is_internal=False,
+            ai_mode=True,
         )
-        assert resp.status_code == 200, resp.data
-        assert resp.data['mode'] == 'ai'
+        assert resp.status_code == 400, resp.data

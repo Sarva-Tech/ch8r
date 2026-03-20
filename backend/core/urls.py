@@ -12,7 +12,7 @@ from core.views.change_password import ChangePasswordView
 from core.views.resend_verification import ResendVerificationView
 from core.views.custom_auth import CustomAuthToken
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView, UserChatRoomsView
-from core.views.chatroom import ChatRoomDetailView, ChatRoomModeView
+from core.views.chatroom import ChatRoomDetailView
 from core.views.configure_app import ConfigureAppIntegrationView, LoadAppConfigurationView
 from core.views.integration import supported_integrations
 from core.views.llm_model import LLMModelViewSet
@@ -57,12 +57,6 @@ urlpatterns = [
         'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/messages/',
         ChatRoomMessagesView.as_view(),
         name='chatroom-messages'
-    ),
-
-    path(
-        'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/mode/',
-        ChatRoomModeView.as_view(),
-        name='chatroom-mode'
     ),
 
     path('applications/<uuid:application_uuid>/chatrooms/', ApplicationChatRoomsPreviewView.as_view(),

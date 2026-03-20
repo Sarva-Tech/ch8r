@@ -41,6 +41,9 @@ class SendMessageView(APIView):
             if not app or str(app.uuid) != str(application_uuid):
                 return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
 
+        # Task 3.1: Derive platform from auth context
+        platform = 'dashboard' if (request.user and request.user.is_authenticated) else 'widget'
+
         serializer = CreateMessageSerializer(data=request.data, app_owner=app.owner)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
@@ -53,6 +56,15 @@ class SendMessageView(APIView):
         # is_internal is only honoured for authenticated (dashboard) users
         is_internal = data.get('is_internal', False) if (request.user and request.user.is_authenticated) else False
 
+        # Task 3.2: Validate ai_mode constraint — external dashboard messages cannot use ai_mode
+        # Widget messages (platform='widget') are always is_internal=False but may use ai_mode=True
+        if platform == 'dashboard' and not is_internal and data.get('ai_mode', False):
+            return Response(
+                {'detail': 'AI mode is not permitted on external messages (is_internal=false).'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ai_mode = data.get('ai_mode', False)
         ai_provider_id = data.get('ai_provider')
         model = data.get('model')
 
@@ -93,17 +105,15 @@ class SendMessageView(APIView):
                 )
 
         else:
-            # New chatroom: use mode from validated data; None defaults to 'ai' for chatroom-level setting
-            mode = data.get('mode') or 'ai'
             chatroom_name = generate_chatroom_name(sender_id, AGENT_IDENTIFIER)
 
             with transaction.atomic():
+                # Task 3.3: Remove mode= from ChatRoom.objects.create(...)
                 chatroom = ChatRoom.objects.create(
                     application=app,
                     name=chatroom_name,
                     ai_provider_id=ai_provider_id,
                     model=model,
-                    mode=mode,
                 )
 
                 agent_identifier = metadata.get('human_agent_identifier', AGENT_IDENTIFIER)
@@ -113,12 +123,15 @@ class SendMessageView(APIView):
                     ChatroomParticipant(chatroom=chatroom, user_identifier=agent_identifier, role='agent'),
                 ])
 
+        # Task 3.1 + 3.2: Pass platform and ai_mode to Message.objects.create(...)
         message = Message.objects.create(
             chatroom=chatroom,
             sender_identifier=sender_id,
             message=message_text,
             metadata=metadata,
             is_internal=is_internal,
+            platform=platform,
+            ai_mode=ai_mode,
             ai_provider_id=ai_provider_id,
             model=model,
         )
@@ -129,25 +142,36 @@ class SendMessageView(APIView):
 
         channel_layer = get_channel_layer()
 
-        # Determine effective mode for this send operation.
-        # Dashboard users can pass a per-message mode override; widget users always use chatroom.mode.
-        send_mode = chatroom.mode
-        if request.user and request.user.is_authenticated:
-            per_message_mode = data.get('mode')  # None | 'ai' | 'direct'
-            # Only override if the client explicitly sent a mode key in the request body
-            if 'mode' in request.data:
-                send_mode = per_message_mode  # None means "no AI, just deliver"
+        # Task 3.3: Per-message routing based on platform, is_internal, ai_mode
+        #
+        # | platform    | is_internal | ai_mode | Broadcast targets                    | AI triggered? |
+        # |-------------|-------------|---------|--------------------------------------|---------------|
+        # | widget      | false       | true    | widget groups + dashboard groups     | Yes           |
+        # | widget      | false       | false   | dashboard groups only                | No            |
+        # | dashboard   | true        | true    | dashboard groups only                | Yes           |
+        # | dashboard   | true        | false   | no broadcast                         | No            |
+        # | dashboard   | false       | false   | widget groups only                   | No            |
 
-        if is_internal:
-            # Broadcast only to dashboard_ and human_agent participants (NOT widget_)
-            participants = list(
+        def get_widget_participants():
+            return list(
+                message.chatroom.participants.filter(
+                    user_identifier__startswith='widget_'
+                ).exclude(
+                    user_identifier=sender_id
+                ).values_list('user_identifier', flat=True)
+            )
+
+        def get_dashboard_participants():
+            return list(
                 message.chatroom.participants.filter(
                     Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
                 ).exclude(
                     user_identifier=sender_id
                 ).values_list('user_identifier', flat=True)
             )
-            for participant_id in participants:
+
+        def broadcast_to(participant_ids):
+            for participant_id in participant_ids:
                 group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
                 try:
                     async_to_sync(channel_layer.group_send)(
@@ -160,40 +184,30 @@ class SendMessageView(APIView):
                 except Exception as e:
                     logger.warning(f"Failed to send message to {group_name}: {str(e)}")
 
-            # Only trigger AI if mode is explicitly 'ai' (internal + direct or None = no AI)
-            if send_mode == 'ai':
+        if platform == 'widget':
+            if ai_mode:
+                # widget + ai_mode=true: broadcast to widget + dashboard groups, trigger AI
+                broadcast_to(get_widget_participants() + get_dashboard_participants())
                 generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
+            else:
+                # widget + ai_mode=false: broadcast to dashboard groups only, no AI
+                broadcast_to(get_dashboard_participants())
 
-        elif send_mode == 'direct' or send_mode is None:
-            # Broadcast to widget_ + dashboard_ + human_agent participants; no AI
-            participants = list(
-                message.chatroom.participants.filter(
-                    Q(user_identifier__startswith='widget_') |
-                    Q(user_identifier__startswith='dashboard_') |
-                    Q(role='human_agent')
-                ).exclude(
-                    user_identifier=sender_id
-                ).values_list('user_identifier', flat=True)
-            )
-            for participant_id in participants:
-                group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
-                try:
-                    async_to_sync(channel_layer.group_send)(
-                        group_name,
-                        {
-                            "type": "send.message",
-                            "message": ViewMessageSerializer(message).data,
-                        }
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to send message to {group_name}: {str(e)}")
-
-        else:
-            # send_mode == 'ai': trigger bot response
-            generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
+        else:  # platform == 'dashboard'
+            if is_internal:
+                if ai_mode:
+                    # dashboard + internal + ai_mode=true: broadcast to dashboard groups, trigger AI
+                    broadcast_to(get_dashboard_participants())
+                    generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
+                else:
+                    # dashboard + internal + ai_mode=false: no broadcast
+                    pass
+            else:
+                # dashboard + external + ai_mode=false (ai_mode=true already rejected above)
+                # broadcast to widget groups only
+                broadcast_to(get_widget_participants())
 
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'
         response_data['chatroom_identifier'] = str(chatroom.uuid)
-        response_data['mode'] = chatroom.mode
         return Response(response_data, status=status.HTTP_200_OK)

@@ -34,7 +34,7 @@ def _make_app(user=None):
 
 
 def _make_chatroom(app, mode='ai'):
-    return ChatRoom.objects.create(application=app, name="Room", mode=mode)
+    return ChatRoom.objects.create(application=app, name="Room")
 
 
 def _add_participant(chatroom, identifier, role='user'):
@@ -88,6 +88,7 @@ def test_widget_ai_mode_bot_response_is_not_internal():
                 'chatroom_identifier': str(chatroom.uuid),
                 'sender_identifier': widget_id,
                 'message': 'Hello bot',
+                'ai_mode': True,
             },
             format='json',
         )
@@ -129,6 +130,7 @@ def test_widget_ai_mode_broadcast_targets_widget_group():
                 'chatroom_identifier': str(chatroom.uuid),
                 'sender_identifier': widget_id,
                 'message': 'Hello',
+                'ai_mode': True,
             },
             format='json',
         )

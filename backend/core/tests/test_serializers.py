@@ -32,10 +32,10 @@ def _make_app():
     return Application.objects.create(owner=user, name="TestApp")
 
 
-def _make_chatroom(app=None, mode='ai'):
+def _make_chatroom(app=None):
     if app is None:
         app = _make_app()
-    return ChatRoom.objects.create(application=app, name="TestRoom", mode=mode)
+    return ChatRoom.objects.create(application=app, name="TestRoom")
 
 
 def _make_message(chatroom, text="hello", is_internal=False, sender="widget_abc"):
@@ -88,26 +88,26 @@ def test_create_message_serializer_is_internal_defaults_false():
     assert s.validated_data['is_internal'] is False
 
 
-def test_create_message_serializer_has_mode():
-    """CreateMessageSerializer must accept mode choices."""
-    for mode in ('ai', 'direct'):
-        s = CreateMessageSerializer(data={'message': 'hi', 'mode': mode})
-        assert s.is_valid(), s.errors
-        assert s.validated_data['mode'] == mode
+def test_create_message_serializer_has_ai_mode():
+    """CreateMessageSerializer must accept ai_mode boolean."""
+    s = CreateMessageSerializer(data={'message': 'hi', 'ai_mode': True})
+    assert s.is_valid(), s.errors
+    assert s.validated_data['ai_mode'] is True
 
 
-def test_create_message_serializer_mode_defaults_ai():
-    """CreateMessageSerializer defaults mode to None (no per-message override)."""
+def test_create_message_serializer_ai_mode_defaults_false():
+    """CreateMessageSerializer defaults ai_mode to False."""
     s = CreateMessageSerializer(data={'message': 'hi'})
     assert s.is_valid(), s.errors
-    assert s.validated_data['mode'] is None
+    assert s.validated_data['ai_mode'] is False
 
 
-def test_create_message_serializer_rejects_invalid_mode():
-    """CreateMessageSerializer rejects unknown mode values."""
-    s = CreateMessageSerializer(data={'message': 'hi', 'mode': 'human'})
-    assert not s.is_valid()
-    assert 'mode' in s.errors
+def test_create_message_serializer_no_mode_field():
+    """CreateMessageSerializer no longer has a mode field — mode is silently ignored."""
+    s = CreateMessageSerializer(data={'message': 'hi', 'mode': 'ai'})
+    # mode is an unknown field — serializer should still be valid (extra fields ignored)
+    assert s.is_valid(), s.errors
+    assert 'mode' not in s.validated_data
 
 
 def test_create_message_serializer_no_send_to_participant():
@@ -120,42 +120,39 @@ def test_create_message_serializer_no_send_to_participant():
 
 
 # ---------------------------------------------------------------------------
-# ChatRoomViewSerializer — mode field
+# ChatRoomViewSerializer — mode field removed (task 6.2, 7.1)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_chatroom_view_serializer_includes_mode():
-    """ChatRoomViewSerializer must expose the mode field."""
-    chatroom = _make_chatroom(mode='direct')
+def test_chatroom_view_serializer_excludes_mode():
+    """ChatRoomViewSerializer must NOT expose the mode field (removed in task 6.2/7.1)."""
+    chatroom = _make_chatroom()
     data = ChatRoomViewSerializer(chatroom).data
-    assert 'mode' in data
-    assert data['mode'] == 'direct'
+    assert 'mode' not in data
 
 
 # ---------------------------------------------------------------------------
-# ChatRoomWithMessagesSerializer — mode field
+# ChatRoomWithMessagesSerializer — mode field removed (task 6.2, 7.1)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_chatroom_with_messages_serializer_includes_mode():
-    """ChatRoomWithMessagesSerializer must expose the mode field."""
-    chatroom = _make_chatroom(mode='ai')
+def test_chatroom_with_messages_serializer_excludes_mode():
+    """ChatRoomWithMessagesSerializer must NOT expose the mode field (removed in task 6.2/7.1)."""
+    chatroom = _make_chatroom()
     data = ChatRoomWithMessagesSerializer(chatroom).data
-    assert 'mode' in data
-    assert data['mode'] == 'ai'
+    assert 'mode' not in data
 
 
 # ---------------------------------------------------------------------------
-# ChatRoomPreviewSerializer — mode field + get_last_message (Property 18)
+# ChatRoomPreviewSerializer — mode field removed + get_last_message (Property 18)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-def test_chatroom_preview_serializer_includes_mode():
-    """ChatRoomPreviewSerializer must expose the mode field."""
-    chatroom = _make_chatroom(mode='direct')
+def test_chatroom_preview_serializer_excludes_mode():
+    """ChatRoomPreviewSerializer must NOT expose the mode field (removed in task 6.2/7.1)."""
+    chatroom = _make_chatroom()
     data = ChatRoomPreviewSerializer(chatroom).data
-    assert 'mode' in data
-    assert data['mode'] == 'direct'
+    assert 'mode' not in data
 
 
 @pytest.mark.django_db
