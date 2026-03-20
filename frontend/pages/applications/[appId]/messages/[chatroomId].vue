@@ -134,15 +134,15 @@
             >
               <div class="flex items-center gap-4">
                 <FormField
-                  v-slot="{ componentField, handleChange }"
+                  v-slot="{ value, handleChange }"
                   name="is_internal"
                   type="checkbox"
                   :unchecked-value="false"
                 >
                   <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                    <Checkbox
+                    <Switch
                       id="isInternal"
-                      v-bind="componentField"
+                      :checked="value"
                       @update:checked="handleChange"
                     />
                     <div class="grid gap-0.5">
@@ -155,18 +155,24 @@
                 </FormField>
 
                 <FormField
-                  v-slot="{ componentField }"
-                  name="mode"
+                  v-slot="{ value, handleChange }"
+                  name="ai_mode"
+                  type="checkbox"
+                  :unchecked-value="false"
                 >
                   <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                    <Label class="text-sm whitespace-nowrap">Mode</Label>
-                    <C8Select
-                      :options="modeOptions"
-                      placeholder="Mode"
-                      container-class="space-y-0"
-                      trigger-class="h-8 w-28"
-                      v-bind="componentField"
+                    <Switch
+                      id="aiMode"
+                      :checked="value"
+                      :disabled="!form.values.is_internal"
+                      @update:checked="handleChange"
                     />
+                    <div class="grid gap-0.5">
+                      <Label for="aiMode">AI Mode</Label>
+                      <p class="text-muted-foreground text-xs">
+                        AI will generate a response
+                      </p>
+                    </div>
                   </FormItem>
                 </FormField>
               </div>
@@ -196,13 +202,12 @@ import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
 import { Send, Bot, UserRound, Globe } from 'lucide-vue-next'
-import GeminiIcon from '~/components/icons/GeminiIcon.vue'
-import { Button } from '~/components/ui/button'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
-import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '~/components/ui/form'
-import { Checkbox } from '~/components/ui/checkbox'
+import { FormField, FormItem, FormMessage } from '~/components/ui/form'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import C8Combobox from '~/components/C8Combobox.vue'
 import C8Button from '~/components/C8Button.vue'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
@@ -232,8 +237,6 @@ const { state, isMobile } = useSidebar()
 
 const md = new MarkdownIt()
 
-const chatroomMode = computed(() => chatroomMessagesStore.chatroomMode)
-
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem',
 )
@@ -244,7 +247,7 @@ const schema = z.object({
   ai_provider: z.string().min(1, { message: 'Please select an AI provider' }),
   models: z.array(z.string()).min(1, { message: 'Please select a model' }),
   is_internal: z.boolean(),
-  mode: z.enum(['ai', 'direct']).nullable().optional(),
+  ai_mode: z.boolean(),
   message: z.string().min(1, { message: 'Please enter a message' }),
   sender_identifier: z.string(),
   chatroom_identifier: z.string(),
@@ -256,7 +259,7 @@ const form = useForm({
     ai_provider: undefined as string | undefined,
     models: [] as string[],
     is_internal: false as boolean,
-    mode: null as 'ai' | 'direct' | null,
+    ai_mode: false as boolean,
     message: '',
     sender_identifier: userStore.userIdentifier,
     chatroom_identifier: chatroomId as string,
@@ -264,7 +267,7 @@ const form = useForm({
     ai_provider: string | undefined
     models: string[]
     is_internal: boolean
-    mode: 'ai' | 'direct' | null
+    ai_mode: boolean
     message: string
     sender_identifier: string
     chatroom_identifier: string
@@ -275,23 +278,11 @@ const { isSubmitting } = form
 
 const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(form.values.ai_provider) : 0)
 
-// When internal is checked, Direct mode is not applicable — reset to null (no AI)
+// When is_internal is toggled off, reset ai_mode to false
 watch(() => form.values.is_internal, (isInternal) => {
-  if (isInternal && form.values.mode === 'direct') {
-    form.setFieldValue('mode', null)
+  if (!isInternal) {
+    form.setFieldValue('ai_mode', false)
   }
-})
-
-// Mode options: Direct is hidden when internal is checked
-const modeOptions = computed(() => {
-  const opts: { label: string; value: string | null }[] = [
-    { label: 'None', value: null },
-    { label: 'AI', value: 'ai' },
-  ]
-  if (!form.values.is_internal) {
-    opts.push({ label: 'Direct', value: 'direct' })
-  }
-  return opts
 })
 
 const disabled = computed(() => {
@@ -346,7 +337,7 @@ const send = form.handleSubmit(async (values) => {
       values.is_internal,
       selectedProviderId.value,
       values.models?.[0],
-      values.mode ?? undefined,
+      values.ai_mode,
     )
     form.setFieldValue('message', '')
 
@@ -401,9 +392,6 @@ onMounted(async () => {
 
     const lastUsedProvider = lastUsedAIProvider.value
     const appProviders = AppAIProviderStore.existingAppAIProviderConfigs
-
-    // Sync mode from loaded chatroom (default to null = no AI for dashboard sends)
-    form.setFieldValue('mode', null)
 
     if (lastUsedProvider) {
       form.setFieldValue('ai_provider', lastUsedProvider.id.toString())

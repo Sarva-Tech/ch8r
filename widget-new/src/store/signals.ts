@@ -15,3 +15,5 @@ export const isTyping = signal<boolean>(false);
 export const wsStatus = signal<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
 export const sendError = signal<string | null>(null);
 export const agentInfo = signal<AgentInfo | null>(null);
+
+export const aiMode = signal<boolean>(false);
