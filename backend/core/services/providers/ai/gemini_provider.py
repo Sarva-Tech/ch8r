@@ -1,6 +1,8 @@
 from typing import Optional, Dict, Any
 from google import genai
+from google.genai.types import GenerateContentConfig
 from ...contracts.ai_provider_contract import AIProviderContract
+from core.agent_response_schema import SupportAgentResponse
 
 class GeminiProvider(AIProviderContract):
     def __init__(self, api_key: str, config: Optional[Dict[str, Any]] = None):
@@ -11,14 +13,18 @@ class GeminiProvider(AIProviderContract):
         except Exception as e:
             raise ValueError(f"Failed to initialize Gemini client: {e}")
 
-    def generate_text(self, model: str, contents: str, **kwargs) -> str:
+    def generate_text(self, model: str, contents: str, **kwargs) -> SupportAgentResponse:
         try:
             response = self.client.models.generate_content(
                 model=model,
-                contents=contents
+                contents=contents,
+                config=GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=SupportAgentResponse.model_json_schema(),
+                )
             )
 
-            return response.text
+            return SupportAgentResponse.model_validate_json(response.text)
 
         except Exception as e:
             raise ValueError(f"Gemini API error: {e}")
