@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { defineProps, defineEmits, ref, onMounted } from 'vue'
+import { defineProps, defineEmits } from 'vue'
 import type { Component } from 'vue'
 import { Loader2 } from 'lucide-vue-next'
 
@@ -19,15 +19,6 @@ const emit = defineEmits<{
   (e: 'click', event: MouseEvent): void
 }>()
 
-const labelWidth = ref<number | null>(null)
-const labelRef = ref<HTMLElement | null>(null)
-
-onMounted(() => {
-  if (labelRef.value) {
-    labelWidth.value = labelRef.value.offsetWidth
-  }
-})
-
 const handleClick = (event: MouseEvent) => {
   if (!props.disabled && !props.loading) {
     emit('click', event)
@@ -43,21 +34,15 @@ const handleClick = (event: MouseEvent) => {
     class="flex justify-center items-center"
     @click="handleClick"
   >
-    <span
-      :style="{ width: labelWidth ? labelWidth + 'px' : 'auto' }"
-      class="inline-flex justify-center"
-    >
+    <span class="inline-flex justify-center">
       <template v-if="props.loading">
         <Loader2 class="w-4 h-4 animate-spin" />
       </template>
       <template v-else>
-        <span
-          ref="labelRef"
-          class="inline-flex items-center gap-2"
-        >
+        <span class="inline-flex items-center gap-2">
           <component
             :is="props.icon"
-            v-if="props.icon && props.iconPosition !== 'right'"
+            v-if="props.icon && (!props.iconPosition || props.iconPosition === 'left')"
             class="w-4 h-4"
           />
           <slot>{{ props.label }}</slot>
