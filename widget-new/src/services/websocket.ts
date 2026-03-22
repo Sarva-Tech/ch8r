@@ -65,6 +65,7 @@ class WebSocketManager {
             chatroomIdentifier: raw.chatroom_identifier ?? raw.chatroom ?? '',
             createdAt: raw.created_at,
             isOwn: false,
+            aiMode: raw.ai_mode,
           };
           this.onMessageCallback?.(msg);
         }
@@ -80,13 +81,12 @@ class WebSocketManager {
     };
 
     ws.onclose = () => {
-      if (ws !== this.ws) return; // stale socket, ignore
+      if (ws !== this.ws) return;
       if (!this.intentionalClose) this.scheduleReconnect();
     };
 
     ws.onerror = () => {
       if (ws !== this.ws) return;
-      // onclose will fire after onerror, so reconnect is handled there
     };
   }
 
@@ -109,7 +109,6 @@ class WebSocketManager {
 
   private _closeSocket(): void {
     if (this.ws) {
-      // Null out first so stale onclose handlers are ignored
       const old = this.ws;
       this.ws = null;
       if (old.readyState === WebSocket.OPEN || old.readyState === WebSocket.CONNECTING) {

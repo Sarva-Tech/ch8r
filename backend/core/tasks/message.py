@@ -166,7 +166,7 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         ai_provider_id=ai_provider_id,
         model=model,
         platform=user_message.platform,
-        ai_mode=False,
+        ai_mode=True,
         is_internal=user_message.is_internal,
     )
 

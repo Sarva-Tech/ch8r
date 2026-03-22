@@ -38,7 +38,10 @@ export function MessageInput({ onSend, disabled = false, aiMode, onAiModeChange 
           >
             <span class={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${aiMode ? 'translate-x-4' : 'translate-x-1'}`} />
           </div>
-          AI Mode
+          <div class="flex flex-col">
+            <span class="font-medium">{aiMode ? 'Instant answers (AI)' : 'Human support'}</span>
+            <span class="text-xs text-gray-500">{aiMode ? 'Get immediate responses' : 'A human agent will get back to you'}</span>
+          </div>
         </label>
       </div>
       <div class="flex items-end gap-2 px-3 py-3">

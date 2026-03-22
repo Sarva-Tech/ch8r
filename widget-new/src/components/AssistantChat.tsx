@@ -25,7 +25,6 @@ export function AssistantChat() {
     };
   }, []);
 
-  // Connect WS and load messages when a chatroom is selected
   useEffect(() => {
     if (!activeChatroom) return;
 
@@ -36,7 +35,6 @@ export function AssistantChat() {
     chatroomIdRef.current = isNew ? 'new_chat' : activeChatroom.uuid;
 
     const onMessage = (msg: Message) => {
-      // Only accept messages belonging to the active chatroom
       if (msg.chatroomIdentifier && chatroomIdRef.current !== 'new_chat' &&
           msg.chatroomIdentifier !== chatroomIdRef.current) return;
       isTyping.value = false;
@@ -44,10 +42,14 @@ export function AssistantChat() {
       localMessages.current = updated;
       messagesRef.current = updated;
       setMessages(updated);
+      
+      if (msg.isOwn && (msg as any).aiMode !== undefined) {
+        aiMode.value = (msg as any).aiMode;
+      }
     };
 
     if (isNew) {
-      // Fresh chat — show greeting if configured
+      aiMode.value = true;
       if (config.value?.aiGreeting) {
         const greeting: Message = {
           uuid: crypto.randomUUID(),
@@ -56,6 +58,7 @@ export function AssistantChat() {
           chatroomIdentifier: 'new_chat',
           createdAt: new Date().toISOString(),
           isOwn: false,
+          aiMode: true,
         };
         localMessages.current = [greeting];
         messagesRef.current = [greeting];
@@ -67,7 +70,6 @@ export function AssistantChat() {
       }
       wsManager.connect(senderIdentifier, onMessage, () => { wsStatus.value = 'error'; }, config.value?.apiBaseUrl);
     } else {
-      // Existing chatroom — fetch history from backend
       localMessages.current = [];
       messagesRef.current = [];
       setMessages([]);
@@ -82,8 +84,17 @@ export function AssistantChat() {
           localMessages.current = result.data;
           messagesRef.current = result.data;
           setMessages(result.data);
+          
+          if (result.data.length > 0) {
+            const userMessages = result.data.filter(msg => msg.isOwn);
+            if (userMessages.length > 0) {
+              const lastUserMessage = userMessages[userMessages.length - 1];
+              if ((lastUserMessage as any).aiMode !== undefined) {
+                aiMode.value = (lastUserMessage as any).aiMode;
+              }
+            }
+          }
         } else {
-          // Stale chatroom ID — reset to new_chat
           chatroomIdRef.current = 'new_chat';
           sessionStore.setChatroomId(appUuid, 'new_chat');
           localMessages.current = [];
@@ -99,7 +110,6 @@ export function AssistantChat() {
   }, [activeChatroom]);
 
   const handleSelect = (chatroom: ChatroomPreview) => {
-    // Optimistically clear unread for this chatroom
     chatrooms.value = chatrooms.value.map(c =>
       c.uuid === chatroom.uuid ? { ...c, has_unread: false } : c
     );

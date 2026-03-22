@@ -76,7 +76,7 @@ export class ApiClient {
   loadHistory(appUuid: string, chatroomUuid: string, senderIdentifier: string): Promise<ApiResult<Message[]>> {
     return this.request<{ messages: Array<{
       uuid: string; message: string; sender_identifier: string;
-      chatroom_identifier: string; created_at: string;
+      chatroom_identifier: string; created_at: string; ai_mode?: boolean;
     }> }>(
       `${this.baseUrl}/api/applications/${appUuid}/chatrooms/${chatroomUuid}/messages/?sender_identifier=${encodeURIComponent(senderIdentifier)}`,
       { method: 'GET' },
@@ -89,6 +89,7 @@ export class ApiClient {
         chatroomIdentifier: String(m.chatroom_identifier),
         createdAt: m.created_at,
         isOwn: m.sender_identifier === senderIdentifier,
+        aiMode: m.ai_mode,
       }));
       return { ok: true, data: messages };
     });
