@@ -1,4 +1,3 @@
-import json
 import logging
 
 from celery import shared_task
@@ -173,7 +172,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
     channel_layer = get_channel_layer()
     if user_message.platform == 'widget':
-        # Widget message with ai_mode=True: broadcast to both widget and dashboard groups
         participants = list(
             user_message.chatroom.participants.filter(
                 Q(user_identifier__startswith='widget_') |
@@ -184,7 +182,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
             ).values_list('user_identifier', flat=True)
         )
     else:
-        # Dashboard internal message with ai_mode=True: broadcast to dashboard groups only
         participants = list(
             user_message.chatroom.participants.filter(
                 Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
