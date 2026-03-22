@@ -45,11 +45,20 @@ const handleClick = (event: MouseEvent) => {
             v-if="props.icon && (!props.iconPosition || props.iconPosition === 'left')"
             class="w-4 h-4"
           />
+          <slot
+            v-else-if="!props.icon && (!props.iconPosition || props.iconPosition === 'left')"
+            name="icon-left"
+          />
           <slot>{{ props.label }}</slot>
+
           <component
             :is="props.icon"
             v-if="props.icon && props.iconPosition === 'right'"
             class="w-4 h-4"
+          />
+          <slot
+            v-else-if="!props.icon"
+            name="icon-right"
           />
         </span>
       </template>

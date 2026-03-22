@@ -191,10 +191,14 @@
                 :disabled="disabled"
                 :loading="isSubmitting"
                 type="submit"
-                :icon="Send"
-                icon-position="right"
                 @click="send"
-              />
+              >
+                <template #icon-right>
+                  <KbdGroup>
+                    <Kbd>Ctrl + ⏎</Kbd>
+                  </KbdGroup>
+                </template>
+              </C8Button>
             </div>
           </div>
         </form>
@@ -207,6 +211,7 @@
 import { cn } from '@/lib/utils'
 import MarkdownIt from 'markdown-it'
 
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
