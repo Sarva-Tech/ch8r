@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { sessionStore } from '../services/session';
 import { createApiClient } from '../services/api';
 import { wsManager } from '../services/websocket';
-import { chatrooms, isTyping, sendError, wsStatus, config } from '../store/signals';
+import { chatrooms, isTyping, sendError, wsStatus, config, aiMode } from '../store/signals';
 import type { ChatroomPreview, Message } from '../types/index';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -11,7 +11,6 @@ import { ChatroomList } from './ChatroomList';
 export function AssistantChat() {
   const [activeChatroom, setActiveChatroom] = useState<ChatroomPreview | null>(null);
   const [listRefreshKey, setListRefreshKey] = useState(0);
-  const [chatroomMode, setChatroomMode] = useState<'ai' | 'direct'>(config.value?.defaultMode ?? 'ai');
   const [chatroomName, setChatroomName] = useState<string>('');
   const messagesRef = useRef<Message[]>([]);
   const localMessages = useRef<Message[]>([]);
@@ -96,11 +95,6 @@ export function AssistantChat() {
       wsManager.connect(senderIdentifier, onMessage, () => { wsStatus.value = 'error'; }, config.value?.apiBaseUrl);
     }
 
-    // Set mode from chatroom data if available
-    if (activeChatroom.mode) {
-      setChatroomMode(activeChatroom.mode);
-    }
-
     return () => { wsManager.disconnect(); };
   }, [activeChatroom]);
 
@@ -122,7 +116,7 @@ export function AssistantChat() {
     isTyping.value = false;
     sendError.value = null;
     setChatroomName('');
-    setChatroomMode('ai');
+    aiMode.value = false;
     setListRefreshKey(k => k + 1);
     setActiveChatroom(null);
   };
@@ -153,14 +147,11 @@ export function AssistantChat() {
       config.value?.token ?? '',
     );
 
-    const defaultMode = config.value?.defaultMode ?? 'ai';
-
     const result = await apiClient.sendMessage(appUuid, {
       message,
       sender_identifier: senderIdentifier,
       chatroom_identifier: chatroomId,
-      is_internal: false,
-      mode: chatroomId === 'new_chat' ? chatroomMode : undefined,
+      ai_mode: aiMode.value,
     });
 
     if (result.ok) {
@@ -169,17 +160,12 @@ export function AssistantChat() {
       chatroomIdRef.current = newChatroomId;
       sessionStore.setChatroomId(appUuid, newChatroomId);
 
-      // Update chatroomMode from server response
-      if (result.data.mode === 'direct' || result.data.mode === 'ai') {
-        setChatroomMode(result.data.mode);
-      }
-
       if (wasNew) {
         setChatroomName(`Chat ${new Date().toLocaleDateString()}`);
       }
 
-      // For direct mode, typing indicator should stop immediately (no AI response)
-      if (result.data.mode === 'direct') {
+      // If not AI mode, typing indicator should stop immediately (no AI response)
+      if (!aiMode.value) {
         isTyping.value = false;
       }
     } else {
@@ -191,41 +177,6 @@ export function AssistantChat() {
   if (!activeChatroom) {
     return <ChatroomList onSelect={handleSelect} refreshKey={listRefreshKey} />;
   }
-
-  const isNewChat = chatroomIdRef.current === 'new_chat';
-
-  const handleModeToggle = async () => {
-    const newMode = chatroomMode === 'ai' ? 'direct' : 'ai';
-    if (isNewChat) {
-      setChatroomMode(newMode);
-      return;
-    }
-    const appUuid = config.value?.appUuid ?? '';
-    const senderIdentifier = sessionStore.getSenderIdentifier(config.value?.userIdentifier, appUuid);
-    const apiClient = createApiClient(
-      config.value?.apiBaseUrl ?? window.location.origin,
-      config.value?.token ?? '',
-    );
-    const result = await apiClient.updateChatroomMode(appUuid, chatroomIdRef.current, newMode, senderIdentifier);
-    if (result.ok) {
-      setChatroomMode(newMode);
-    }
-  };
-
-  const modeToggle = (
-    <button
-      onClick={handleModeToggle}
-      aria-label={`Switch to ${chatroomMode === 'ai' ? 'direct' : 'AI'} mode`}
-      title={chatroomMode === 'ai' ? 'AI mode — click to switch to Direct' : 'Direct mode — click to switch to AI'}
-      class={`text-xs px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
-        chatroomMode === 'direct'
-          ? 'text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100'
-          : 'text-purple-600 bg-purple-50 border-purple-200 hover:bg-purple-100'
-      }`}
-    >
-      {chatroomMode === 'direct' ? 'Direct' : 'AI'}
-    </button>
-  );
 
   return (
     <div class="flex flex-col h-full">
@@ -242,7 +193,6 @@ export function AssistantChat() {
         <span class="text-sm font-medium text-gray-700 truncate flex-1">
           {chatroomName || activeChatroom.name}
         </span>
-        {modeToggle}
       </div>
 
       {sendError.value && (
@@ -252,7 +202,12 @@ export function AssistantChat() {
       )}
 
       <MessageList messages={messages} isTyping={isTyping.value} />
-      <MessageInput onSend={handleSend} disabled={false} />
+      <MessageInput
+        onSend={handleSend}
+        disabled={false}
+        aiMode={aiMode.value}
+        onAiModeChange={(v) => { aiMode.value = v; }}
+      />
     </div>
   );
 }

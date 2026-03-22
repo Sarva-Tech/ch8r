@@ -1,4 +1,3 @@
-import json
 import logging
 
 from celery import shared_task
@@ -159,8 +158,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     #         "reason_for_escalation": "Malformed LLM response",
     #     }
 
-    is_internal = user_message.is_internal
-
     bot_message = Message.objects.create(
         chatroom=chatroom,
         sender_identifier=AGENT_IDENTIFIER,
@@ -168,21 +165,27 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         metadata=metadata,
         ai_provider_id=ai_provider_id,
         model=model,
-        is_internal=is_internal,
+        platform=user_message.platform,
+        ai_mode=False,
+        is_internal=user_message.is_internal,
     )
 
     channel_layer = get_channel_layer()
-    if is_internal:
+    if user_message.platform == 'widget':
         participants = list(
             user_message.chatroom.participants.filter(
-                Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
+                Q(user_identifier__startswith='widget_') |
+                Q(user_identifier__startswith='dashboard_') |
+                Q(role='human_agent')
             ).exclude(
                 Q(role='agent')
             ).values_list('user_identifier', flat=True)
         )
     else:
         participants = list(
-            user_message.chatroom.participants.exclude(
+            user_message.chatroom.participants.filter(
+                Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
+            ).exclude(
                 Q(role='agent')
             ).values_list('user_identifier', flat=True)
         )

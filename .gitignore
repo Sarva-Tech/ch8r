@@ -32,3 +32,4 @@ qdrant_storage
 .env
 .kiro/
 backend/.hypothesis
+.hypothesis
