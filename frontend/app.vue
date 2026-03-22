@@ -25,7 +25,8 @@ useHead({
       'data-user-identifier': userStore.getUser.id,
       'data-app-name': 'ch8r support',
       'data-app-description': 'We\'re here to help',
-      'data-app-logo-url': 'http://localhost:3000/favicon.ico'
+      'data-app-logo-url': 'http://localhost:3000/favicon.ico',
+      'data-offset-bottom': '64'
     }
   ]
 })

@@ -1,13 +1,19 @@
+export type WidgetPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+
 export interface WidgetConfig {
   appUuid: string;
   token: string;
   accentColor?: string;
-  position?: 'bottom-right' | 'bottom-left';
+  position?: WidgetPosition;
+  offsetTop?: number;
+  offsetBottom?: number;
+  offsetLeft?: number;
+  offsetRight?: number;
   title?: string;
   launcherIconUrl?: string;
   aiGreeting?: string;
   apiBaseUrl?: string;
-  userIdentifier?: string; // optional: pass email/user-id for cross-browser persistence
+  userIdentifier?: string;
   appName?: string;
   appDescription?: string;
   appLogoUrl?: string;
