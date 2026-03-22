@@ -11,6 +11,7 @@ interface Props {
   disabled?: boolean
   loading?: boolean
   icon?: Component
+  iconPosition?: 'left' | 'right'
 }
 
 const props = defineProps<Props>()
@@ -42,14 +43,29 @@ const handleClick = (event: MouseEvent) => {
     class="flex justify-center items-center"
     @click="handleClick"
   >
-    <span :style="{ width: labelWidth ? labelWidth + 'px' : 'auto' }" class="inline-flex justify-center">
+    <span
+      :style="{ width: labelWidth ? labelWidth + 'px' : 'auto' }"
+      class="inline-flex justify-center"
+    >
       <template v-if="props.loading">
         <Loader2 class="w-4 h-4 animate-spin" />
       </template>
       <template v-else>
-        <span ref="labelRef" class="inline-flex items-center gap-2">
-          <component :is="props.icon" v-if="props.icon" class="w-4 h-4" />
+        <span
+          ref="labelRef"
+          class="inline-flex items-center gap-2"
+        >
+          <component
+            :is="props.icon"
+            v-if="props.icon && props.iconPosition !== 'right'"
+            class="w-4 h-4"
+          />
           <slot>{{ props.label }}</slot>
+          <component
+            :is="props.icon"
+            v-if="props.icon && props.iconPosition === 'right'"
+            class="w-4 h-4"
+          />
         </span>
       </template>
     </span>

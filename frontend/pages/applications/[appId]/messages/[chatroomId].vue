@@ -49,14 +49,14 @@
             <div v-html="md.render(message.message)" />
           </div>
           <div class="flex items-center gap-1 px-1">
-            <template v-if="message.ai_provider_id && message.model && !message.is_internal">
+            <template v-if="message.ai_provider_id && message.model">
               <component
                 :is="useAIProviderIcon(getMessageProvider(message.ai_provider_id)?.provider ?? '').value"
                 class="w-3 h-3 shrink-0"
               />
             </template>
             <span class="text-xs text-muted-foreground whitespace-nowrap">
-              <template v-if="message.ai_provider_id && message.model && !message.is_internal">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+              <template v-if="message.ai_provider_id && message.model">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
             </span>
             <span
               v-if="message.is_internal"
@@ -123,6 +123,7 @@
                 v-bind="componentField"
                 placeholder="Message"
                 class="max-h-40 overflow-y-auto resize-none"
+                @keydown="handleMessageKeydown"
               />
               <FormMessage />
             </FormItem>
@@ -191,6 +192,7 @@
                 :loading="isSubmitting"
                 type="submit"
                 :icon="Send"
+                icon-position="right"
                 @click="send"
               />
             </div>
@@ -295,8 +297,9 @@ watch(() => form.values.is_internal, (isInternal) => {
 const disabled = computed(() => {
   const values = form.values
   return !(
-    (values.ai_provider as string)
-    && (values.models as string[]).length > 0
+    values.ai_provider?.trim()
+    && (values.models as string[])?.length > 0
+    && values.message?.trim()
   )
 })
 
@@ -356,6 +359,10 @@ const send = form.handleSubmit(async (values) => {
       message: values.message,
       metadata: {},
       created_at: new Date().toISOString(),
+      is_internal: values.is_internal,
+      ai_mode: values.ai_mode,
+      ai_provider_id: selectedProviderId.value,
+      model: values.models?.[0],
     })
 
     if (selectedChatroom?.value?.uuid === NEW_CHAT) {
@@ -372,8 +379,15 @@ const send = form.handleSubmit(async (values) => {
   }
 })
 
+const handleMessageKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault()
+    send()
+  }
+}
+
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
-  if (msg.type === NEW_MESSAGE_UPDATE) {
+  if (msg.type === NEW_MESSAGE_UPDATE && msg.data.chatroom_identifier) {
     if (msg.data.chatroom_identifier === chatroomId) {
       chatroomMessagesStore.addMessage(msg.data)
     } else {
@@ -385,6 +399,21 @@ const unsubscribe = liveUpdateStore.subscribe((msg) => {
 onBeforeUnmount(() => {
   unsubscribe()
 })
+
+const getLastMessageFromCurrentUser = () => {
+  const currentUserMessages = messages.value.filter(msg =>
+    msg.sender_identifier === userStore.userIdentifier
+  )
+  return currentUserMessages.length > 0 ? currentUserMessages[currentUserMessages.length - 1] : null
+}
+
+const setFormValuesFromLastMessage = () => {
+  const lastMessage = getLastMessageFromCurrentUser()
+  if (lastMessage) {
+    form.setFieldValue('is_internal', lastMessage.is_internal || false)
+    form.setFieldValue('ai_mode', lastMessage.ai_mode || false)
+  }
+}
 
 onMounted(async () => {
   chatroomsStore.markRead(chatroomId as string)
@@ -411,6 +440,8 @@ onMounted(async () => {
         form.setFieldValue('models', [responseTextProvider.external_model_id ?? ''])
       }
     }
+
+    setFormValuesFromLastMessage()
   }
   catch (e: unknown) {
     console.error(e)

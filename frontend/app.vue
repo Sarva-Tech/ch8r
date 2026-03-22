@@ -30,19 +30,19 @@ useHead({
   ]
 })
 
-onMounted(() => {
-  window.addEventListener('message', (event) => {
-    if (event.data?.type === 'ch8r-resize') {
-      const iframe = document.getElementById('ch8r-widget-iframe')
-      if (iframe && event.data.height) {
-        iframe.style.height = `${event.data.height}px`
-        if (event.data.height > 100) {
-          iframe.style.width = '360px'
-        } else {
-          iframe.style.width = '88px'
-        }
-      }
-    }
-  })
-})
+// onMounted(() => {
+//   window.addEventListener('message', (event) => {
+//     if (event.data?.type === 'ch8r-resize') {
+//       const iframe = document.getElementById('ch8r-widget-iframe')
+//       if (iframe && event.data.height) {
+//         iframe.style.height = `${event.data.height}px`
+//         if (event.data.height > 100) {
+//           iframe.style.width = '360px'
+//         } else {
+//           iframe.style.width = '88px'
+//         }
+//       }
+//     }
+//   })
+// })
 </script>

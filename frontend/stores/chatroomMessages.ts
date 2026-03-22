@@ -57,7 +57,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         )
         this.selectedChatroom = {
           uuid: data.uuid,
-          name: data.name
+          name: data.name,
+          has_unread: false,
         }
         this.messages = data.messages
         this.lastUsedAIProvider = data.ai_provider
@@ -77,13 +78,18 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         throw new Error('No chatroom selected')
       }
 
+      const tempUuid = `${Date.now()}`
       const dummyMessage: Message = {
         id: this.messages.length + 1,
-        uuid: `${Date.now()}`,
+        uuid: tempUuid,
         sender_identifier: sender,
         message: messageText,
         metadata: {},
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        is_internal: isInternal,
+        ai_provider_id: aiProvider ?? null,
+        model: model ?? null,
+        ai_mode: aiMode ?? false,
       }
 
       this.addMessage(dummyMessage)
@@ -102,10 +108,17 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           ai_mode: aiMode ?? false,
         }
 
-        return await httpPost<Message>(
+        const response = await httpPost<Message>(
           `/applications/${applicationUuid}/chatrooms/send-message/`,
           body
         )
+
+        const idx = this.messages.findIndex(m => m.uuid === tempUuid)
+        if (idx !== -1 && response?.uuid) {
+          this.messages[idx] = { ...this.messages[idx], ...response }
+        }
+
+        return response
       } catch (err: any) {
         console.error('Failed to send message:', err)
         this.error = err.message || 'Failed to send message'
@@ -114,7 +127,10 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
     },
 
     addMessage(newMessage: Message) {
-      this.messages.push(newMessage)
+      const exists = this.messages.some(m => m.uuid === newMessage.uuid)
+      if (!exists) {
+        this.messages.push(newMessage)
+      }
     },
   },
 })

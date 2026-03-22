@@ -3,7 +3,8 @@ import { File, LetterText } from 'lucide-vue-next'
 export const NEW_CHAT = 'new_chat'
 export const DUMMY_NEW_CHATROOM = {
   uuid: NEW_CHAT,
-  name: 'New Chat'
+  name: 'New Chat',
+  has_unread: false
 }
 
 export const AVAILABLE_COLORS = [
