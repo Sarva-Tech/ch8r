@@ -9,7 +9,6 @@
         :key="message.id"
         :class="cn('flex gap-3 items-start', isCurrentUser(message.sender_identifier) ? 'flex-row-reverse' : 'flex-row')"
       >
-        <!-- Avatar -->
         <div class="flex-shrink-0 mt-1">
           <div
             v-if="isLLMAgent(message.sender_identifier)"
@@ -134,43 +133,52 @@
             >
               <div class="flex items-center gap-4">
                 <FormField
-                  v-slot="{ value, handleChange }"
-                  name="is_internal"
+                  v-slot="{ componentField, handleChange }"
                   type="checkbox"
+                  name="is_internal"
                   :unchecked-value="false"
                 >
                   <FormItem class="space-y-0 flex items-center space-x-2 self-center">
                     <Switch
                       id="isInternal"
-                      :checked="value"
+                      v-bind="componentField"
                       @update:checked="handleChange"
                     />
                     <div class="grid gap-0.5">
-                      <Label for="isInternal">Internal</Label>
+                      <Label for="isInternal">Visibility</Label>
                       <p class="text-muted-foreground text-xs">
-                        {{ form.values.is_internal ? 'Only visible to dashboard users' : 'Visible to all participants' }}
+                        {{ form.values.is_internal ? 'Internal note (team only)' : 'Visible to all participants' }}
                       </p>
                     </div>
                   </FormItem>
                 </FormField>
 
                 <FormField
-                  v-slot="{ value, handleChange }"
-                  name="ai_mode"
+                  v-slot="{ componentField, handleChange }"
                   type="checkbox"
+                  name="ai_mode"
                   :unchecked-value="false"
                 >
                   <FormItem class="space-y-0 flex items-center space-x-2 self-center">
                     <Switch
                       id="aiMode"
-                      :checked="value"
+                      v-bind="componentField"
                       :disabled="!form.values.is_internal"
                       @update:checked="handleChange"
                     />
                     <div class="grid gap-0.5">
-                      <Label for="aiMode">AI Mode</Label>
-                      <p class="text-muted-foreground text-xs">
-                        AI will generate a response
+                      <Label for="aiMode">AI Behavior</Label>
+                      <p
+                        v-if="form.values.is_internal"
+                        class="text-muted-foreground text-xs"
+                      >
+                        {{ form.values.ai_mode ? 'This will trigger an AI response' : 'This won’t trigger an AI response' }}
+                      </p>
+                      <p
+                        v-else
+                        class="text-muted-foreground text-xs"
+                      >
+                        AI replies are disabled for public messages
                       </p>
                     </div>
                   </FormItem>
@@ -278,7 +286,6 @@ const { isSubmitting } = form
 
 const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(form.values.ai_provider) : 0)
 
-// When is_internal is toggled off, reset ai_mode to false
 watch(() => form.values.is_internal, (isInternal) => {
   if (!isInternal) {
     form.setFieldValue('ai_mode', false)
@@ -341,7 +348,6 @@ const send = form.handleSubmit(async (values) => {
     )
     form.setFieldValue('message', '')
 
-    // Update the sidebar preview immediately with the sent message
     const targetChatroomId = response?.chatroom_identifier ?? chatroomId as string
     chatroomsStore.updateLastMessage(targetChatroomId, {
       id: Date.now(),
