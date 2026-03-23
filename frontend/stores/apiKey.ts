@@ -1,11 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
-import { useApplicationsStore  } from '~/stores/applications'
-import type {Application} from '~/stores/applications';
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import { z } from 'zod'
-import { applyBackendErrors } from '~/lib/utils'
+import { useApplicationsStore } from '~/stores/applications'
 
 export interface APIKeyItem {
   id: number
@@ -13,49 +8,16 @@ export interface APIKeyItem {
   created: string
   permissions: string[]
   api_key: string
+  owner: number
 }
-
-const apiKeySchema = z.object({
-  name: z.string().nonempty({ message: 'required' }),
-  permissions: z.array(z.string()).min(1, { message: 'At least one permission is required' }),
-})
-
-
-export type APIKeyFormValues = z.infer<typeof apiKeySchema>
-const typedApiKeySchema = toTypedSchema(apiKeySchema)
 
 export const useAPIKeyStore = defineStore('apiKey', {
   state: () => ({
-    appDetails: null as Application | null,
-    loading: false,
     apiKeys: [] as APIKeyItem[],
-    newAPIKey: null as APIKeyItem | null
+    newAPIKey: null as APIKeyItem | null,
   }),
 
   actions: {
-    initForm() {
-      if (!this.form) {
-        this.form = useForm<APIKeyFormValues>({
-          validationSchema: typedApiKeySchema,
-          initialValues: {
-            name: '',
-            permissions: [],
-          },
-        })
-      }
-      return this.form
-    },
-
-    getFormInstance() {
-      return this.initForm()
-    },
-
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-      applyBackendErrors(formInstance, errors)
-    },
-
     async load() {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
@@ -65,8 +27,8 @@ export const useAPIKeyStore = defineStore('apiKey', {
       const response = await httpGet<APIKeyItem[]>(
         `/applications/${app.uuid}/api-keys/`
       )
-      this.appDetails = app
       this.apiKeys = response
+      return response
     },
 
     async create(values: { name: string, permissions: string[] }) {
@@ -78,7 +40,7 @@ export const useAPIKeyStore = defineStore('apiKey', {
       const response = await httpPost<APIKeyItem>(
         `/applications/${app.uuid}/api-keys/`, values
       )
-      this.apiKeys.push(response)
+      this.apiKeys = [...this.apiKeys, response]
       return response
     },
     async delete(id: number) {
@@ -87,8 +49,12 @@ export const useAPIKeyStore = defineStore('apiKey', {
       if (!app) return
 
       const { httpDelete } = useHttpClient()
-      await httpDelete(`/applications/${app.uuid}/api-keys/${id}/`)
-      this.apiKeys = this.apiKeys.filter((key) => key.id !== id)
+      const response = await httpDelete<{ detail: string }>(`/applications/${app.uuid}/api-keys/${id}/`)
+      if (response?.detail === 'deleted') {
+        this.apiKeys = this.apiKeys.filter(key => key.id !== id)
+      }
+
+      return response
     },
   },
 })
