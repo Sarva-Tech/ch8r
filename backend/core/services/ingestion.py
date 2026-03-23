@@ -3,6 +3,8 @@ from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
 
 from core.models import IngestedChunk
+from core.models.llm_model import LLMModel
+from core.llm_client import LLMClient
 from core.qdrant import qdrant, COLLECTION_NAME
 from qdrant_client.http.models import PointIdsList, PointStruct
 from qdrant_client.models import Filter as ModelsFilter, FieldCondition as ModelsFieldCondition, \
@@ -13,7 +15,15 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
-sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
+_sparse_model = None
+
+def _get_sparse_model():
+    global _sparse_model
+    if _sparse_model is None:
+        logger.info("[ingestion] Loading sparse embedding model (Qdrant/bm25)...")
+        _sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")
+        logger.info("[ingestion] Sparse embedding model loaded.")
+    return _sparse_model
 
 
 def embed_text(text_chunks: list[str], app) -> list[list[float]]:
@@ -35,7 +45,7 @@ def embed_text(text_chunks: list[str], app) -> list[list[float]]:
         return [[] for _ in text_chunks]
 
 def embed_sparse(text_chunks: list[str]) -> list:
-    sparse_embeddings = list(sparse_model.embed(text_chunks))
+    sparse_embeddings = list(_get_sparse_model().embed(text_chunks))
     return [
         SparseVector(
             indices=embedding.indices.tolist(),
@@ -61,7 +71,7 @@ def get_chunks(query_text, app, top_k=5):
     dense_query = dense_embeddings[0]
 
     try:
-        sparse_embeddings = list(sparse_model.embed([query_text]))[0]
+        sparse_embeddings = list(_get_sparse_model().embed([query_text]))[0]
         sparse_query = SparseVector(
             indices=sparse_embeddings.indices.tolist(),
             values=sparse_embeddings.values.tolist()
@@ -116,30 +126,44 @@ def get_chunks(query_text, app, top_k=5):
 
 def ingest_kb(kb, app):
     content = kb.metadata.get('content', '')
+    logger.info(f"[ingest_kb] Starting for kb={kb.uuid}, source_type={kb.source_type}, content_length={len(content)}")
 
     if not content:
+        logger.warning(f"[ingest_kb] No content found for kb={kb.uuid}, skipping")
         return
 
+    kb.status = 'processing'
+    kb.save(update_fields=['status'])
+
     chunks = chunk_text(content)
+    logger.info(f"[ingest_kb] Created {len(chunks)} chunks for kb={kb.uuid}")
 
     dense_embeddings = embed_text(text_chunks=chunks, app=app)
+    non_empty = sum(1 for v in dense_embeddings if v)
+    logger.info(f"[ingest_kb] Dense embeddings: {non_empty}/{len(chunks)} non-empty for kb={kb.uuid}")
 
     sparse_embeddings = embed_sparse(chunks)
 
     existing_chunks = IngestedChunk.objects.filter(knowledge_base=kb)
     qdrant_ids = [str(chunk.uuid) for chunk in existing_chunks]
     existing_chunks.delete()
+    logger.info(f"[ingest_kb] Deleted {len(qdrant_ids)} existing chunks for kb={kb.uuid}")
 
     try:
         if qdrant_ids:
             qdrant.delete(
                 collection_name=COLLECTION_NAME,
-                points=qdrant_ids
+                points_selector=qdrant_ids
             )
     except Exception as e:
         logger.warning(f"Failed to delete vectors from Qdrant: {e}")
 
+    upserted = 0
     for i, (chunk, dense_vector, sparse_vector) in enumerate(zip(chunks, dense_embeddings, sparse_embeddings)):
+        if not dense_vector:
+            logger.warning(f"[ingest_kb] Skipping chunk {i} for kb {kb.uuid}: empty dense embedding")
+            continue
+
         chunk_uuid = uuid.uuid4()
         IngestedChunk.objects.create(
             uuid=chunk_uuid,
@@ -168,6 +192,12 @@ def ingest_kb(kb, app):
                 )
             ]
         )
+        upserted += 1
+
+    logger.info(f"[ingest_kb] Upserted {upserted}/{len(chunks)} chunks to Qdrant for kb={kb.uuid}")
+    kb.status = 'completed'
+    kb.save(update_fields=['status'])
+    logger.info(f"[ingest_kb] Finished for kb={kb.uuid}, status=completed")
 
 def delete_vectors_from_qdrant(ids):
     if not ids:

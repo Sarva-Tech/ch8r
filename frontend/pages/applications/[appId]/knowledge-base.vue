@@ -16,12 +16,15 @@ const isLoading = ref(false)
 
 const data = computed(() => {
   return (kbs.value || []).map((item: KnowledgeBaseItem) => {
+    const isGithub = item.source_type === 'github'
     return {
       uuid: item.uuid,
       sourceType: item.source_type,
       path: item.path,
       content: item.metadata?.content ?? '',
       status: item.status,
+      canUpdate: !isGithub,
+      canDelete: true,
     }
   })
 })
@@ -51,8 +54,13 @@ const columns: ColumnDef<unknown, string | number>[] = [
 
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
   if (msg.type === KB_UPDATE) {
-    const { uuid, status } = msg.data
-    kbStore.updateStatus(uuid, status)
+    const { uuid, status, ingestion_status } = msg.data
+
+    if (uuid && status) {
+      kbStore.updateStatus(uuid, status)
+    } else if (ingestion_status === 'failed') {
+      kbStore.load()
+    }
   }
 })
 
@@ -60,7 +68,10 @@ function openUpdateKB(kb: KBTableRow) {
   updateKBRef.value?.openSlide(kb)
 }
 
-onMounted(() => { kbStore.load() })
+onMounted(() => {
+  kbStore.load()
+})
+
 onBeforeUnmount(() => {
   unsubscribe()
 })

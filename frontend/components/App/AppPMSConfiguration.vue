@@ -75,11 +75,11 @@ const PMSProfiles = computed(() =>
 const selectedPMS = computed({
   get: () => {
     const m = appConfigStore.selectedPMS
-    return m ? { label: m.name, value: m.uuid } : null
+    return m?.uuid
   },
   set: (val) => {
     appConfigStore.selectedPMS
-      = appConfigStore.PMSProfiles?.find(m => m.uuid === val?.value) || null
+      = appConfigStore.PMSProfiles?.find(m => m.uuid === val) || null
   },
 })
 
