@@ -216,7 +216,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Send, Bot, UserRound, Globe } from 'lucide-vue-next'
+import { Bot, UserRound, Globe } from 'lucide-vue-next'
 import { computed, onMounted, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
@@ -273,8 +273,8 @@ const form = useForm({
   initialValues: {
     ai_provider: undefined as string | undefined,
     models: [] as string[],
-    is_internal: false as boolean,
-    ai_mode: false as boolean,
+    is_internal: chatroomId === NEW_CHAT ? true : false as boolean,
+    ai_mode: chatroomId === NEW_CHAT ? true : false as boolean,
     message: '',
     sender_identifier: userStore.userIdentifier,
     chatroom_identifier: chatroomId as string,
