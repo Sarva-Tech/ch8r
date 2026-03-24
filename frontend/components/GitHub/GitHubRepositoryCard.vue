@@ -1,19 +1,19 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 transition-all duration-200 hover:shadow-lg">
+  <div class="bg-card rounded-lg shadow-md border border-border p-6 transition-all duration-200 hover:shadow-lg">
     <div class="flex items-start justify-between mb-4">
       <div class="flex-1">
         <div class="flex items-center gap-2 mb-2">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 class="text-lg font-semibold text-foreground">
             {{ repository.name }}
           </h3>
-          <span class="text-sm text-gray-500 dark:text-gray-400">
+          <span class="text-sm text-muted-foreground">
             {{ repository.owner }}
           </span>
         </div>
-        <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+        <p class="text-sm text-muted-foreground mb-2">
           {{ repository.full_name }}
         </p>
-        <p v-if="repository.description" class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+        <p v-if="repository.description" class="text-sm text-muted-foreground line-clamp-2">
           {{ repository.description }}
         </p>
       </div>
@@ -45,32 +45,32 @@
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
       <div class="text-center">
-        <div class="text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="text-lg font-semibold text-foreground">
           {{ repository.issue_count || 0 }}
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">Issues</div>
+        <div class="text-xs text-muted-foreground">Issues</div>
       </div>
       <div class="text-center">
-        <div class="text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="text-lg font-semibold text-foreground">
           {{ repository.pr_count || 0 }}
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">PRs</div>
+        <div class="text-xs text-muted-foreground">PRs</div>
       </div>
       <div class="text-center">
-        <div class="text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="text-lg font-semibold text-foreground">
           {{ repository.discussion_count || 0 }}
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">Discussions</div>
+        <div class="text-xs text-muted-foreground">Discussions</div>
       </div>
       <div class="text-center">
-        <div class="text-lg font-semibold text-gray-900 dark:text-white">
+        <div class="text-lg font-semibold text-foreground">
           {{ repository.wiki_page_count || 0 }}
         </div>
-        <div class="text-xs text-gray-500 dark:text-gray-400">Wiki Pages</div>
+        <div class="text-xs text-muted-foreground">Wiki Pages</div>
       </div>
     </div>
 
-    <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+    <div class="flex items-center justify-between text-xs text-muted-foreground">
       <div class="flex items-center gap-4">
         <span v-if="repository.is_private" class="flex items-center gap-1">
           <UIcon name="i-heroicons-lock-closed-16-solid" />
@@ -102,7 +102,7 @@
     </div>
 
     <div v-if="repository.ingestion_status === 'running'" class="mt-4">
-      <div class="flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+      <div class="flex items-center gap-2 text-sm text-primary">
         <UIcon name="i-heroicons-arrow-path-16-solid" class="animate-spin" />
         Ingesting repository data...
       </div>

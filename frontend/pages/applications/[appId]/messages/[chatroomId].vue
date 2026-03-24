@@ -13,21 +13,21 @@
         <div class="flex-shrink-0 mt-1">
           <div
             v-if="isLLMAgent(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            <Bot class="w-4 h-4 text-violet-600 dark:text-violet-300" />
+            <Bot class="w-4 h-4 text-primary" />
           </div>
           <div
             v-else-if="isRegisteredUser(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            <UserRound class="w-4 h-4 text-blue-600 dark:text-blue-300" />
+            <UserRound class="w-4 h-4 text-primary" />
           </div>
           <div
             v-else
-            class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"
           >
-            <Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+            <Globe class="w-4 h-4 text-accent-foreground" />
           </div>
         </div>
 
@@ -43,7 +43,7 @@
               isCurrentUser(message.sender_identifier)
                 ? 'bg-primary text-primary-foreground'
                 : isLLMAgent(message.sender_identifier)
-                  ? 'bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800'
+                  ? 'bg-primary/10 border border-primary/20'
                   : 'bg-muted',
             )"
           >

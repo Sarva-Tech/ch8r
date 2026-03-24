@@ -6,7 +6,7 @@
           class="w-3 h-3 rounded-full"
           :class="statusIndicatorClass"
         ></div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 class="text-lg font-semibold text-foreground">
           Ingestion Status
         </h3>
       </div>
@@ -24,38 +24,38 @@
       </UButton>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+    <div class="bg-card rounded-lg border border-border p-4">
       <div v-if="status === 'running'" class="space-y-4">
         <div class="flex items-center gap-3">
-          <UIcon name="i-heroicons-arrow-path-16-solid" class="animate-spin text-blue-600" />
-          <span class="text-blue-600 dark:text-blue-400 font-medium">
+          <UIcon name="i-heroicons-arrow-path-16-solid" class="animate-spin text-primary" />
+          <span class="text-primary font-medium">
             Ingestion in Progress
           </span>
         </div>
 
         <div class="space-y-2">
-          <div class="flex justify-between text-sm text-gray-600 dark:text-gray-300">
+          <div class="flex justify-between text-sm text-muted-foreground">
             <span>{{ currentStep }}</span>
             <span>{{ Math.round(progress) }}%</span>
           </div>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+          <div class="w-full bg-muted rounded-full h-2">
             <div
-              class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              class="bg-primary h-2 rounded-full transition-all duration-300"
               :style="{ width: `${progress}%` }"
             ></div>
           </div>
         </div>
 
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+        <div class="bg-primary/10 rounded-lg p-3">
           <div class="flex items-center gap-2 text-sm">
-            <UIcon name="i-heroicons-information-circle-16-solid" class="text-blue-600" />
-            <span class="text-blue-800 dark:text-blue-200">
+            <UIcon name="i-heroicons-information-circle-16-solid" class="text-primary" />
+            <span class="text-primary">
               {{ currentOperation }}
             </span>
           </div>
         </div>
 
-        <div v-if="estimatedTime" class="text-sm text-gray-500 dark:text-gray-400">
+        <div v-if="estimatedTime" class="text-sm text-muted-foreground">
           Estimated completion: {{ estimatedTime }}
         </div>
       </div>
@@ -63,35 +63,35 @@
       <div v-else-if="status === 'completed'" class="space-y-4">
         <div class="flex items-center gap-3">
           <UIcon name="i-heroicons-check-circle-16-solid" class="text-green-600" />
-          <span class="text-green-600 dark:text-green-400 font-medium">
+          <span class="text-green-600 font-medium">
             Ingestion Completed Successfully
           </span>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div class="text-center">
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <div class="text-lg font-semibold text-foreground">
               {{ summary.issues }}
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">Issues</div>
+            <div class="text-xs text-muted-foreground">Issues</div>
           </div>
           <div class="text-center">
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <div class="text-lg font-semibold text-foreground">
               {{ summary.pullRequests }}
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">Pull Requests</div>
+            <div class="text-xs text-muted-foreground">Pull Requests</div>
           </div>
           <div class="text-center">
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <div class="text-lg font-semibold text-foreground">
               {{ summary.discussions }}
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">Discussions</div>
+            <div class="text-xs text-muted-foreground">Discussions</div>
           </div>
           <div class="text-center">
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <div class="text-lg font-semibold text-foreground">
               {{ summary.files }}
             </div>
-            <div class="text-xs text-gray-500 dark:text-gray-400">Files</div>
+            <div class="text-xs text-muted-foreground">Files</div>
           </div>
         </div>
 

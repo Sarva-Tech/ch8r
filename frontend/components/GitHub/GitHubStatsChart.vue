@@ -2,7 +2,7 @@
   <UCard>
     <template #header>
       <div class="flex items-center justify-between">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 class="text-lg font-semibold text-foreground">
           {{ title }}
         </h3>
         <USelect
@@ -29,36 +29,36 @@
             class="w-3 h-3 rounded-full"
             :style="{ backgroundColor: item.color }"
           ></div>
-          <span class="text-sm text-gray-600 dark:text-gray-300">
+          <span class="text-sm text-muted-foreground">
             {{ item.label }}
           </span>
         </div>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-border">
         <div class="text-center">
-          <div class="text-lg font-semibold text-gray-900 dark:text-white">
+          <div class="text-lg font-semibold text-foreground">
             {{ totalValue }}
           </div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Total</div>
+          <div class="text-xs text-muted-foreground">Total</div>
         </div>
         <div class="text-center">
-          <div class="text-lg font-semibold text-blue-600 dark:text-blue-400">
+          <div class="text-lg font-semibold text-primary">
             {{ averageValue }}
           </div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Average</div>
+          <div class="text-xs text-muted-foreground">Average</div>
         </div>
         <div class="text-center">
           <div class="text-lg font-semibold text-green-600 dark:text-green-400">
             {{ peakValue }}
           </div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Peak</div>
+          <div class="text-xs text-muted-foreground">Peak</div>
         </div>
         <div class="text-center">
-          <div class="text-lg font-semibold text-gray-600 dark:text-gray-400">
+          <div class="text-lg font-semibold text-muted-foreground">
             {{ trendDirection }}
           </div>
-          <div class="text-xs text-gray-500 dark:text-gray-400">Trend</div>
+          <div class="text-xs text-muted-foreground">Trend</div>
         </div>
       </div>
     </div>
