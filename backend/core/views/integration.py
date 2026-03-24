@@ -5,8 +5,8 @@ from rest_framework.response import Response
 
 from core.integrations.registry import SUPPORTED_INTEGRATIONS, INTEGRATION_TOOLS, \
     SUPPORTED_PROVIDERS
-from core.models import Integration
-from core.serializers import IntegrationCreateSerializer, IntegrationViewSerializer
+from core.models import Integration, AppIntegration
+from core.serializers import IntegrationCreateSerializer, IntegrationViewSerializer, AppIntegrationViewSerializer
 
 class IntegrationViewSet(viewsets.ModelViewSet):
     queryset = Integration.objects.none()
@@ -30,6 +30,31 @@ class IntegrationViewSet(viewsets.ModelViewSet):
             {"detail": "PUT method not allowed. Use PATCH instead."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"detail": "Deleted"},
+            status=status.HTTP_200_OK
+        )
+
+class AppIntegrationViewSet(viewsets.ModelViewSet):
+    queryset = AppIntegration.objects.none()
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'uuid'
+    http_method_names = ['get', 'post', 'delete']
+
+    def get_queryset(self):
+        return AppIntegration.objects.filter(application__owner=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return AppIntegrationCreateSerializer
+        return AppIntegrationViewSerializer
+
+    def perform_create(self, serializer):
+        serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

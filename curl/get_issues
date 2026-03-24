@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# GitHub API - Get Issues
+# Usage: ./get_issues.sh owner repo [state] [since] [page] [per_page]
+
+OWNER=${1:-"owner"}
+REPO=${2:-"repo"}
+STATE=${3:-"all"}
+SINCE=${4:-""}
+PAGE=${5:-"1"}
+PER_PAGE=${6:-"100"}
+TOKEN=${GITHUB_TOKEN:-"your_github_token_here"}
+
+URL="https://api.github.com/repos/${OWNER}/${REPO}/issues?page=${PAGE}&per_page=${PER_PAGE}&state=${STATE}&sort=created&direction=desc"
+
+if [ -n "$SINCE" ]; then
+    URL="${URL}&since=${SINCE}"
+fi
+
+curl -X GET \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  -H "User-Agent: Ch8r-GitHub-Ingestion/1.0" \
+  "${URL}"

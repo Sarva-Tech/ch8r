@@ -1,3 +1,5 @@
+import logging
+
 from asgiref.sync import async_to_sync
 from celery import shared_task
 from channels.layers import get_channel_layer
@@ -7,26 +9,37 @@ from core.models import KnowledgeBase
 from core.models.knowledge_base import KBStatus
 from core.services import extract_text_from_file, ingest_kb
 
+logger = logging.getLogger(__name__)
+
 
 def send_kb_update(kb, status):
-    channel_layer = get_channel_layer()
-    owner_id = kb.application.owner.id
+    try:
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            logger.warning(f"[send_kb_update] Channel layer is None, skipping WS update for kb {kb.uuid}")
+            return
 
-    group_name = f"{LIVE_UPDATES_PREFIX}_{DASHBOARD_USER_ID_PREFIX}_{owner_id}"
+        owner_id = kb.application.owner.id
+        group_name = f"{LIVE_UPDATES_PREFIX}_{DASHBOARD_USER_ID_PREFIX}_{owner_id}"
 
-    data = {
-        "id": str(kb.id),
-        "uuid": str(kb.uuid),
-        "status": status,
-    }
-
-    async_to_sync(channel_layer.group_send)(
-        group_name,
-        {
-            "type": "send.kb.updates",
-            "data": data,
+        data = {
+            "id": str(kb.id),
+            "uuid": str(kb.uuid),
+            "status": status,
         }
-    )
+
+        logger.info(f"[send_kb_update] Sending status={status} for kb={kb.uuid} to group={group_name}")
+
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                "type": "send.kb.updates",
+                "data": data,
+            }
+        )
+        logger.info(f"[send_kb_update] Successfully sent update for kb={kb.uuid}")
+    except Exception as e:
+        logger.error(f"[send_kb_update] Failed to send WS update for kb={kb.uuid}: {e}", exc_info=True)
 
 def process_kb_item(kb):
     if kb.source_type == 'file':
