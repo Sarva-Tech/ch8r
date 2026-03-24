@@ -44,7 +44,7 @@ def ingest_github_repository_task(self, app_integration_id, owner, repo, since=N
         ).get(id=app_integration_id)
         logger.info(f"[Task] AppIntegration found: id={app_integration_id}, app={app_integration.application.name}")
 
-        ingestion_service = GitHubDataIngestionService(app_integration)
+        ingestion_service = GitHubDataIngestionService(app_integration, use_graphql=True)
         ingestion_service.ingest_repository(owner, repo, since)
 
         logger.info(f"[Task] ingest_repository completed for {owner}/{repo}")
@@ -122,7 +122,7 @@ def sync_all_github_repositories_task(self, app_integration_id):
 
                 since = (timezone.now() - timedelta(days=7)).isoformat()
 
-                ingestion_service = GitHubDataIngestionService(app_integration)
+                ingestion_service = GitHubDataIngestionService(app_integration, use_graphql=True)
                 ingestion_service.ingest_repository(owner, repo, since)
 
                 results.append({

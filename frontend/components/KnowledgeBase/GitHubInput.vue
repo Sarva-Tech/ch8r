@@ -63,45 +63,6 @@
       </p>
     </div>
 
-    <UCollapse v-model="showAdvancedOptions">
-      <div class="space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">Advanced Options</h4>
-
-        <div class="space-y-2">
-          <label class="flex items-center gap-2">
-            <input
-              v-model="advancedOptions.includeDiscussions"
-              type="checkbox"
-              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              Include discussions
-            </span>
-          </label>
-          <label class="flex items-center gap-2">
-            <input
-              v-model="advancedOptions.includeWiki"
-              type="checkbox"
-              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              Include wiki pages
-            </span>
-          </label>
-          <label class="flex items-center gap-2">
-            <input
-              v-model="advancedOptions.includeFiles"
-              type="checkbox"
-              class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">
-              Include repository files
-            </span>
-          </label>
-        </div>
-      </div>
-    </UCollapse>
-
     <UAlert
       v-if="error"
       color="red"
@@ -148,19 +109,12 @@ const integrationStore = useIntegrationStore()
 
 const error = ref<string | null>(null)
 const success = ref(false)
-const showAdvancedOptions = ref(false)
 
 const form = ref<GitHubIngestionRequest>({
   owner: '',
   repo: '',
   app_integration_id: 0,
   since: ''
-})
-
-const advancedOptions = ref({
-  includeDiscussions: true,
-  includeWiki: true,
-  includeFiles: true
 })
 
 const integrationName = computed(() => {
@@ -192,7 +146,7 @@ const getGitHubIntegrationId = () => {
   return integrationId
 }
 
-watch([form, advancedOptions], () => {
+watch([form], () => {
   if (isValid.value) {
     emit('update', {
       ...form.value,

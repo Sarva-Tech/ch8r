@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { ColumnDef } from '@tanstack/vue-table'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import { useIntegrationStore } from '~/stores/integration'
 import { useApplicationStore } from '~/stores/application'
 import type { Integration, AppIntegration } from '~/types/integration'
+import GitHubIcon from '~/components/icons/GitHubIcon.vue'
 
 const integrationStore = useIntegrationStore()
 const applicationStore = useApplicationStore()
@@ -32,6 +33,15 @@ const data = computed(() => {
   }))
 })
 
+const getProviderIcon = (provider: string) => {
+  switch (provider) {
+    case 'github':
+      return GitHubIcon
+    default:
+      return null
+  }
+}
+
 const columns: ColumnDef<unknown, string | number>[] = [
   {
     id: 'expander',
@@ -41,14 +51,27 @@ const columns: ColumnDef<unknown, string | number>[] = [
   {
     accessorKey: 'name',
     header: 'Integration Name',
-    cell: (info) => info.getValue(),
+    cell: (info) => {
+      const row = info.row.original as any
+      const IconComponent = getProviderIcon(row.provider)
+      
+      return h('div', { class: 'flex items-center gap-2' }, [
+        IconComponent ? h(IconComponent, { class: 'h-4 w-4' }) : null,
+        h('span', {}, info.getValue())
+      ])
+    },
   },
   {
     accessorKey: 'provider',
     header: 'Provider',
     cell: (info) => {
       const provider = info.getValue() as string
-      return provider.charAt(0).toUpperCase() + provider.slice(1)
+      const IconComponent = getProviderIcon(provider)
+      
+      return h('div', { class: 'flex items-center gap-2' }, [
+        IconComponent ? h(IconComponent, { class: 'h-4 w-4' }) : null,
+        h('span', {}, provider.charAt(0).toUpperCase() + provider.slice(1))
+      ])
     },
   },
   {

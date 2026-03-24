@@ -57,6 +57,7 @@ import RequiredLabel from '~/components/RequiredLabel.vue'
 import C8Select from '~/components/C8Select.vue'
 import { useIntegrationStore } from '~/stores/integration'
 import PMSGitHub from '~/components/Integration/PMSGitHub.vue'
+import GitHubIcon from '~/components/icons/GitHubIcon.vue'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -87,9 +88,9 @@ const selectedIntegrationType = ref(integrationTypes.value[0])
 
 const providerMap: Record<
   string,
-  { label: string; icon?: string }
+  { label: string; icon?: any }
 > = {
-  github: { label: "GitHub", icon: "github-icon" },
+  github: { label: "GitHub", icon: GitHubIcon },
   jira: { label: "Jira", icon: "jira-icon" },
 }
 

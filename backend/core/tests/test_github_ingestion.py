@@ -119,7 +119,7 @@ class GitHubDataIngestionServiceTestCase(TestCase):
         }
         mock_client.get_repository_info.return_value = mock_repo_info
         
-        service = GitHubDataIngestionService(self.app_integration)
+        service = GitHubDataIngestionService(self.app_integration, use_graphql=True)
         repository = service._get_or_create_repository("owner", "test-repo")
         
         self.assertEqual(repository.full_name, "owner/test-repo")
@@ -144,7 +144,7 @@ class GitHubDataIngestionServiceTestCase(TestCase):
         )
         repository.save()
         
-        service = GitHubDataIngestionService(self.app_integration)
+        service = GitHubDataIngestionService(self.app_integration, use_graphql=True)
         service.repository = repository
         
         issue_data = {

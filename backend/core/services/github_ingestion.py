@@ -11,6 +11,7 @@ from core.models.github_data import (
 )
 from core.models import AppIntegration
 from core.services.github_client import GitHubAPIClient
+from core.services.github_graphql_ingestion import GitHubGraphQLIngestionService
 from core.services.ingestion import chunk_text, embed_text, embed_sparse
 from core.models import IngestedChunk
 from core.qdrant import qdrant, COLLECTION_NAME
@@ -22,12 +23,20 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubDataIngestionService:
-    """Production-grade GitHub data ingestion service"""
+    """Production-grade GitHub data ingestion service with GraphQL support"""
 
-    def __init__(self, app_integration: AppIntegration):
+    def __init__(self, app_integration: AppIntegration, use_graphql: bool = True):
         self.app_integration = app_integration
+        self.use_graphql = use_graphql
         self.github_client = None
+        self.graphql_service = None
         self.repository = None
+
+    def _get_graphql_service(self) -> GitHubGraphQLIngestionService:
+        """Initialize GraphQL service"""
+        if not self.graphql_service:
+            self.graphql_service = GitHubGraphQLIngestionService(self.app_integration)
+        return self.graphql_service
 
     def _get_github_client(self) -> GitHubAPIClient:
         """Initialize GitHub client"""
@@ -362,7 +371,11 @@ class GitHubDataIngestionService:
     def ingest_repository(self, owner: str, repo: str, since: Optional[str] = None):
         """Main method to ingest all GitHub data for a repository"""
         try:
-            logger.info(f"[GitHubIngestion] Starting ingestion for {owner}/{repo} (since={since})")
+            logger.info(f"[GitHubIngestion] Starting ingestion for {owner}/{repo} (since={since}), using GraphQL: {self.use_graphql}")
+
+            if self.use_graphql:
+                graphql_service = self._get_graphql_service()
+                return graphql_service.ingest_repository(owner, repo, since)
 
             repository = self._get_or_create_repository(owner, repo)
             repository.ingestion_status = 'running'
