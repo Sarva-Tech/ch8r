@@ -1,6 +1,7 @@
 <template>
   <div class="flex flex-col">
     <div
+      ref="messagesContainer"
       class="overflow-y-auto pt-[72px] pb-[120px] px-6 space-y-6"
       :style="`height: calc(100vh - 64px - 112px);`"
     >
@@ -222,7 +223,7 @@ import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
 import { Bot, UserRound, Globe } from 'lucide-vue-next'
-import { computed, onMounted, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
 import { FormField, FormItem, FormMessage } from '~/components/ui/form'
@@ -237,6 +238,19 @@ import { z } from 'zod'
 
 const route = useRoute()
 const { chatroomId } = route.params
+
+const messagesContainer = ref<HTMLElement>()
+
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    nextTick(() => {
+      messagesContainer.value?.scrollTo({
+        top: messagesContainer.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    })
+  }
+}
 
 const userStore = useUserStore()
 const liveUpdateStore = useLiveUpdateStore()
@@ -430,6 +444,8 @@ const send = form.handleSubmit(async (values) => {
       model: values.models?.[0],
     })
 
+    scrollToBottom()
+
     if (selectedChatroom?.value?.uuid === NEW_CHAT) {
       const newChatroomId = response?.chatroom_identifier
       if (newChatroomId) {
@@ -507,6 +523,7 @@ onMounted(async () => {
     }
 
     setFormValuesFromLastMessage()
+    scrollToBottom()
   }
   catch (e: unknown) {
     console.error(e)
