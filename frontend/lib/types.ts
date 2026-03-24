@@ -6,6 +6,8 @@ export type KBTableRow = {
   path: string
   content?: string
   status: StatusType
+  canUpdate: boolean
+  canDelete: boolean
 }
 
 export interface SelectOption {

@@ -1,4 +1,4 @@
-import { File, LetterText } from 'lucide-vue-next'
+import { File, LetterText, Github } from 'lucide-vue-next'
 
 export const NEW_CHAT = 'new_chat'
 export const DUMMY_NEW_CHATROOM = {
@@ -35,10 +35,10 @@ export const SUPPORTED_FILE_EXTENSIONS_STR = SUPPORTED_FILE_EXTENSIONS
   .map((ext) => ext.id)
   .join(', ')
 
-export type SOURCE_TYPE = 'file' | 'text' | string;
+export type SOURCE_TYPE = 'file' | 'text' | 'github' | string;
 export const KB_SOURCES = [
   { label: 'File', value: 'file', icon: File },
-  // { label: 'URL', value: 'url', icon: Link },
+  { label: 'GitHub Repository', value: 'github', icon: Github },
   { label: 'Text', value: 'text', icon: LetterText }
 ]
 export const DEFAULT_KB_SOURCE = KB_SOURCES[0]

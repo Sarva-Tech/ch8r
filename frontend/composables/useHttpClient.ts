@@ -70,7 +70,7 @@ export const useHttpClient = () => {
   }
 
   return {
-    httpGet: <T>(url: string, params?: never, auth = true) =>
+    httpGet: <T>(url: string, params?: Record<string, unknown>, auth = true) =>
       request<T>('GET', url, { params, auth }),
 
     httpPost: <T>(url: string, body?: Body, auth = true) =>

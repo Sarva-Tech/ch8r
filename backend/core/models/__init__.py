@@ -17,3 +17,8 @@ from .account_status import AccountStatus
 from .ai_provider import AIProvider
 from .app_ai_provider import AppAIProvider
 from .ai_provider_models import AIProviderModels
+from .github_data import (
+    GitHubRepository, GitHubIssue, GitHubIssueComment, GitHubPullRequest,
+    GitHubPRComment, GitHubPRFile, GitHubDiscussion, GitHubDiscussionComment,
+    GitHubWikiPage, GitHubRepositoryFile
+)

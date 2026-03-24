@@ -1,105 +1,138 @@
-import { defineStore } from 'pinia'
-import { useHttpClient } from '@/composables/useHttpClient'
-import type {Application} from "~/stores/applications"
-import type { PaginatedResponse } from '~/lib/types';
+import {defineStore} from 'pinia'
+import {useHttpClient} from '@/composables/useHttpClient'
+import type {PaginatedResponse} from '~/lib/types';
 
 export type IntegrationType = "pms" | "crm" | "custom";
 
 export interface Integration {
-  id: number;
-  uuid: string;
-  name: string;
-  type: IntegrationType;
-  provider: string;
-  owner: number;
-  metadata?: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
+    id: number;
+    uuid: string;
+    name: string;
+    type: IntegrationType;
+    provider: string;
+    owner: number;
+    metadata?: Record<string, unknown> | null;
+    created_at: string;
+    updated_at: string;
 }
 
 export type FunctionParameter = {
-  type: string;
-  description: string;
+    type: string;
+    description: string;
 };
 
 export type FunctionParameters = {
-  type: "object";
-  properties: Record<string, FunctionParameter>;
-  required?: string[];
+    type: "object";
+    properties: Record<string, FunctionParameter>;
+    required?: string[];
 };
 
 export type IntegrationFunction = {
-  name: string;
-  description: string;
-  parameters: FunctionParameters;
+    name: string;
+    description: string;
+    parameters: FunctionParameters;
 };
 
 export type IntegrationTool = {
-  type: string;
-  function: IntegrationFunction;
+    type: string;
+    function: IntegrationFunction;
 };
 
 export type IntegrationTools = {
-  [toolName: string]: IntegrationTool;
+    [toolName: string]: IntegrationTool;
 };
 
 export type SupportedProviders = {
-  [integrationType: string]: string[];
+    [integrationType: string]: string[];
 };
 
 export type SupportedIntegrationsResponse = {
-  supported_integrations: string[];
-  supported_providers: SupportedProviders;
-  integration_tools: {
-    [key: string]: IntegrationTools;
-  };
+    supported_integrations: string[];
+    supported_providers: SupportedProviders;
+    integration_tools: {
+        [key: string]: IntegrationTools;
+    };
 };
 
 export type FetchIntegrationsResponse = PaginatedResponse<Integration>
 
+export type AppIntegration = {
+    id: number;
+    integration: Integration;
+    created_at: string;
+    updated_at: string;
+}
+
+export type FetchAppIntegrationsResponse = PaginatedResponse<AppIntegration>
+
 export const useIntegrationStore = defineStore('integration', {
-  state: () => ({
-    supportedIntegrations: {} as SupportedIntegrationsResponse,
-    integrations: [] as Integration[],
-  }),
+    state: () => ({
+        supportedIntegrations: {} as SupportedIntegrationsResponse,
+        integrations: [] as Integration[],
+        appIntegrations: [] as AppIntegration[],
+    }),
 
-  actions: {
-    async load() {
-      const { httpGet } = useHttpClient()
-      const response = await httpGet<FetchIntegrationsResponse>(`/integrations/`)
-      this.integrations = response.results
-      return response
+    actions: {
+        async load() {
+            const {httpGet} = useHttpClient()
+            const response = await httpGet<FetchIntegrationsResponse>(`/integrations/`)
+            this.integrations = response.results
+            return response
+        },
+
+        async loadSupportedIntegrations() {
+            const {httpGet} = useHttpClient()
+            const response = await httpGet<SupportedIntegrationsResponse>(`/supported-integrations/`)
+            this.supportedIntegrations = response
+            return response
+        },
+
+        async loadAppIntegrations(appId: string) {
+            const {httpGet} = useHttpClient()
+            const response = await httpGet<FetchIntegrationsResponse>(`/integrations/`)
+            this.appIntegrations = response.results.map((integration: Integration) => ({
+                id: integration.id,
+                integration: integration,
+                created_at: integration.created_at,
+                updated_at: integration.updated_at
+            }))
+            return response
+        },
+
+        async create(values: Record<string, unknown>) {
+            const {httpPost} = useHttpClient()
+            const response = await httpPost<Integration>('/integrations/', {
+                name: values.name,
+                type: values.type,
+                provider: values.provider,
+                token: values.token
+            })
+            this.integrations = [...this.integrations, response]
+            return response
+        },
+
+        async delete(uuid: string) {
+            const {httpDelete} = useHttpClient()
+
+            const response = await httpDelete<{ detail: string }>(`/integrations/${uuid}/`)
+
+            if (response?.detail === 'Deleted') {
+                this.integrations = this.integrations.filter((i) => i.uuid !== uuid)
+            }
+
+            return response
+        },
+
+        async deleteAppIntegration(id: number) {
+            const {httpDelete} = useHttpClient()
+
+            const response = await httpDelete<{ detail: string }>(`/app-integrations/${id}/`)
+
+            if (response?.detail === 'Deleted') {
+                this.appIntegrations = this.appIntegrations.filter((i) => i.id !== id)
+            }
+
+            return response
+        },
     },
-
-    async loadSupportedIntegrations() {
-      const { httpGet } = useHttpClient()
-      const response = await httpGet<SupportedIntegrationsResponse>(`/supported-integrations/`)
-      this.supportedIntegrations = response
-      return response
-    },
-
-    async create(values: Record<string, unknown>) {
-        const { httpPost } = useHttpClient()
-        const response = await httpPost<Integration>('/integrations/', {
-          name: values.name,
-          type: values.type,
-          provider: values.provider,
-          token: values.token
-        })
-        this.integrations = [...this.integrations, response]
-        return response
-    },
-
-    async delete(uuid: string) {
-      const { httpDelete } = useHttpClient()
-
-      const response = await httpDelete<{detail: string}>(`/integrations/${uuid}/`)
-
-      if (response?.detail === 'Deleted') {
-        this.integrations = this.integrations.filter((i) => i.uuid !== uuid)
-      }
-
-      return response
-    },
-  },
 })
