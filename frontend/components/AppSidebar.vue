@@ -385,6 +385,7 @@ async function initNewChat() {
               :class="[
                 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-2 px-4 py-2 text-sm leading-tight rounded-lg min-w-0',
                 activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : '',
+                chatroom.has_unread && activeMenu !== chatroom.uuid ? 'bg-primary/10 border border-border' : ''
               ]"
               @click="() => { chatroomStore.markRead(chatroom.uuid); setActiveMenu(chatroom.uuid) }"
             >
