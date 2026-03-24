@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 :host {
   --ch8r-accent: #6366f1;
   --ch8r-accent-fg: #ffffff;
@@ -9,7 +14,6 @@
   --ch8r-font: system-ui, sans-serif;
 }
 
-/* Markdown content styling */
 .prose {
   line-height: 1.6;
 }
@@ -45,7 +49,6 @@ br {
   margin-bottom: 0.25rem;
 }
 
-/* Code block styling */
 pre {
   background-color: #f6f8fa;
   border: 1px solid #e1e4e8;
@@ -81,7 +84,6 @@ pre code {
   word-break: break-word;
 }
 
-/* GitHub theme syntax highlighting */
 .hljs-keyword {
   color: #d73a49;
   font-weight: bold;

@@ -89,7 +89,7 @@ export function MessageList({ messages, isTyping }: MessageListProps) {
               style={msg.isOwn ? { backgroundColor: 'var(--ch8r-accent)', color: 'var(--ch8r-accent-fg)' } : undefined}
             >
               <div 
-                class="overflow-x-auto max-w-full"
+                class="break-words overflow-wrap-anywhere"
                 dangerouslySetInnerHTML={{ 
                   __html: renderMarkdown(msg.message) 
                 }}
