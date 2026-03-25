@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from core.models import ApplicationAPIKey, Application
 from django.shortcuts import get_object_or_404
-from uuid import UUID
 import secrets
 
 class APIKeySerializer(serializers.ModelSerializer):
@@ -13,8 +12,8 @@ class APIKeySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ApplicationAPIKey
-        fields = ['name', 'permissions', 'id', 'created']
-        read_only_fields = ['api_key', 'created', 'id']
+        fields = ['name', 'permissions', 'id', 'created', 'owner']
+        read_only_fields = ['api_key', 'created', 'id', 'owner']
 
     def generate_api_key(self):
         return secrets.token_urlsafe(32)

@@ -9,7 +9,7 @@ from core.serializers.ai_provider import AIProviderSerializer
 class ChatRoomViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'ai_provider', 'model', 'mode']
+        fields = ['uuid', 'name', 'ai_provider', 'model']
 
 class ChatRoomWithMessagesSerializer(serializers.ModelSerializer):
     application = ApplicationViewSerializer(read_only=True)
@@ -21,10 +21,10 @@ class ChatRoomWithMessagesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'application', 'messages', 'ai_provider', 'ai_model', 'chatroom', 'mode']
+        fields = ['uuid', 'name', 'application', 'messages', 'ai_provider', 'ai_model', 'chatroom']
 
     def get_messages(self, chatroom):
-        messages_qs = self.context.get('messages_qs', chatroom.messages.all())
+        messages_qs = self.context.get('messages_qs', chatroom.messages.all().order_by('created_at'))
         return ViewMessageSerializer(messages_qs, many=True).data
 
 class ChatroomParticipantSerializer(serializers.ModelSerializer):
@@ -38,10 +38,9 @@ class ChatRoomPreviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatRoom
-        fields = ['uuid', 'name', 'last_message', 'has_unread', 'mode']
+        fields = ['uuid', 'name', 'last_message', 'has_unread']
 
     def get_last_message(self, chatroom):
-        # Widget users (non-dashboard) must not see internal messages in the preview
         user_identifier = self.context.get('user_identifier', '')
         is_dashboard = user_identifier.startswith('dashboard_')
         qs = chatroom.messages.order_by('-created_at')
@@ -67,3 +66,12 @@ class ChatRoomDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
         fields = ['uuid', 'name', 'participants', 'messages']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if hasattr(self.instance, 'messages'):
+            self.fields['messages'] = ViewMessageSerializer(
+                self.instance.messages.all().order_by('created_at'), 
+                many=True, 
+                read_only=True
+            )

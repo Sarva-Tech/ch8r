@@ -25,24 +25,25 @@ useHead({
       'data-user-identifier': userStore.getUser.id,
       'data-app-name': 'ch8r support',
       'data-app-description': 'We\'re here to help',
-      'data-app-logo-url': 'http://localhost:3000/favicon.ico'
+      'data-app-logo-url': 'http://localhost:3000/favicon.ico',
+      'data-offset-bottom': '64'
     }
   ]
 })
 
-onMounted(() => {
-  window.addEventListener('message', (event) => {
-    if (event.data?.type === 'ch8r-resize') {
-      const iframe = document.getElementById('ch8r-widget-iframe')
-      if (iframe && event.data.height) {
-        iframe.style.height = `${event.data.height}px`
-        if (event.data.height > 100) {
-          iframe.style.width = '360px'
-        } else {
-          iframe.style.width = '88px'
-        }
-      }
-    }
-  })
-})
+// onMounted(() => {
+//   window.addEventListener('message', (event) => {
+//     if (event.data?.type === 'ch8r-resize') {
+//       const iframe = document.getElementById('ch8r-widget-iframe')
+//       if (iframe && event.data.height) {
+//         iframe.style.height = `${event.data.height}px`
+//         if (event.data.height > 100) {
+//           iframe.style.width = '360px'
+//         } else {
+//           iframe.style.width = '88px'
+//         }
+//       }
+//     }
+//   })
+// })
 </script>

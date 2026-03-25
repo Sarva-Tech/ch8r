@@ -1,4 +1,3 @@
-import json
 import logging
 
 from celery import shared_task
@@ -8,7 +7,7 @@ from django.conf import settings
 from django.db.models import Q
 
 from core.consts import LIVE_UPDATES_PREFIX
-from core.llm_client_utils import messages_to_llm_conversation, get_agent_response_schema, add_kb_to_convo, \
+from core.llm_client_utils import messages_to_llm_conversation, add_kb_to_convo, \
     add_instructions_to_convo
 from core.models import IngestedChunk, Application, AIProvider, Message
 
@@ -20,6 +19,46 @@ from core.services.ai_client_service import AIClientService
 logger = logging.getLogger(__name__)
 
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
+
+def _send_live_update(bot_message: Message, user_message: Message):
+    channel_layer = get_channel_layer()
+    
+    if user_message.platform == 'widget':
+        participants = list(
+            user_message.chatroom.participants.filter(
+                Q(user_identifier__startswith='widget_') |
+                Q(user_identifier__startswith='dashboard_') |
+                Q(role='human_agent')
+            ).exclude(
+                Q(role='agent')
+            ).values_list('user_identifier', flat=True)
+        )
+    else:
+        participants = list(
+            user_message.chatroom.participants.filter(
+                Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
+            ).exclude(
+                Q(role='agent')
+            ).values_list('user_identifier', flat=True)
+        )
+
+    for participant_id in participants:
+        group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
+        try:
+            async_to_sync(channel_layer.group_send)(
+                group_name,
+                {
+                    "type": "send.message",
+                    "message": ViewMessageSerializer(bot_message).data,
+                }
+            )
+            logger.info(f"Live update sent to {group_name}")
+        except Exception as e:
+            logger.error(f"Failed to send message to {group_name}: {str(e)}")
+            logger.error(f"Exception type: {type(e).__name__}")
+    
+    if not participants:
+        logger.warning("No participants found for live update! ")
 
 @shared_task
 def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None):
@@ -38,7 +77,28 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     )
 
     if not provider or not model:
-        logger.error("No AI provider available")
+        error_message = "No AI provider configured or available"
+        answer = error_message
+        metadata = {
+            "status": "ERROR",
+            "escalation": True,
+            "reason_for_escalation": error_message,
+            "error_details": error_message,
+        }
+        
+        bot_message = Message.objects.create(
+            chatroom=chatroom,
+            sender_identifier=AGENT_IDENTIFIER,
+            message=answer,
+            metadata=metadata,
+            ai_provider_id=ai_provider_id,
+            model=model,
+            platform=user_message.platform,
+            ai_mode=True,
+            is_internal=user_message.is_internal,
+        )
+        
+        _send_live_update(bot_message, user_message)
         return
 
     has_chunks = IngestedChunk.objects.filter(
@@ -54,12 +114,11 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
     prompt_context = {
         "product_name": app.name,
-        "product_type": 'Software as a Service (SaaS)',
-        "tone": "friendly and professional",
+        "tone": "professional",
     }
 
-    system_instruction = TemplateLoader.render_template('customer_support.j2', prompt_context)
-
+    system_instruction = TemplateLoader.render_template('prompts/default.j2', prompt_context)
+    print(system_instruction)
     conversation = messages_to_llm_conversation(messages)
     conversation = add_instructions_to_convo(conversation, system_instruction)
     conversation = add_kb_to_convo(conversation, kb_data)
@@ -67,99 +126,24 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     prompt = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in conversation])
 
     try:
-        answer = provider.generate_text(model, prompt)
-        if not answer or not answer.strip():
-            answer = "I'm sorry, I couldn't generate a response."
-            metadata = {
-                "status": "ERROR",
-                "escalation": True,
-                "reason_for_escalation": "Empty AI response",
-            }
-        else:
-            metadata = {
-                "status": "SUCCESS",
-                "escalation": False,
-                "reason_for_escalation": "",
-            }
+        agent_response = provider.generate_text(model, prompt)
+        answer = agent_response.answer
+        metadata = {
+            "status": agent_response.status,
+            "escalation": agent_response.escalation,
+            "reason_for_escalation": agent_response.reason_for_escalation,
+        }
     except Exception as e:
         logger.error(f"Failed to generate content: {e}")
-        answer = "I'm sorry, I encountered an error processing your request."
+        error_message = str(e)
+        
+        answer = error_message
         metadata = {
             "status": "ERROR",
             "escalation": True,
-            "reason_for_escalation": "AI provider error",
+            "reason_for_escalation": error_message,
+            "error_details": error_message,
         }
-
-    # response_schema = get_agent_response_schema("support_response")
-    #
-    # tools = get_app_integrations(app)
-    # logger.info("Tools: %s ", tools)
-    # logger.info("Conversation: %s", conversation)
-    # tool_call_response = client.chat(
-    #     messages=conversation,
-    #     model=text_model.model_name,
-    #     tools=tools
-    # )
-    #
-    # logger.info("Tool_call_response: %s", tool_call_response)
-    # tool_results = {}
-    #
-    # for choice in tool_call_response.choices:
-    #     msg = choice.message
-    #     if msg.tool_calls:
-    #         for tool_call in msg.tool_calls:
-    #             tool_name = tool_call.function.name
-    #
-    #             args = (
-    #                 json.loads(tool_call.function.arguments)
-    #                 if isinstance(tool_call.function.arguments, str)
-    #                 else tool_call.function.arguments
-    #             )
-    #
-    #             tool_results[tool_name] = execute_tool_call(app, tool_name, **args)
-    #             logger.info(f"Tool: {tool_name}, Result: {tool_results[tool_name]}")
-    #
-    #             conversation.append({
-    #                 "role": "assistant",
-    #                 "type": "function_call_output",
-    #                 "call_id": tool_call.id,
-    #                 "content": json.dumps(tool_results[tool_name]),
-    #             })
-    #
-    # llm_response = client.chat(
-    #     conversation,
-    #     model=text_model.model_name,
-    #     response_schema=response_schema
-    # )
-    #
-    # escalation = False
-    #
-    # try:
-    #     llm_response_data = parse_llm_response(llm_response.choices[0].message.content)
-    #
-    #     logger.info("Final LLM Response:\n%s", json.dumps(llm_response_data, indent=2))
-    #
-    #
-    #     answer = llm_response_data.get("answer", "").strip()
-    #     status = llm_response_data.get("status", "ERROR").strip()
-    #     escalation = llm_response_data.get("escalation", False)
-    #     reason = llm_response_data.get("reason_for_escalation", "").strip()
-    #
-    #     metadata = {
-    #         "status": status,
-    #         "escalation": escalation,
-    #         "reason_for_escalation": reason,
-    #     }
-    #
-    # except json.JSONDecodeError:
-    #     answer = llm_response.content.strip()
-    #     metadata = {
-    #         "status": "ERROR",
-    #         "escalation": True,
-    #         "reason_for_escalation": "Malformed LLM response",
-    #     }
-
-    is_internal = user_message.is_internal
 
     bot_message = Message.objects.create(
         chatroom=chatroom,
@@ -168,46 +152,9 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         metadata=metadata,
         ai_provider_id=ai_provider_id,
         model=model,
-        is_internal=is_internal,
+        platform=user_message.platform,
+        ai_mode=True,
+        is_internal=user_message.is_internal,
     )
 
-    channel_layer = get_channel_layer()
-    if is_internal:
-        participants = list(
-            user_message.chatroom.participants.filter(
-                Q(user_identifier__startswith='dashboard_') | Q(role='human_agent')
-            ).exclude(
-                Q(role='agent')
-            ).values_list('user_identifier', flat=True)
-        )
-    else:
-        participants = list(
-            user_message.chatroom.participants.exclude(
-                Q(role='agent')
-            ).values_list('user_identifier', flat=True)
-        )
-
-    for participant_id in participants:
-        group_name = f"{LIVE_UPDATES_PREFIX}_{participant_id}"
-        try:
-            async_to_sync(channel_layer.group_send)(
-                group_name,
-                {
-                    "type": "send.message",
-                    "message": ViewMessageSerializer(bot_message).data,
-                }
-            )
-        except Exception as e:
-            logger.warning(f"Failed to send message to {group_name}: {str(e)}")
-
-    # if escalation:
-    #     from core.services.notifications import notify_users
-    #
-    #     context = {
-    #         "app": chatroom.application,
-    #         "chatroom_uuid": chatroom.uuid,
-    #         "user_id": user_message.sender_identifier,
-    #         "user_query": user_message.message,
-    #         "agent_response": answer,
-    #     }
-    #     notify_users(chatroom.application, SMART_ESCALATION_TEMPLATE, context)
+    _send_live_update(bot_message, user_message)

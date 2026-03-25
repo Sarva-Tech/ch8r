@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# GitHub API - Get Rate Limit Status
+# Usage: ./get_rate_limit.sh
+
+TOKEN=${GITHUB_TOKEN:-"your_github_token_here"}
+
+curl -X GET \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  -H "User-Agent: Ch8r-GitHub-Ingestion/1.0" \
+  "https://api.github.com/rate_limit"

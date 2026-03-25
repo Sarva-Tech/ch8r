@@ -1,21 +1,18 @@
 import { h } from 'preact';
-import { unreadCount } from '../store/signals';
+import { unreadCount, config } from '../store/signals';
+import { computePositionStyles } from '../utils/position';
 
 interface LauncherProps {
   isOpen: boolean;
   accentColor?: string;
-  position?: 'bottom-right' | 'bottom-left';
   iconUrl?: string;
   onOpen: () => void;
 }
 
-export function Launcher({ isOpen, position = 'bottom-right', iconUrl, onOpen }: LauncherProps) {
-  const posClass = position === 'bottom-left' ? 'left-4' : 'right-4';
-
+export function Launcher({ isOpen, iconUrl, onOpen }: LauncherProps) {
   return (
     <div
-      class={`fixed bottom-4 ${posClass}`}
-      style={{ zIndex: 9999, display: isOpen ? 'none' : undefined }}
+      style={{ ...computePositionStyles(config.value ?? {}).launcher, display: isOpen ? 'none' : undefined }}
     >
       <div class="relative">
         <button

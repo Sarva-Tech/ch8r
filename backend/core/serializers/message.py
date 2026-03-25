@@ -9,7 +9,7 @@ class CreateMessageSerializer(serializers.Serializer):
     message = serializers.CharField()
     metadata = serializers.JSONField(required=False)
     is_internal = serializers.BooleanField(required=False, default=False)
-    mode = serializers.ChoiceField(choices=['ai', 'direct'], required=False, allow_null=True, default=None)
+    ai_mode = serializers.BooleanField(required=False, default=False)
     ai_provider = serializers.IntegerField(required=False)
     model = serializers.CharField(required=False)
 
@@ -41,5 +41,7 @@ class ViewMessageSerializer(serializers.ModelSerializer):
             'ai_provider_id',
             'model',
             'is_internal',
+            'platform',
+            'ai_mode',
             'created_at'
         ]

@@ -15,6 +15,8 @@ export interface Message {
   ai_provider_id?: number | null
   model?: string | null
   is_internal?: boolean
+  platform?: 'dashboard' | 'widget'
+  ai_mode?: boolean
 }
 
 interface ChatRoomMessagesResponse {
@@ -24,7 +26,6 @@ interface ChatRoomMessagesResponse {
   messages: Message[]
   ai_provider: AIProvider
   ai_model: string | null
-  mode: 'ai' | 'direct'
 }
 
 export const useChatroomMessagesStore = defineStore('chatroom', {
@@ -35,7 +36,6 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
     error: null as string | null,
     lastUsedAIProvider: undefined as AIProvider | undefined,
     lastUsedAIModel: null as string | null,
-    chatroomMode: 'ai' as 'ai' | 'direct',
   }),
 
   actions: {
@@ -57,12 +57,12 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         )
         this.selectedChatroom = {
           uuid: data.uuid,
-          name: data.name
+          name: data.name,
+          has_unread: false,
         }
         this.messages = data.messages
         this.lastUsedAIProvider = data.ai_provider
         this.lastUsedAIModel = data.ai_model
-        this.chatroomMode = data.mode ?? 'ai'
       } catch (err: any) {
         this.error = err.message || 'Failed to load chatroom'
       } finally {
@@ -70,7 +70,7 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
       }
     },
 
-    async sendMessage(applicationUuid: string, messageText: string, isInternal = false, aiProvider?: number, model?: string, mode?: string) {
+    async sendMessage(applicationUuid: string, messageText: string, isInternal = false, aiProvider?: number, model?: string, aiMode?: boolean) {
       const userStore = useUserStore()
       const sender = userStore.userIdentifier
 
@@ -78,13 +78,18 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
         throw new Error('No chatroom selected')
       }
 
+      const tempUuid = `${Date.now()}`
       const dummyMessage: Message = {
         id: this.messages.length + 1,
-        uuid: `${Date.now()}`,
+        uuid: tempUuid,
         sender_identifier: sender,
         message: messageText,
         metadata: {},
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        is_internal: isInternal,
+        ai_provider_id: aiProvider ?? null,
+        model: model ?? null,
+        ai_mode: aiMode ?? false,
       }
 
       this.addMessage(dummyMessage)
@@ -100,13 +105,20 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
           is_internal: isInternal,
           ai_provider: aiProvider,
           model: model,
+          ai_mode: aiMode ?? false,
         }
-        if (mode) body.mode = mode
 
-        return await httpPost<Message>(
+        const response = await httpPost<Message>(
           `/applications/${applicationUuid}/chatrooms/send-message/`,
           body
         )
+
+        const idx = this.messages.findIndex(m => m.uuid === tempUuid)
+        if (idx !== -1 && response?.uuid) {
+          this.messages[idx] = { ...this.messages[idx], ...response }
+        }
+
+        return response
       } catch (err: any) {
         console.error('Failed to send message:', err)
         this.error = err.message || 'Failed to send message'
@@ -115,7 +127,10 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
     },
 
     addMessage(newMessage: Message) {
-      this.messages.push(newMessage)
+      const exists = this.messages.some(m => m.uuid === newMessage.uuid)
+      if (!exists) {
+        this.messages.push(newMessage)
+      }
     },
   },
 })

@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from core.models import (
     Application,
     AIProvider,
+    Integration,
+    AppIntegration,
     NotificationProfile,
 )
 
@@ -37,6 +39,30 @@ class AIProviderFactory(factory.django.DjangoModelFactory):
     metadata = factory.LazyAttribute(lambda obj: {'base_url': 'https://example.com'})
     is_builtin = False
     creator = factory.SubFactory(UserFactory)
+
+
+class IntegrationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Integration
+
+    name = factory.Sequence(lambda n: f"Integration {n}")
+    integration_type = factory.Iterator(['github', 'slack', 'jira'])
+    config = factory.Lambda(lambda: {
+        'token': 'test_token',
+        'api_url': 'https://api.example.com'
+    })
+
+
+class AppIntegrationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AppIntegration
+
+    application = factory.SubFactory(ApplicationFactory)
+    integration = factory.SubFactory(IntegrationFactory)
+    metadata = factory.Lambda(lambda: {
+        'enabled': True,
+        'sync_frequency': 'daily'
+    })
 
 
 class NotificationProfileFactory(factory.django.DjangoModelFactory):

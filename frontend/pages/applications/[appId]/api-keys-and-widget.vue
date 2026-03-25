@@ -1,73 +1,74 @@
 <script setup lang="ts">
-import type {
-  ColumnDef,
-} from '@tanstack/vue-table'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import NewApiKey from '~/components/ApiKey/NewApiKey.vue'
 import type { APIKeyItem } from '~/stores/apiKey'
-import { CircleAlert } from 'lucide-vue-next'
+import { CircleAlert, Key, Calendar, Shield, Trash } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
 import Clipboard from '~/components/Clipboard.vue'
+import C8Item from '~/components/C8Item.vue'
+import { ItemDescription } from '~/components/ui/item'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import C8Dialog from '~/components/C8Dialog.vue'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card'
+import { Label } from '~/components/ui/label'
+import { Switch } from '~/components/ui/switch'
+import { Input } from '~/components/ui/input'
 
 const enablingWidget = ref(false)
+const isDeleteDialogOpen = ref(false)
+const apiKeyToDelete = ref<APIKeyItem | null>(null)
+const loading = ref(false)
 
 const apiKeyStore = useAPIKeyStore()
 const widgetStore = useWidgetStore()
+const user = useUserStore()
 
 const apiKeys = computed(() => apiKeyStore.apiKeys)
 
-const data = computed(() => {
-  return (apiKeys.value || []).map((item: APIKeyItem) => {
-    return {
-      id: item.id,
-      created: item.created?.split('T')[0],
-      name: item.name,
-      permissions: item.permissions?.map(p => p.toUpperCase()).sort().join(", "),
+function deleteAPIKey(apiKey: APIKeyItem) {
+  apiKeyStore.delete(apiKey.id).then((response) => {
+    if (response?.detail === 'deleted') {
+      toast.success('API key deleted')
     }
+  }).catch((error) => {
+    console.error('Delete error:', error)
+    toast.error('Failed to delete API key')
   })
-})
-
-const columns: ColumnDef<unknown, string | number>[] = [
-  { id: 'expander', header: '' },
-  {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: 'permissions',
-    header: 'Permissions',
-    cell: (info) => info.getValue(),
-  },
-  {
-    accessorKey: 'created',
-    header: 'created',
-    cell: (info) => info.getValue(),
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: () => '',
-  },
-]
-
-function deleteRow(id: number) {
-  apiKeyStore.delete(id)
 }
 
-onMounted(() => {
+function openDeleteDialog(apiKey: APIKeyItem) {
+  apiKeyToDelete.value = apiKey
+  isDeleteDialogOpen.value = true
+}
+
+function confirmDelete() {
+  if (apiKeyToDelete.value) {
+    deleteAPIKey(apiKeyToDelete.value)
+  }
+}
+
+function canManageApiKey(apiKey: APIKeyItem) {
+  return user.authUser?.id === apiKey.owner
+}
+
+onMounted(async () => {
+  loading.value = true
   try {
-    apiKeyStore.load()
-  } catch (e) {
+    await apiKeyStore.load()
+  } catch (e: unknown) {
+    console.error(e)
     toast.error('Failed to load API keys')
   }
 
   try {
     widgetStore.widget = null
-    widgetStore.load()
-  } catch (e) {
+    await widgetStore.load()
+  } catch (e: unknown) {
+    console.error(e)
     toast.error('Failed to load widget configuration')
+  } finally {
+    loading.value = false
   }
 })
 
@@ -96,7 +97,8 @@ const newAPIKey = computed(() => apiKeyStore.newAPIKey)
 const widgetEnabled = computed(() => ['enabled', 'active'].includes(widget.value?.status || 'disabled'))
 
 const integrationCode = computed(() => {
-  return widget.value ? `
+  return widget.value
+    ? `
     <iframe
       id="ch8r-widget-iframe"
       src=${widget.value.widget_url}
@@ -120,20 +122,24 @@ const integrationCode = computed(() => {
         }
       })
     <\/script>
-  ` : ''
+  `
+    : ''
 })
 </script>
 
 <template>
-  <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto space-y-6">
-    <div class="w-full space-y-4">
+  <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto space-y-4">
+    <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
           <NewApiKey />
         </div>
       </div>
 
-      <Alert v-if="newAPIKey">
+      <Alert
+        v-if="newAPIKey"
+        class="py-4"
+      >
         <CircleAlert class="h-4 w-4" />
         <AlertTitle>Don't forget to copy your new API Key</AlertTitle>
         <AlertDescription>
@@ -154,28 +160,81 @@ const integrationCode = computed(() => {
         </AlertDescription>
       </Alert>
 
-      <div v-if="apiKeyStore.loading" class="text-center py-8">Loading...</div>
+      <div
+        v-if="loading"
+        class="text-center py-8"
+      >
+        Loading...
+      </div>
 
       <div
-        v-if="data.length === 0"
+        v-if="!loading && apiKeys.length === 0"
         class="text-center py-8"
       >
         Your API keys are empty.
       </div>
-      <C8Table
-        v-else
-        :data="data"
-        :columns="columns"
-        :delete-fn="deleteRow"
-        :expandable="false"
-      />
+
+      <div
+        v-if="!loading && apiKeys.length > 0"
+        class="space-y-4"
+      >
+        <C8Item
+          v-for="(apiKey, index) in apiKeys"
+          :key="index"
+          :icon="Key"
+          container-class="w-full"
+          item-class="w-full"
+        >
+          <template #title>
+            {{ apiKey.name }}
+          </template>
+          <template #details>
+            <ItemDescription>
+              <div class="inline-flex space-x-3">
+                <div class="flex items-center space-x-1">
+                  <Shield class="w-4 h-4" />
+                  <div>{{ apiKey.permissions?.map(p => p.toUpperCase()).sort().join(', ') }}</div>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <Calendar class="w-4 h-4" />
+                  <div>{{ apiKey.created?.split('T')[0] }}</div>
+                </div>
+              </div>
+            </ItemDescription>
+          </template>
+
+          <template #dropdown>
+            <DropdownMenuItem
+              :disabled="!canManageApiKey(apiKey)"
+              class="text-destructive"
+              @click="openDeleteDialog(apiKey)"
+            >
+              <Trash class="h-4 w-4 text-destructive" />
+              Delete
+            </DropdownMenuItem>
+          </template>
+        </C8Item>
+      </div>
+
+      <C8Dialog
+        v-model:open="isDeleteDialogOpen"
+        :title="`Delete API Key ${apiKeyToDelete?.name}`"
+        :confirm-text="'Delete'"
+        :destructive="true"
+        @confirm="confirmDelete"
+      >
+        <template #description>
+          <div>
+            Are you sure you want to delete the API key <span class="font-bold">{{ apiKeyToDelete?.name }}</span>?
+          </div>
+        </template>
+      </C8Dialog>
     </div>
     <div class="space-y-4">
       <Card class="w-full">
         <CardHeader>
           <CardTitle>Widget Integration</CardTitle>
           <CardDescription>Configure and manage widget integration settings.</CardDescription>
-
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="flex items-center">
@@ -187,7 +246,10 @@ const integrationCode = computed(() => {
                 Allow widget to be embedded on external websites.
               </p>
             </div>
-            <Switch v-model="widgetEnabled" @click="toggleWidget" />
+            <Switch
+              v-model="widgetEnabled"
+              @click="toggleWidget"
+            />
           </div>
 
           <div v-if="widget && widgetEnabled">

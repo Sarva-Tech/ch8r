@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { config } from '../store/signals';
+import { computePositionStyles } from '../utils/position';
 import { Header } from './Header';
 import { AssistantChat } from './AssistantChat';
 import { SupportForm } from './SupportForm';
@@ -36,17 +37,14 @@ export function ChatPanel({ onClose, showSupportForm = false }: ChatPanelProps) 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const position = config.value?.position ?? 'bottom-right';
-  const posClass = position === 'bottom-left' ? 'left-4' : 'right-4';
-
   return (
     <div
       ref={panelRef}
       role="dialog"
       aria-modal="true"
       aria-label="Chat panel"
-      class={`fixed bottom-20 ${posClass} w-[380px] h-[560px] rounded-xl shadow-xl bg-white flex flex-col overflow-hidden ch8r-panel-enter`}
-      style={{ zIndex: 9998 }}
+      class="w-[380px] h-[560px] rounded-xl shadow-xl bg-white flex flex-col overflow-hidden ch8r-panel-enter"
+      style={computePositionStyles(config.value).panel}
     >
       <Header
         appName={config.value?.appName}

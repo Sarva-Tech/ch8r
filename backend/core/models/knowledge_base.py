@@ -15,7 +15,8 @@ class KnowledgeBase(models.Model):
     SOURCE_CHOICES = [
         ('url', 'URL'),
         ('file', 'File'),
-        ('text', 'Text')
+        ('text', 'Text'),
+        ('github', 'GitHub')
     ]
 
     id = models.AutoField(primary_key=True)

@@ -1,11 +1,21 @@
 import { h, render } from 'preact';
 import { App } from './components/App';
 import { config } from './store/signals';
-import type { WidgetConfig } from './types/index';
+import type { WidgetConfig, WidgetPosition } from './types/index';
 import widgetCss from './styles/widget.css?raw';
 
+const VALID_POSITIONS: WidgetPosition[] = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
+
+export function parsePosition(raw: string | null): WidgetPosition {
+  return VALID_POSITIONS.includes(raw as WidgetPosition) ? (raw as WidgetPosition) : 'bottom-right';
+}
+
+export function parseOffset(raw: string | null): number {
+  const n = parseInt(raw ?? '', 10);
+  return Number.isFinite(n) && n >= 0 ? n : 16;
+}
+
 (function () {
-  // Read config from window global or script data attributes
   const currentScript = document.currentScript as HTMLScriptElement | null;
 
   let parsedConfig: WidgetConfig | null = null;
@@ -20,7 +30,11 @@ import widgetCss from './styles/widget.css?raw';
         appUuid,
         token,
         accentColor: currentScript.getAttribute('data-accent-color') ?? undefined,
-        position: (currentScript.getAttribute('data-position') as WidgetConfig['position']) ?? undefined,
+        position: parsePosition(currentScript.getAttribute('data-position')),
+        offsetTop: parseOffset(currentScript.getAttribute('data-offset-top')),
+        offsetBottom: parseOffset(currentScript.getAttribute('data-offset-bottom')),
+        offsetLeft: parseOffset(currentScript.getAttribute('data-offset-left')),
+        offsetRight: parseOffset(currentScript.getAttribute('data-offset-right')),
         title: currentScript.getAttribute('data-title') ?? undefined,
         launcherIconUrl: currentScript.getAttribute('data-launcher-icon-url') ?? undefined,
         aiGreeting: currentScript.getAttribute('data-ai-greeting') ?? undefined,
@@ -38,28 +52,22 @@ import widgetCss from './styles/widget.css?raw';
     return;
   }
 
-  // Set config signal
   config.value = parsedConfig;
 
-  // Create host element and attach Shadow DOM
   const hostEl = document.createElement('div');
   hostEl.id = 'ch8r-widget-root';
   const shadow = hostEl.attachShadow({ mode: 'open' });
 
-  // Inject styles
   const style = document.createElement('style');
   style.textContent = widgetCss;
   shadow.appendChild(style);
 
-  // Create Preact render target
   const appRoot = document.createElement('div');
   shadow.appendChild(appRoot);
 
-  // Apply theme CSS vars
   hostEl.style.setProperty('--ch8r-accent', parsedConfig.accentColor ?? '#6366f1');
   hostEl.style.setProperty('--ch8r-accent-fg', '#ffffff');
 
-  // Append to body and render
   document.body.appendChild(hostEl);
   render(<App shadowHost={hostEl} />, appRoot);
 })();

@@ -9,7 +9,7 @@
     <form class="space-y-5" @submit.prevent="">
       <C8Select
         :options="integrationTypes"
-        :model-value="selectedIntegrationType"
+        :model-value="selectedIntegrationType?.value"
         label="Type"
         @update:model-value="(val) => (selectedIntegrationType = val)"
       />
@@ -17,7 +17,7 @@
       <C8Select
         :options="integrationProviders"
         :model-value="selectedIntegrationProvider"
-        label="Type"
+        label="Provider"
         @update:model-value="(val) => (selectedIntegrationProvider = val)"
       />
 
@@ -57,6 +57,7 @@ import RequiredLabel from '~/components/RequiredLabel.vue'
 import C8Select from '~/components/C8Select.vue'
 import { useIntegrationStore } from '~/stores/integration'
 import PMSGitHub from '~/components/Integration/PMSGitHub.vue'
+import GitHubIcon from '~/components/icons/GitHubIcon.vue'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -87,9 +88,9 @@ const selectedIntegrationType = ref(integrationTypes.value[0])
 
 const providerMap: Record<
   string,
-  { label: string; icon?: string }
+  { label: string; icon?: any }
 > = {
-  github: { label: "GitHub", icon: "github-icon" },
+  github: { label: "GitHub", icon: GitHubIcon },
   jira: { label: "Jira", icon: "jira-icon" },
 }
 
@@ -97,7 +98,7 @@ const integrationProviders = computed(() => {
   if (!selectedIntegrationType.value) return []
 
   const providers =
-    supportedIntegrations.value.supported_providers[selectedIntegrationType.value.value] || []
+    supportedIntegrations.value?.supported_providers?.[selectedIntegrationType.value.value] || []
 
   return providers.map((p: string) => {
     const mapped = providerMap[p]
@@ -105,11 +106,12 @@ const integrationProviders = computed(() => {
       label: mapped?.label || p,
       value: p,
       icon: mapped?.icon || undefined,
+      logo: mapped?.logo || undefined,
     }
   })
 })
 
-const selectedIntegrationProvider = ref(integrationProviders.value[0])
+const selectedIntegrationProvider = ref(integrationProviders.value[0]?.value || '')
 
 const schema = z.object({
   name: z.string().nonempty({ message: 'Required' }).min(1).max(255),
@@ -148,6 +150,7 @@ watch(
   selectedIntegrationType,
   (val) => {
     type.value = val.value
+    selectedIntegrationProvider.value = integrationProviders.value[0]?.value || ''
   },
   { immediate: true },
 )
@@ -155,7 +158,7 @@ watch(
 watch(
   selectedIntegrationProvider,
   (val) => {
-    provider.value = val.value
+    provider.value = val
   },
   { immediate: true },
 )
@@ -163,7 +166,7 @@ watch(
 const dynamicIntegrationComponent = computed(() => {
   if (
     selectedIntegrationType.value?.value === "pms" &&
-    selectedIntegrationProvider.value?.value === "github"
+    selectedIntegrationProvider.value === "github"
   ) {
     return PMSGitHub
   }

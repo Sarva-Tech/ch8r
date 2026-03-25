@@ -102,8 +102,7 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
             fields_to_update.append("path")
 
         kb.save(update_fields=fields_to_update)
-
-        # TODO: We need to check whether text & embedding models are configured here as well
+        
         process_kb.delay([kb.id])
 
         return Response(KnowledgeBaseViewSerializer(kb).data)

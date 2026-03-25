@@ -9,9 +9,9 @@ load_dotenv(BASE_DIR / '.env')
 SECRET_KEY = os.environ.get('APP_SECRET_KEY')
 CLOSED_ALPHA_SIGN_UPS = os.environ.get('CLOSED_ALPHA_SIGN_UPS')
 
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
 
 ASGI_APPLICATION = "config.asgi.application"
 
@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'channels',
     'core',
+    'github_data',
     'corsheaders',
     'rest_framework_api_key',
 ]

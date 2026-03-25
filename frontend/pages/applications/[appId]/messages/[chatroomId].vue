@@ -1,6 +1,7 @@
 <template>
   <div class="flex flex-col">
     <div
+      ref="messagesContainer"
       class="overflow-y-auto pt-[72px] pb-[120px] px-6 space-y-6"
       :style="`height: calc(100vh - 64px - 112px);`"
     >
@@ -9,25 +10,24 @@
         :key="message.id"
         :class="cn('flex gap-3 items-start', isCurrentUser(message.sender_identifier) ? 'flex-row-reverse' : 'flex-row')"
       >
-        <!-- Avatar -->
         <div class="flex-shrink-0 mt-1">
           <div
             v-if="isLLMAgent(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            <Bot class="w-4 h-4 text-violet-600 dark:text-violet-300" />
+            <Bot class="w-4 h-4 text-primary" />
           </div>
           <div
             v-else-if="isRegisteredUser(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            <UserRound class="w-4 h-4 text-blue-600 dark:text-blue-300" />
+            <UserRound class="w-4 h-4 text-primary" />
           </div>
           <div
             v-else
-            class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"
           >
-            <Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+            <Globe class="w-4 h-4 text-accent-foreground" />
           </div>
         </div>
 
@@ -39,25 +39,28 @@
           <span class="text-xs text-muted-foreground px-1">{{ message.sender_identifier }}</span>
           <div
             :class="cn(
-              'rounded-lg px-3 py-2 text-sm',
+              'rounded-lg px-3 py-2 text-sm overflow-hidden',
               isCurrentUser(message.sender_identifier)
                 ? 'bg-primary text-primary-foreground'
                 : isLLMAgent(message.sender_identifier)
-                  ? 'bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800'
+                  ? 'bg-primary/10 border border-primary/20'
                   : 'bg-muted',
             )"
           >
-            <div v-html="md.render(message.message)" />
+            <div
+              class="overflow-x-auto max-w-full"
+              v-html="md.render(preprocessMarkdown(message.message))"
+            />
           </div>
           <div class="flex items-center gap-1 px-1">
-            <template v-if="message.ai_provider_id && message.model && !message.is_internal">
+            <template v-if="message.ai_provider_id && message.model">
               <component
                 :is="useAIProviderIcon(getMessageProvider(message.ai_provider_id)?.provider ?? '').value"
                 class="w-3 h-3 shrink-0"
               />
             </template>
             <span class="text-xs text-muted-foreground whitespace-nowrap">
-              <template v-if="message.ai_provider_id && message.model && !message.is_internal">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
+              <template v-if="message.ai_provider_id && message.model">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
             </span>
             <span
               v-if="message.is_internal"
@@ -124,6 +127,7 @@
                 v-bind="componentField"
                 placeholder="Message"
                 class="max-h-40 overflow-y-auto resize-none"
+                @keydown="handleMessageKeydown"
               />
               <FormMessage />
             </FormItem>
@@ -135,38 +139,53 @@
               <div class="flex items-center gap-4">
                 <FormField
                   v-slot="{ componentField, handleChange }"
-                  name="is_internal"
                   type="checkbox"
+                  name="is_internal"
                   :unchecked-value="false"
                 >
                   <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                    <Checkbox
+                    <Switch
                       id="isInternal"
                       v-bind="componentField"
                       @update:checked="handleChange"
                     />
                     <div class="grid gap-0.5">
-                      <Label for="isInternal">Internal</Label>
+                      <Label for="isInternal">Visibility</Label>
                       <p class="text-muted-foreground text-xs">
-                        {{ form.values.is_internal ? 'Only visible to dashboard users' : 'Visible to all participants' }}
+                        {{ form.values.is_internal ? 'Internal note (team only)' : 'Visible to all participants' }}
                       </p>
                     </div>
                   </FormItem>
                 </FormField>
 
                 <FormField
-                  v-slot="{ componentField }"
-                  name="mode"
+                  v-slot="{ componentField, handleChange }"
+                  type="checkbox"
+                  name="ai_mode"
+                  :unchecked-value="false"
                 >
                   <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                    <Label class="text-sm whitespace-nowrap">Mode</Label>
-                    <C8Select
-                      :options="modeOptions"
-                      placeholder="Mode"
-                      container-class="space-y-0"
-                      trigger-class="h-8 w-28"
+                    <Switch
+                      id="aiMode"
                       v-bind="componentField"
+                      :disabled="!form.values.is_internal"
+                      @update:checked="handleChange"
                     />
+                    <div class="grid gap-0.5">
+                      <Label for="aiMode">AI Behavior</Label>
+                      <p
+                        v-if="form.values.is_internal"
+                        class="text-muted-foreground text-xs"
+                      >
+                        {{ form.values.ai_mode ? 'This will trigger an AI response' : 'This won’t trigger an AI response' }}
+                      </p>
+                      <p
+                        v-else
+                        class="text-muted-foreground text-xs"
+                      >
+                        AI replies are disabled for public messages
+                      </p>
+                    </div>
                   </FormItem>
                 </FormField>
               </div>
@@ -176,9 +195,14 @@
                 :disabled="disabled"
                 :loading="isSubmitting"
                 type="submit"
-                :icon="Send"
                 @click="send"
-              />
+              >
+                <template #icon-right>
+                  <KbdGroup>
+                    <Kbd>Ctrl + ⏎</Kbd>
+                  </KbdGroup>
+                </template>
+              </C8Button>
             </div>
           </div>
         </form>
@@ -190,19 +214,21 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
 import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 
+import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Send, Bot, UserRound, Globe } from 'lucide-vue-next'
-import GeminiIcon from '~/components/icons/GeminiIcon.vue'
-import { Button } from '~/components/ui/button'
-import { computed, onMounted, ref, watch } from 'vue'
+import { Bot, UserRound, Globe } from 'lucide-vue-next'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
-import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '~/components/ui/form'
-import { Checkbox } from '~/components/ui/checkbox'
+import { FormField, FormItem, FormMessage } from '~/components/ui/form'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import C8Combobox from '~/components/C8Combobox.vue'
 import C8Button from '~/components/C8Button.vue'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
@@ -212,6 +238,19 @@ import { z } from 'zod'
 
 const route = useRoute()
 const { chatroomId } = route.params
+
+const messagesContainer = ref<HTMLElement>()
+
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    nextTick(() => {
+      messagesContainer.value?.scrollTo({
+        top: messagesContainer.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    })
+  }
+}
 
 const userStore = useUserStore()
 const liveUpdateStore = useLiveUpdateStore()
@@ -230,9 +269,62 @@ const lastUsedAIModel = computed(() => chatroomMessagesStore.lastUsedAIModel)
 
 const { state, isMobile } = useSidebar()
 
-const md = new MarkdownIt()
+const md = new MarkdownIt({
+  breaks: true,
+  linkify: true,
+  typographer: true,
+  html: true,
+  highlight: function (str: string, lang: string) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value
+      } catch (__) {}
+    }
+    return ''
+  }
+})
 
-const chatroomMode = computed(() => chatroomMessagesStore.chatroomMode)
+const preprocessMarkdown = (text: string) => {
+  let processed = text
+
+  const protectedTexts: string[] = []
+
+  processed = processed.replace(/```[\s\S]*?```/g, (match) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(match)
+    return placeholder
+  })
+
+  processed = processed.replace(/`[^`]+`/g, (match) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(match)
+    return placeholder
+  })
+
+  processed = processed.replace(/\*\*([^*]+)\*\*/g, (match, content) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(`**${content}**`)
+    return placeholder
+  })
+
+  processed = processed.replace(/\b\w+-\w+\b/g, (match) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(match)
+    return placeholder
+  })
+
+  processed = processed.replace(/:\s*-\s*/g, ':\n\n- ')
+
+  processed = processed.replace(/([.!?])\s*-\s*/g, '$1\n\n- ')
+
+  processed = processed.replace(/([a-z.!?])\s*-\s*/g, '$1\n\n- ')
+
+  protectedTexts.forEach((content, index) => {
+    processed = processed.replace(`__PROTECTED_${index}__`, content)
+  })
+
+  return processed
+}
 
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem',
@@ -244,7 +336,7 @@ const schema = z.object({
   ai_provider: z.string().min(1, { message: 'Please select an AI provider' }),
   models: z.array(z.string()).min(1, { message: 'Please select a model' }),
   is_internal: z.boolean(),
-  mode: z.enum(['ai', 'direct']).nullable().optional(),
+  ai_mode: z.boolean(),
   message: z.string().min(1, { message: 'Please enter a message' }),
   sender_identifier: z.string(),
   chatroom_identifier: z.string(),
@@ -255,8 +347,8 @@ const form = useForm({
   initialValues: {
     ai_provider: undefined as string | undefined,
     models: [] as string[],
-    is_internal: false as boolean,
-    mode: null as 'ai' | 'direct' | null,
+    is_internal: chatroomId === NEW_CHAT ? true : false as boolean,
+    ai_mode: chatroomId === NEW_CHAT ? true : false as boolean,
     message: '',
     sender_identifier: userStore.userIdentifier,
     chatroom_identifier: chatroomId as string,
@@ -264,7 +356,7 @@ const form = useForm({
     ai_provider: string | undefined
     models: string[]
     is_internal: boolean
-    mode: 'ai' | 'direct' | null
+    ai_mode: boolean
     message: string
     sender_identifier: string
     chatroom_identifier: string
@@ -275,30 +367,18 @@ const { isSubmitting } = form
 
 const selectedProviderId = computed(() => form.values.ai_provider ? parseInt(form.values.ai_provider) : 0)
 
-// When internal is checked, Direct mode is not applicable — reset to null (no AI)
 watch(() => form.values.is_internal, (isInternal) => {
-  if (isInternal && form.values.mode === 'direct') {
-    form.setFieldValue('mode', null)
+  if (!isInternal) {
+    form.setFieldValue('ai_mode', false)
   }
-})
-
-// Mode options: Direct is hidden when internal is checked
-const modeOptions = computed(() => {
-  const opts: { label: string; value: string | null }[] = [
-    { label: 'None', value: null },
-    { label: 'AI', value: 'ai' },
-  ]
-  if (!form.values.is_internal) {
-    opts.push({ label: 'Direct', value: 'direct' })
-  }
-  return opts
 })
 
 const disabled = computed(() => {
   const values = form.values
   return !(
-    (values.ai_provider as string)
-    && (values.models as string[]).length > 0
+    values.ai_provider?.trim()
+    && (values.models as string[])?.length > 0
+    && values.message?.trim()
   )
 })
 
@@ -346,11 +426,10 @@ const send = form.handleSubmit(async (values) => {
       values.is_internal,
       selectedProviderId.value,
       values.models?.[0],
-      values.mode ?? undefined,
+      values.ai_mode,
     )
     form.setFieldValue('message', '')
 
-    // Update the sidebar preview immediately with the sent message
     const targetChatroomId = response?.chatroom_identifier ?? chatroomId as string
     chatroomsStore.updateLastMessage(targetChatroomId, {
       id: Date.now(),
@@ -359,7 +438,13 @@ const send = form.handleSubmit(async (values) => {
       message: values.message,
       metadata: {},
       created_at: new Date().toISOString(),
+      is_internal: values.is_internal,
+      ai_mode: values.ai_mode,
+      ai_provider_id: selectedProviderId.value,
+      model: values.models?.[0],
     })
+
+    scrollToBottom()
 
     if (selectedChatroom?.value?.uuid === NEW_CHAT) {
       const newChatroomId = response?.chatroom_identifier
@@ -375,8 +460,15 @@ const send = form.handleSubmit(async (values) => {
   }
 })
 
+const handleMessageKeydown = (e: KeyboardEvent) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault()
+    send()
+  }
+}
+
 const unsubscribe = liveUpdateStore.subscribe((msg) => {
-  if (msg.type === NEW_MESSAGE_UPDATE) {
+  if (msg.type === NEW_MESSAGE_UPDATE && msg.data.chatroom_identifier) {
     if (msg.data.chatroom_identifier === chatroomId) {
       chatroomMessagesStore.addMessage(msg.data)
     } else {
@@ -388,6 +480,21 @@ const unsubscribe = liveUpdateStore.subscribe((msg) => {
 onBeforeUnmount(() => {
   unsubscribe()
 })
+
+const getLastMessageFromCurrentUser = () => {
+  const currentUserMessages = messages.value.filter(msg =>
+    msg.sender_identifier === userStore.userIdentifier
+  )
+  return currentUserMessages.length > 0 ? currentUserMessages[currentUserMessages.length - 1] : null
+}
+
+const setFormValuesFromLastMessage = () => {
+  const lastMessage = getLastMessageFromCurrentUser()
+  if (lastMessage) {
+    form.setFieldValue('is_internal', lastMessage.is_internal || false)
+    form.setFieldValue('ai_mode', lastMessage.ai_mode || false)
+  }
+}
 
 onMounted(async () => {
   chatroomsStore.markRead(chatroomId as string)
@@ -402,9 +509,6 @@ onMounted(async () => {
     const lastUsedProvider = lastUsedAIProvider.value
     const appProviders = AppAIProviderStore.existingAppAIProviderConfigs
 
-    // Sync mode from loaded chatroom (default to null = no AI for dashboard sends)
-    form.setFieldValue('mode', null)
-
     if (lastUsedProvider) {
       form.setFieldValue('ai_provider', lastUsedProvider.id.toString())
       form.setFieldValue('models', [lastUsedAIModel.value ?? ''])
@@ -417,6 +521,9 @@ onMounted(async () => {
         form.setFieldValue('models', [responseTextProvider.external_model_id ?? ''])
       }
     }
+
+    setFormValuesFromLastMessage()
+    scrollToBottom()
   }
   catch (e: unknown) {
     console.error(e)
@@ -424,3 +531,97 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+:deep(.prose) {
+  line-height: 1.6;
+}
+
+:deep(p) {
+  margin-bottom: 0.75rem;
+}
+
+:deep(ul) {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+:deep(li) {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+  list-style-position: outside;
+}
+
+:deep(strong) {
+  font-weight: 600;
+}
+
+:deep(h1, h2, h3, h4, h5, h6) {
+  margin: 1.5rem 0 0.75rem 0;
+  font-weight: 600;
+}
+
+:deep(br) {
+  content: "";
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+:deep(pre) {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-width: 100%;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:deep(code) {
+  background-color: hsl(var(--muted));
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+:deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+:deep(.hljs-keyword) {
+  color: #0000ff;
+  font-weight: bold;
+}
+
+:deep(.hljs-string) {
+  color: #008000;
+}
+
+:deep(.hljs-comment) {
+  color: #808080;
+  font-style: italic;
+}
+
+:deep(.hljs-tag) {
+  color: #0000ff;
+}
+
+:deep(.hljs-attr) {
+  color: #ff0000;
+}
+</style>

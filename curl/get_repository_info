@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# GitHub API - Get Repository Information
+# Usage: ./get_repository_info.sh owner repo
+
+OWNER=${1:-"owner"}
+REPO=${2:-"repo"}
+TOKEN=${GITHUB_TOKEN:-"your_github_token_here"}
+
+curl -X GET \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Accept: application/vnd.github+json" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  -H "User-Agent: Ch8r-GitHub-Ingestion/1.0" \
+  "https://api.github.com/repos/${OWNER}/${REPO}"

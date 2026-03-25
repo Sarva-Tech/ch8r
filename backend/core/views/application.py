@@ -37,6 +37,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         # TODO: may be we need to handle proper log and error messages if default
         # TODO: models are not configured yet.
+
         AppModel.configure_defaults(app_instance)
 
         parsed_kb_items = parse_kb_from_request(request)
@@ -110,9 +111,8 @@ class UserChatRoomsView(APIView):
         if not sender_identifier:
             return Response({'detail': 'sender_identifier is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        chat_type = request.query_params.get('type')  # 'human' or 'ai'
+        chat_type = request.query_params.get('type')
 
-        # Find chatrooms where this sender is a participant
         chatroom_ids = ChatroomParticipant.objects.filter(
             user_identifier=sender_identifier,
             chatroom__application=app,
@@ -121,14 +121,12 @@ class UserChatRoomsView(APIView):
         chatrooms = ChatRoom.objects.filter(id__in=chatroom_ids)
 
         if chat_type == 'human':
-            # Chatrooms that have a human_agent participant
             human_chatroom_ids = ChatroomParticipant.objects.filter(
                 chatroom_id__in=chatroom_ids,
                 role='human_agent',
             ).values_list('chatroom_id', flat=True)
             chatrooms = chatrooms.filter(id__in=human_chatroom_ids)
         elif chat_type == 'ai':
-            # Chatrooms that have an agent (AI) participant but NOT a human_agent
             human_chatroom_ids = ChatroomParticipant.objects.filter(
                 chatroom_id__in=chatroom_ids,
                 role='human_agent',

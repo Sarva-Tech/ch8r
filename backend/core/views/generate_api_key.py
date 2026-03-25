@@ -18,7 +18,8 @@ class GenerateAPIKeyView(APIView):
                 "name": api_key_instance.name,
                 "application": api_key_instance.application.id,
                 "permissions": api_key_instance.permissions,
-                "created": api_key_instance.created
+                "created": api_key_instance.created,
+                "owner": api_key_instance.owner.id
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -35,7 +36,7 @@ class GenerateAPIKeyView(APIView):
             return Response({"detail": "You do not have permission to delete this API key."}, status=status.HTTP_403_FORBIDDEN)
 
         api_key_instance.delete()
-        return Response({"detail": "API key deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"detail": "deleted"}, status=status.HTTP_200_OK)
 
     def get(self, request, application_uuid=None):
         if application_uuid is None:

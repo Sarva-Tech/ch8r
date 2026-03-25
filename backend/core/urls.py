@@ -6,13 +6,13 @@ from rest_framework_nested.routers import NestedDefaultRouter
 from core.views import (
     UserRegisterView, VerifyEmailView, KnowledgeBaseViewSet, ChatRoomMessagesView,
     MeView, GenerateAPIKeyView,
-    IntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
+    IntegrationViewSet, AppIntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
 )
 from core.views.change_password import ChangePasswordView
 from core.views.resend_verification import ResendVerificationView
 from core.views.custom_auth import CustomAuthToken
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView, UserChatRoomsView
-from core.views.chatroom import ChatRoomDetailView, ChatRoomModeView
+from core.views.chatroom import ChatRoomDetailView
 from core.views.configure_app import ConfigureAppIntegrationView, LoadAppConfigurationView
 from core.views.integration import supported_integrations
 from core.views.llm_model import LLMModelViewSet
@@ -25,13 +25,16 @@ from core.views.forgot_password import ForgotPasswordView
 from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
 from core.views.ai_provider import AIProviderViewSet
 from core.views.app_ai_provider import AppAIProviderViewSet
+from core.views.github_ingestion import GitHubIngestionViewSet
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
 router.register(r'ai-providers', AIProviderViewSet, basename='ai-provider')
 router.register(r'notification-profiles', NotificationProfileViewSet, basename='notificationprofile')
 router.register(r'models', LLMModelViewSet, basename='model'),
-router.register(r'integrations', IntegrationViewSet, basename='integration'),
+router.register(r'integrations', IntegrationViewSet, basename='integration')
+router.register(r'app-integrations', AppIntegrationViewSet, basename='app-integration')
+router.register(r'github-ingestion', GitHubIngestionViewSet, basename='github-ingestion'),
 
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')
 nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='application-knowledge-bases')
@@ -57,12 +60,6 @@ urlpatterns = [
         'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/messages/',
         ChatRoomMessagesView.as_view(),
         name='chatroom-messages'
-    ),
-
-    path(
-        'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/mode/',
-        ChatRoomModeView.as_view(),
-        name='chatroom-mode'
     ),
 
     path('applications/<uuid:application_uuid>/chatrooms/', ApplicationChatRoomsPreviewView.as_view(),

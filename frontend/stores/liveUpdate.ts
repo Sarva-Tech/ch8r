@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
+import type { Message } from '@/stores/chatroomMessages'
 const config = useRuntimeConfig()
 
 type SocketMessage = {
   type: string
-  data: never
+  data: Message
 }
 
 type Listener = (data: SocketMessage) => void

@@ -59,7 +59,6 @@ const handleLogin = async () => {
     toast.success('Login successful!')
     navigateTo('/')
   } catch (err: any) {
-    console.log(err, "error")
 
     if (err.status === 403) {
       if (err?.errors?.is_verified === false) {
@@ -136,7 +135,6 @@ onMounted(async () => {
     toast.success('Email verified! Logged in successfully.')
     navigateTo('/')
   } catch (err: any) {
-    console.log(err,"error")
 
     if (err.status === 403) {
       dialogMessage.value = 'Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries'
