@@ -16,7 +16,6 @@ class GitHubGraphQLClient:
         self.token = token
         self.endpoint = "https://api.github.com/graphql"
         
-        # Configure transport with proper headers
         self.transport = RequestsHTTPTransport(
             url=self.endpoint,
             headers={
@@ -48,18 +47,15 @@ class GitHubGraphQLClient:
             except TransportServerError as e:
                 error_data = str(e)
                 
-                # Check for rate limiting
                 if "rate limit" in error_data.lower() or "api rate limit exceeded" in error_data.lower():
                     logger.warning(f"Rate limit hit, waiting {retry_delay * (2 ** attempt)} seconds")
                     time.sleep(retry_delay * (2 ** attempt))
                     continue
                 
-                # Check for authentication errors
                 if "bad credentials" in error_data.lower() or "unauthorized" in error_data.lower():
                     logger.error(f"Authentication error: {e}")
                     raise
                 
-                # Other GraphQL errors
                 logger.error(f"GraphQL execution error: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (2 ** attempt))
@@ -91,14 +87,9 @@ class GitHubGraphQLClient:
             since: ISO datetime string for filtering by creation date
             first: Number of items per page
             after_cursor: Pagination cursor
-            
-        Returns:
-            Dictionary containing issues and pagination info
-        """
         if states is None:
             states = ["OPEN", "CLOSED"]
 
-        # Convert states to GraphQL enum format
         state_filter = "[" + ", ".join([f"{state.upper()}" for state in states]) + "]"
 
         query = """
