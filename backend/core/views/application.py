@@ -35,6 +35,9 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         create_serializer.is_valid(raise_exception=True)
         app_instance = create_serializer.save(owner=request.user)
 
+        # TODO: may be we need to handle proper log and error messages if default
+        # TODO: models are not configured yet.
+
         AppModel.configure_defaults(app_instance)
 
         parsed_kb_items = parse_kb_from_request(request)
@@ -108,7 +111,7 @@ class UserChatRoomsView(APIView):
         if not sender_identifier:
             return Response({'detail': 'sender_identifier is required.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        chat_type = request.query_params.get('type')  
+        chat_type = request.query_params.get('type')
 
         chatroom_ids = ChatroomParticipant.objects.filter(
             user_identifier=sender_identifier,
