@@ -40,7 +40,6 @@ export function showError(error: any, customMessage?: string) {
     return
   }
 
-  // Handle nested config errors (e.g. { config: { webhookUrl: '...' } })
   if (error.errors?.config) {
     if (typeof error.errors.config === 'object' && error.errors.config.webhookUrl) {
       toast.error(customMessage || error.errors.config.webhookUrl)
