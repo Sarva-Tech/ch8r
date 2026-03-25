@@ -39,7 +39,6 @@ const onSubmit = handleSubmit(async (values) => {
     toast.success('Password reset link sent! Check your email.')
     await router.push('/login')
   } catch (e: never) {
-    console.log(e.errors)
     toast.error('Failed to send password reset link.')
   }
 })

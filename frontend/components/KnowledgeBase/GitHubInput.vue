@@ -119,12 +119,9 @@ const form = ref<GitHubIngestionRequest>({
 
 const integrationName = computed(() => {
   const appIntegrations = integrationStore.appIntegrations || []
-  console.log('GitHubInput - appIntegrations:', appIntegrations)
   const githubIntegration = appIntegrations.find(
     (appInt: any) => appInt.integration.provider === 'github'
   )
-  console.log('GitHubInput - githubIntegration:', githubIntegration)
-  console.log('GitHubInput - integrationName:', githubIntegration?.integration.name)
   return githubIntegration?.integration.name
 })
 
@@ -136,13 +133,10 @@ const isValid = computed(() => {
 
 const getGitHubIntegrationId = () => {
   const appIntegrations = integrationStore.appIntegrations || []
-  console.log('getGitHubIntegrationId - appIntegrations:', appIntegrations)
   const githubIntegration = appIntegrations.find(
     (appInt: any) => appInt.integration.provider === 'github'
   )
-  console.log('getGitHubIntegrationId - githubIntegration:', githubIntegration)
   const integrationId = githubIntegration?.id || 0
-  console.log('getGitHubIntegrationId - integrationId:', integrationId)
   return integrationId
 }
 
