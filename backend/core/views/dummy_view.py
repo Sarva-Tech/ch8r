@@ -8,11 +8,6 @@ from core.permissions import HasAPIKeyPermission
 
 
 class DummyView(APIView):
-#     # authentication_classes = [APIKeyAuthentication]
-#     permission_classes = [HasAPIAccessPermission]
-#     api_action = 'widget_chat'
-#
-#     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsAuthenticated | HasAPIKeyPermission]
     def get(self, request, application_uuid):
         return Response({

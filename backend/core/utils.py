@@ -50,8 +50,6 @@ def normalize_model_name_by_provider(model: str, provider: str) -> str:
         Normalized model name
     """
     if provider.lower() == 'gemini':
-        # Remove 'model/' prefix for Gemini models
         if model.startswith('model/'):
             return model[6:]
-    # For other providers, return as-is
     return model

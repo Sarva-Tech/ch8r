@@ -40,7 +40,6 @@ class ChatRoomPreviewSerializer(serializers.ModelSerializer):
         fields = ['uuid', 'name', 'last_message', 'has_unread']
 
     def get_last_message(self, chatroom):
-        # Widget users (non-dashboard) must not see internal messages in the preview
         user_identifier = self.context.get('user_identifier', '')
         is_dashboard = user_identifier.startswith('dashboard_')
         qs = chatroom.messages.order_by('-created_at')

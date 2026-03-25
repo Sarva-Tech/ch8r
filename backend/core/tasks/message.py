@@ -144,73 +144,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
             "reason_for_escalation": error_message,
             "error_details": error_message,
         }
-    #
-    # tools = get_app_integrations(app)
-    # logger.info("Tools: %s ", tools)
-    # logger.info("Conversation: %s", conversation)
-    # tool_call_response = client.chat(
-    #     messages=conversation,
-    #     model=text_model.model_name,
-    #     tools=tools
-    # )
-    #
-    # logger.info("Tool_call_response: %s", tool_call_response)
-    # tool_results = {}
-    #
-    # for choice in tool_call_response.choices:
-    #     msg = choice.message
-    #     if msg.tool_calls:
-    #         for tool_call in msg.tool_calls:
-    #             tool_name = tool_call.function.name
-    #
-    #             args = (
-    #                 json.loads(tool_call.function.arguments)
-    #                 if isinstance(tool_call.function.arguments, str)
-    #                 else tool_call.function.arguments
-    #             )
-    #
-    #             tool_results[tool_name] = execute_tool_call(app, tool_name, **args)
-    #             logger.info(f"Tool: {tool_name}, Result: {tool_results[tool_name]}")
-    #
-    #             conversation.append({
-    #                 "role": "assistant",
-    #                 "type": "function_call_output",
-    #                 "call_id": tool_call.id,
-    #                 "content": json.dumps(tool_results[tool_name]),
-    #             })
-    #
-    # llm_response = client.chat(
-    #     conversation,
-    #     model=text_model.model_name,
-    #     response_schema=response_schema
-    # )
-    #
-    # escalation = False
-    #
-    # try:
-    #     llm_response_data = parse_llm_response(llm_response.choices[0].message.content)
-    #
-    #     logger.info("Final LLM Response:\n%s", json.dumps(llm_response_data, indent=2))
-    #
-    #
-    #     answer = llm_response_data.get("answer", "").strip()
-    #     status = llm_response_data.get("status", "ERROR").strip()
-    #     escalation = llm_response_data.get("escalation", False)
-    #     reason = llm_response_data.get("reason_for_escalation", "").strip()
-    #
-    #     metadata = {
-    #         "status": status,
-    #         "escalation": escalation,
-    #         "reason_for_escalation": reason,
-    #     }
-    #
-    # except json.JSONDecodeError:
-    #     answer = llm_response.content.strip()
-    #     metadata = {
-    #         "status": "ERROR",
-    #         "escalation": True,
-    #         "reason_for_escalation": "Malformed LLM response",
-    #     }
 
     bot_message = Message.objects.create(
         chatroom=chatroom,
@@ -224,17 +157,4 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         is_internal=user_message.is_internal,
     )
 
-    # Send live update to all participants
     _send_live_update(bot_message, user_message)
-
-    # if escalation:
-    #     from core.services.notifications import notify_users
-    #
-    #     context = {
-    #         "app": chatroom.application,
-    #         "chatroom_uuid": chatroom.uuid,
-    #         "user_id": user_message.sender_identifier,
-    #         "user_query": user_message.message,
-    #         "agent_response": answer,
-    #     }
-    #     notify_users(chatroom.application, SMART_ESCALATION_TEMPLATE, context)
