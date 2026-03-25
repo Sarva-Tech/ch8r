@@ -74,9 +74,7 @@ const githubData = ref<GitHubIngestionRequest | null>(null)
 
 onMounted(async () => {
   try {
-    console.log('Loading app integrations for app:', useRoute().params.appId)
     await integrationStore.loadAppIntegrations(useRoute().params.appId as string)
-    console.log('App integrations loaded:', integrationStore.appIntegrations)
   } catch (error) {
     console.error('Failed to load integrations:', error)
     toast.error('Failed to load integration options')
