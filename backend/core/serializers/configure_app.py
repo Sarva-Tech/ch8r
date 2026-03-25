@@ -32,9 +32,12 @@ class LoadAppConfigurationSerializer(serializers.ModelSerializer):
 
         data = []
         for profile in profiles:
-            profile_data = NotificationProfileSerializer(profile).data
-            profile_data["is_enabled"] = profile.id in enabled_profile_ids
-            data.append(profile_data)
+            try:
+                profile_data = NotificationProfileSerializer(profile).data
+                profile_data["is_enabled"] = profile.id in enabled_profile_ids
+                data.append(profile_data)
+            except Exception:
+                pass
 
         return data
 

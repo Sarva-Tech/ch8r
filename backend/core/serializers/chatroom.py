@@ -17,6 +17,7 @@ class ChatRoomWithMessagesSerializer(serializers.ModelSerializer):
     ai_model = serializers.CharField(source='model', read_only=True)
     messages = serializers.SerializerMethodField()
     chatroom = ChatRoomViewSerializer(read_only=True)
+    chatroom = ChatRoomViewSerializer(read_only=True)
 
     class Meta:
         model = ChatRoom

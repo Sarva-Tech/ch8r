@@ -2,7 +2,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const userStore = useUserStore();
   if(!userStore.getToken?.value) return
 
-  const excludedRoutes = ['/settings', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
+  const excludedRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
   const isExcludedRoute = excludedRoutes.some(route => to.path.startsWith(route))
 
   if (isExcludedRoute) return
@@ -19,20 +19,18 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   const apps = appStore.applications
+  if (appId) {
+    const appToBeSelected = apps.find((app) => app?.uuid === appId)
+    if (appToBeSelected) {
+      appStore.selectApplication(appToBeSelected)
 
-  const appToBeSelected = appId
-    ? apps.find((app) => app?.uuid === appId)
-    : apps[0]
+      if (!chatroomStore.chatrooms.length) {
+        await chatroomStore.fetchChatrooms(appToBeSelected.uuid)
+      }
 
-  if (appToBeSelected) {
-    appStore.selectApplication(appToBeSelected)
-
-    if (!chatroomStore.chatrooms.length) {
-      await chatroomStore.fetchChatrooms(appToBeSelected.uuid)
-    }
-
-    if (chatroomId) {
-      await chatroomMessagesStore.selectChatroom(appToBeSelected.uuid, chatroomId)
+      if (chatroomId) {
+        await chatroomMessagesStore.selectChatroom(appToBeSelected.uuid, chatroomId)
+      }
     }
   }
 })

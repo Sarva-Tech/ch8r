@@ -2,8 +2,6 @@
   <SlideOver
     v-model:open="open"
     title="Update Notification Profiles"
-    submit-text="Update"
-    :on-submit="updateNotification"
   >
     <div class="space-y-4">
       <div>
@@ -46,17 +44,36 @@
         </p>
       </template>
     </div>
+
+    <template #submitBtn>
+      <C8Button
+        label="Update"
+        :loading="isSubmitting"
+        @click="updateNotification"
+      />
+    </template>
   </SlideOver>
 </template>
 
 <script setup lang="ts">
-import { ref, defineExpose } from 'vue'
+import { ref } from 'vue'
 import SlideOver from '~/components/SlideOver.vue'
+import C8Button from '~/components/C8Button.vue'
+import C8Input from '~/components/C8Input.vue'
 import { useNotificationProfileStore } from '~/stores/notificationProfile'
 import type { NotificationProfile } from '~/stores/notificationProfile';
 import { toast } from 'vue-sonner'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '~/components/ui/select'
+import { showError } from '~/lib/errorHandler'
 
 const open = ref(false)
+const isSubmitting = ref(false)
 const currentProfile = ref<null | { [key: string]: any }>(null)
 const notificationStore = useNotificationProfileStore()
 
@@ -69,7 +86,7 @@ function openSheet(profile: NotificationProfile) {
   currentProfile.value = profile
   type.value = profile.type ?? ''
   profileName.value = profile.name ?? ''
-  emailValue.value = profile.config?.email ?? ''
+  emailValue.value = ''
   webhookValue.value = ''
   open.value = true
 }
@@ -77,25 +94,30 @@ function openSheet(profile: NotificationProfile) {
 async function updateNotification() {
   if (!currentProfile.value) return
 
-  const payload: Partial<NotificationProfile> = {
-    id: currentProfile.value.id,
-    name: profileName.value,
+  isSubmitting.value = true
+
+  const payload: Partial<NotificationProfile> = {}
+
+  if (profileName.value !== currentProfile.value.name) {
+    payload.name = profileName.value
   }
 
   if (type.value === 'email' && emailValue.value) {
     payload.config = { email: emailValue.value }
   } else if (type.value !== 'email' && webhookValue.value) {
-    payload.config = { webhookUrl: encryptWithPublicKey(webhookValue.value) }
+    payload.config = { webhookUrl: webhookValue.value }
   }
 
-  // try {
-  //   await notificationStore.update(payload)
-  //   open.value = false
-  //   await notificationStore.fetchNotificationProfiles();
-  //   toast.success('Profile updated successfully!')
-  // } catch (err) {
-  //   toast.error(err.message || 'Failed to update profile')
-  // }
+  try {
+    await notificationStore.update(currentProfile.value.uuid!, payload)
+    open.value = false
+    toast.success('Profile updated successfully!')
+  } catch (err: any) {
+    showError(err)
+  } finally {
+    isSubmitting.value = false
+  }
 }
+
 defineExpose({ openSheet })
 </script>

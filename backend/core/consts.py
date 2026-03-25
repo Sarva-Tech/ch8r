@@ -19,3 +19,27 @@ SUPPORTED_AI_PROVIDERS = [
         'base_url': ''
     }
 ]
+
+SUPPORTED_NOTIFICATION_PROVIDERS = [
+    {
+        'id': 'email',
+        'label': 'Email',
+        'description': 'Email notifications via SMTP',
+        'config_fields': ['email'],
+        'required_fields': ['email']
+    },
+    {
+        'id': 'slack',
+        'label': 'Slack',
+        'description': 'Slack webhook notifications',
+        'config_fields': ['webhookUrl'],
+        'required_fields': ['webhookUrl']
+    },
+    {
+        'id': 'discord',
+        'label': 'Discord',
+        'description': 'Discord webhook notifications',
+        'config_fields': ['webhookUrl'],
+        'required_fields': ['webhookUrl']
+    }
+]

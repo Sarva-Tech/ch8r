@@ -1,33 +1,27 @@
-import uuid
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
 
-class NotificationProfile(models.Model):
-    TYPE_CHOICES = [
-        ('email', 'Email'),
-        ('slack', 'Slack'),
-        ('discord', 'Discord'),
-        ('whatsapp', 'WhatsApp'),
-    ]
+from core.fields import EncryptedJSONField
+from .base_model import BaseModel
 
-    id = models.AutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+class NotificationProfile(BaseModel):
     name = models.CharField(max_length=255)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    _config = models.TextField(db_column="config")
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_profiles')
-    created_at = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=20)
+    config = EncryptedJSONField(default=dict, blank=True)
+    is_enabled = models.BooleanField(default=True)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='notification_profiles',
+    )
+
+    class Meta:
+        ordering = ['name', 'created_at']
+        indexes = [
+            models.Index(fields=['owner', 'type']),
+            models.Index(fields=['owner', 'is_enabled']),
+        ]
 
     def __str__(self):
-        return f"{self.name} - {self.type.capitalize()} Notification Profile ({self.uuid})"
-
-    @property
-    def config(self):
-        from core.services.encryption import decrypt
-        return decrypt(self._config)
-
-    @config.setter
-    def config(self, value):
-        from core.services.encryption import encrypt
-        self._config = encrypt(value or {})
-
+        return f"{self.name} ({self.type})"
