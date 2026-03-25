@@ -41,11 +41,11 @@ def extract_and_merge_fields(
 def normalize_model_name_by_provider(model: str, provider: str) -> str:
     """
     Normalize model name based on provider.
-
+    
     Args:
         model: The model name to normalize
         provider: The AI provider name
-
+        
     Returns:
         Normalized model name
     """

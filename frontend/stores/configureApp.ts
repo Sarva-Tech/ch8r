@@ -1,15 +1,8 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '~/composables/useHttpClient'
+import type { LLMModel } from '~/stores/model'
 import type { IntegrationTools, SupportedIntegrationsResponse, SupportedProviders } from '~/stores/integration'
-
-export type LLMModelType = 'text' | 'embedding'
-
-export interface LLMModel {
-  uuid: string
-  name: string
-  model_type: LLMModelType
-  provider?: string
-}
+import type { SelectOption } from '~/lib/types'
 
 export interface AvailableConfig {
   llm_models: LLMModel[]
@@ -111,19 +104,22 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
       )
     },
 
-    async saveNotifications(profileUuids: string[]) {
+    async saveNotifications(profiles: SelectOption[]) {
       const appStore = useApplicationsStore()
       const app = appStore.selectedApplication
-      if (!app) throw new Error('No application selected')
+      if (!app) return
 
       const { httpPatch } = useHttpClient()
       const response = await httpPatch<AppConfig>(
         `applications/${app.uuid}/app-notification-update/`,
-        { profile_uuids: profileUuids },
+        {
+          profile_uuids: profiles.map((profile) => profile.value)
+        },
       )
       if (response?.notification_profiles) {
         this.notifications = response.notification_profiles
       }
+
       return response
     },
   },

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { useHttpClient } from '@/composables/useHttpClient'
 import type { PaginatedResponse } from '~/lib/types'
-import { getErrorMessage } from '~/lib/utils'
 
 export type NotificationType = 'email' | 'slack' | 'discord'
 
@@ -31,24 +30,6 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
   }),
 
   actions: {
-    getBackendErrorMessage(error: any): string {
-      if (error.errors?.config) {
-        if (typeof error.errors.config === 'object' && error.errors.config.webhookUrl) {
-          return error.errors.config.webhookUrl
-        } else if (typeof error.errors.config === 'string') {
-          return error.errors.config
-        } else if (Array.isArray(error.errors.config)) {
-          return error.errors.config.join(', ')
-        }
-      }
-      
-      if (error.errors?.type) return error.errors.type
-      if (error.errors?.name) return error.errors.name
-      if (typeof error.errors === 'string') return error.errors
-      
-      return getErrorMessage(error) || 'Operation failed'
-    },
-
     async load() {
       const { httpGet } = useHttpClient()
       const res = await httpGet<NotificationProfileResponse>('/notification-profiles/')
@@ -74,19 +55,14 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
       this.profiles = [...this.profiles, response]
       return response
     },
-    async delete(uuid: string) {
+    async delete(id: number | string) {
       const { httpDelete } = useHttpClient()
-      try {
-        const response = await httpDelete<{detail: string}>(`/notification-profiles/${uuid}/`)
-        this.profiles = this.profiles.filter((profile) => profile.uuid !== uuid)
-        return response
-      } catch (error) {
-        throw error
-      }
+      await httpDelete(`/notification-profiles/${id}/`)
+      this.profiles = this.profiles.filter((profile) => profile.id !== id)
     },
 
     async update(
-      uuid: string,
+      id: number | string,
       updatedProfile: Partial<NotificationProfile>,
     ) {
       const { httpPatch } = useHttpClient()
@@ -103,10 +79,10 @@ export const useNotificationProfileStore = defineStore('notificationProfiles', {
         payload.config = updatedProfile.config
       }
       const response = await httpPatch<NotificationProfile>(
-        `/notification-profiles/${uuid}/`,
+        `/notification-profiles/${id}/`,
         payload,
       )
-      const index = this.profiles.findIndex((profile) => profile.uuid === uuid)
+      const index = this.profiles.findIndex((profile) => profile.id === id)
       if (index !== -1) {
         this.profiles[index] = { ...this.profiles[index], ...response }
       }

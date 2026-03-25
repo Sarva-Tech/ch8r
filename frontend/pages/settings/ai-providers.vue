@@ -7,17 +7,6 @@
         </div>
       </div>
 
-      <C8EmptyState
-        v-if="!loading && AIProviders.length === 0"
-        :icon="BrainCircuit"
-        title="No AI providers yet"
-        description="Connect an AI provider to power your applications with language models."
-      >
-        <template #action>
-          <NewAIProvider />
-        </template>
-      </C8EmptyState>
-
       <C8Item
         v-for="(AIProvider, index) in AIProviders"
         :key="index"
@@ -100,8 +89,7 @@ import C8Item from '~/components/C8Item.vue'
 import { ItemDescription } from '~/components/ui/item'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
-import { PencilLine, Trash, Globe, Server, FileBox, BrainCircuit } from 'lucide-vue-next'
-import C8EmptyState from '~/components/C8EmptyState.vue'
+import { PencilLine, Trash, Globe, Server, FileBox } from 'lucide-vue-next'
 
 const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 const isDeleteDialogOpen = ref(false)

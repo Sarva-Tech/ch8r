@@ -39,14 +39,8 @@ export const useApplicationsStore = defineStore('applications', {
       const response = await httpGet<FetchApplicationsResponse>('/applications/')
       this.applications = response.results
 
-      if (this.applications.length > 0) {
-        const savedUuid = localStorage.getItem('selectedAppUuid')
-        const savedApp = savedUuid
-          ? this.applications.find(a => a.uuid === savedUuid)
-          : null
-        if (!this.selectedApplication) {
-          this.selectedApplication = savedApp ?? this.applications[0]
-        }
+      if (!this.selectedApplication && this.applications.length > 0) {
+        this.selectedApplication = this.applications[0]
       }
     },
 
@@ -78,7 +72,6 @@ export const useApplicationsStore = defineStore('applications', {
 
     selectApplication(app: Application) {
       this.selectedApplication = app
-      localStorage.setItem('selectedAppUuid', app.uuid)
     },
   },
 })
