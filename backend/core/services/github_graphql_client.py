@@ -15,7 +15,7 @@ class GitHubGraphQLClient:
     def __init__(self, token: str):
         self.token = token
         self.endpoint = "https://api.github.com/graphql"
-        
+
         self.transport = RequestsHTTPTransport(
             url=self.endpoint,
             headers={
@@ -26,7 +26,7 @@ class GitHubGraphQLClient:
             timeout=30,
             retries=3
         )
-        
+
         self.client = Client(transport=self.transport, fetch_schema_from_transport=False)
 
     def _execute_query(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -46,16 +46,16 @@ class GitHubGraphQLClient:
 
             except TransportServerError as e:
                 error_data = str(e)
-                
+
                 if "rate limit" in error_data.lower() or "api rate limit exceeded" in error_data.lower():
                     logger.warning(f"Rate limit hit, waiting {retry_delay * (2 ** attempt)} seconds")
                     time.sleep(retry_delay * (2 ** attempt))
                     continue
-                
+
                 if "bad credentials" in error_data.lower() or "unauthorized" in error_data.lower():
                     logger.error(f"Authentication error: {e}")
                     raise
-                
+
                 logger.error(f"GraphQL execution error: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (2 ** attempt))
@@ -72,14 +72,14 @@ class GitHubGraphQLClient:
 
         raise Exception("Max retries exceeded")
 
-    def get_issues_with_comments(self, owner: str, repo: str, 
-                                states: List[str] = None, 
+    def get_issues_with_comments(self, owner: str, repo: str,
+                                states: List[str] = None,
                                 since: Optional[str] = None,
                                 first: int = 100,
                                 after_cursor: Optional[str] = None) -> Dict[str, Any]:
         """
         Get issues with their comments in a single GraphQL query
-        
+
         Args:
             owner: Repository owner
             repo: Repository name
@@ -87,6 +87,10 @@ class GitHubGraphQLClient:
             since: ISO datetime string for filtering by creation date
             first: Number of items per page
             after_cursor: Pagination cursor
+
+        Returns:
+            Dictionary containing issues and pagination info
+        """
         if states is None:
             states = ["OPEN", "CLOSED"]
 
@@ -166,18 +170,18 @@ class GitHubGraphQLClient:
                 "direction": "DESC"
             }
         }
-        
+
         if after_cursor:
             variables["after"] = after_cursor
 
         return self._execute_query(query, variables)
 
-    def get_all_issues_with_comments(self, owner: str, repo: str, 
+    def get_all_issues_with_comments(self, owner: str, repo: str,
                                    states: List[str] = None,
                                    since: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get all issues with comments, handling pagination automatically
-        
+
         Returns:
             List of all issues with their comments
         """
@@ -187,29 +191,29 @@ class GitHubGraphQLClient:
 
         while has_next_page:
             result = self.get_issues_with_comments(
-                owner=owner, 
-                repo=repo, 
+                owner=owner,
+                repo=repo,
                 states=states,
                 since=since,
                 after_cursor=after_cursor
             )
-            
+
             repository_data = result.get('repository')
             if not repository_data:
                 break
-                
+
             issues_data = repository_data.get('issues', {})
             edges = issues_data.get('edges', [])
-            
+
             for edge in edges:
                 issue_node = edge.get('node', {})
                 if issue_node:
                     all_issues.append(issue_node)
-            
+
             page_info = issues_data.get('pageInfo', {})
             has_next_page = page_info.get('hasNextPage', False)
             after_cursor = page_info.get('endCursor')
-            
+
             logger.info(f"Fetched {len(edges)} issues, total so far: {len(all_issues)}")
 
         logger.info(f"Total issues fetched: {len(all_issues)}")
@@ -220,7 +224,7 @@ class GitHubGraphQLClient:
                                            since: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get all pull requests with comments, handling pagination automatically
-        
+
         Returns:
             List of all pull requests with their comments
         """
@@ -230,29 +234,29 @@ class GitHubGraphQLClient:
 
         while has_next_page:
             result = self.get_pull_requests_with_comments(
-                owner=owner, 
-                repo=repo, 
+                owner=owner,
+                repo=repo,
                 states=states,
                 since=since,
                 after_cursor=after_cursor
             )
-            
+
             repository_data = result.get('repository')
             if not repository_data:
                 break
-                
+
             prs_data = repository_data.get('pullRequests', {})
             edges = prs_data.get('edges', [])
-            
+
             for edge in edges:
                 pr_node = edge.get('node', {})
                 if pr_node:
                     all_prs.append(pr_node)
-            
+
             page_info = prs_data.get('pageInfo', {})
             has_next_page = page_info.get('hasNextPage', False)
             after_cursor = page_info.get('endCursor')
-            
+
             logger.info(f"Fetched {len(edges)} pull requests, total so far: {len(all_prs)}")
 
         logger.info(f"Total pull requests fetched: {len(all_prs)}")
@@ -265,7 +269,7 @@ class GitHubGraphQLClient:
                                        after_cursor: Optional[str] = None) -> Dict[str, Any]:
         """
         Get pull requests with their comments in a single GraphQL query
-        
+
         Args:
             owner: Repository owner
             repo: Repository name
@@ -273,7 +277,7 @@ class GitHubGraphQLClient:
             since: ISO datetime string for filtering by creation date
             first: Number of items per page
             after_cursor: Pagination cursor
-            
+
         Returns:
             Dictionary containing pull requests and pagination info
         """
@@ -363,7 +367,7 @@ class GitHubGraphQLClient:
                 "direction": "DESC"
             }
         }
-        
+
         if after_cursor:
             variables["after"] = after_cursor
 
