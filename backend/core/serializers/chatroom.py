@@ -23,7 +23,7 @@ class ChatRoomWithMessagesSerializer(serializers.ModelSerializer):
         fields = ['uuid', 'name', 'application', 'messages', 'ai_provider', 'ai_model', 'chatroom']
 
     def get_messages(self, chatroom):
-        messages_qs = self.context.get('messages_qs', chatroom.messages.all())
+        messages_qs = self.context.get('messages_qs', chatroom.messages.all().order_by('created_at'))
         return ViewMessageSerializer(messages_qs, many=True).data
 
 class ChatroomParticipantSerializer(serializers.ModelSerializer):
@@ -65,3 +65,12 @@ class ChatRoomDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
         fields = ['uuid', 'name', 'participants', 'messages']
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if hasattr(self.instance, 'messages'):
+            self.fields['messages'] = ViewMessageSerializer(
+                self.instance.messages.all().order_by('created_at'), 
+                many=True, 
+                read_only=True
+            )

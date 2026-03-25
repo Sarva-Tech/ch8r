@@ -96,13 +96,13 @@ watch(
     }
 
     if (
-      newPath.includes('/knowledge-base') &&
-      !newPath.match(/\/knowledge-base\/[^/]+$/)
+      newPath.includes('/knowledge-base')
+      && !newPath.match(/\/knowledge-base\/[^/]+$/)
     ) {
       setActiveMenu('knowledge-base')
     } else if (
-      newPath.includes('/api-keys-and-widget') &&
-      !newPath.match(/\/api-keys-and-widget\/[^/]+$/)
+      newPath.includes('/api-keys-and-widget')
+      && !newPath.match(/\/api-keys-and-widget\/[^/]+$/)
     ) {
       setActiveMenu('api-keys')
     }
@@ -196,7 +196,10 @@ async function initNewChat() {
               </DropdownMenuItem>
 
               <DropdownMenuSeparator />
-              <DropdownMenuItem class="gap-2 p-2" @click="newAppSlideOver?.openSlide()">
+              <DropdownMenuItem
+                class="gap-2 p-2"
+                @click="newAppSlideOver?.openSlide()"
+              >
                 <div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
                   <Plus class="size-4" />
                 </div>
@@ -229,10 +232,20 @@ async function initNewChat() {
               <Settings class="size-4" />
               <span class="">Settings</span>
             </div>
-            <ChevronUp v-if="settingsExpanded" class="size-4" />
-            <ChevronDown v-else class="size-4" />
+            <ChevronUp
+              v-if="settingsExpanded"
+              class="size-4"
+            />
+            <ChevronDown
+              v-else
+              class="size-4"
+            />
           </SidebarMenuButton>
-          <div v-if="settingsExpanded" data-settings-menu class="flex flex-col space-y-1">
+          <div
+            v-if="settingsExpanded"
+            data-settings-menu
+            class="flex flex-col space-y-1"
+          >
             <SidebarMenuButton
               :class="[
                 'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -357,41 +370,47 @@ async function initNewChat() {
       </SidebarGroup>
     </SidebarHeader>
 
-    <div class="flex w-full items-center px-2 py-2">
-      <SidebarGroupLabel>Conversations</SidebarGroupLabel>
+    <div class="flex w-full items-center px-3 py-1">
+      <SidebarGroupLabel class="text-xs font-medium">Conversations</SidebarGroupLabel>
     </div>
 
     <ScrollArea class="h-full">
       <SidebarContent class="">
-        <SidebarGroup class="p-0 m-0">
-          <SidebarGroupContent class="p-2 space-y-1">
+        <SidebarGroup class="p-0 m-0 overflow-visible">
+          <SidebarGroupContent class="p-2 space-y-1 overflow-visible">
             <NuxtLink
               v-for="chatroom in chatrooms"
               :key="chatroom.uuid"
               :to="`/applications/${selectedApplication.uuid}/messages/${chatroom.uuid}`"
               :class="[
-                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 px-4 py-2 text-sm leading-tight whitespace-nowrap rounded-lg',
-                activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : ''
+                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-2 px-4 py-2 text-sm leading-tight rounded-lg min-w-0',
+                activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : '',
+                chatroom.has_unread && activeMenu !== chatroom.uuid ? 'bg-primary/10 border border-border' : ''
               ]"
               @click="() => { chatroomStore.markRead(chatroom.uuid); setActiveMenu(chatroom.uuid) }"
             >
-              <div class="flex w-full items-center gap-2">
-                <span>{{ ellipsis(chatroom.name, 30) }}</span>
-                <UnreadBadge v-if="chatroom.has_unread" />
-                <span class="ml-auto text-xs">
-                {{ $dayjs(chatroom.last_message?.created_at).fromNow() }}
+              <div class="flex flex-col items-start gap-1 flex-1 min-w-0">
+                <div class="flex w-full items-center gap-2 min-w-0">
+                  <span class="truncate flex-1">{{ ellipsis(chatroom.name, 30) }}</span>
+                  <span class="text-xs flex-shrink-0">
+                    {{ $dayjs(chatroom.last_message?.created_at).fromNow() }}
+                  </span>
+                </div>
+                <span class="line-clamp-2 whitespace-break-spaces text-xs w-full min-w-0">
+                  {{ chatroom.last_message?.message }}
                 </span>
               </div>
-              <span class="line-clamp-2 whitespace-break-spaces text-xs">
-                {{ chatroom.last_message?.message }}
-              </span>
+              <UnreadBadge v-if="chatroom.has_unread" class="flex-shrink-0" />
             </NuxtLink>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </ScrollArea>
   </Sidebar>
-  <NewApp ref="newAppSlideOver" @success="setActiveMenu" />
+  <NewApp
+    ref="newAppSlideOver"
+    @success="setActiveMenu"
+  />
   <SlideOver
     ref="configureAppSlideOver"
     title="Configure Application"

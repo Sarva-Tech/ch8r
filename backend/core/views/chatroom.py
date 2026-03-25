@@ -41,9 +41,9 @@ class ChatRoomMessagesView(APIView):
             broadcast_unread_update(user_identifier, str(chatroom.uuid), False, user_identifier)
 
         if request.user and request.user.is_authenticated:
-            messages_qs = chatroom.messages.all()
+            messages_qs = chatroom.messages.all().order_by('created_at')
         else:
-            messages_qs = chatroom.messages.filter(is_internal=False)
+            messages_qs = chatroom.messages.filter(is_internal=False).order_by('created_at')
 
         serializer = ChatRoomWithMessagesSerializer(chatroom, context={'messages_qs': messages_qs})
         return Response(serializer.data)

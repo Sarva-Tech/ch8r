@@ -1,6 +1,7 @@
 <template>
   <div class="flex flex-col">
     <div
+      ref="messagesContainer"
       class="overflow-y-auto pt-[72px] pb-[120px] px-6 space-y-6"
       :style="`height: calc(100vh - 64px - 112px);`"
     >
@@ -12,21 +13,21 @@
         <div class="flex-shrink-0 mt-1">
           <div
             v-if="isLLMAgent(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            <Bot class="w-4 h-4 text-violet-600 dark:text-violet-300" />
+            <Bot class="w-4 h-4 text-primary" />
           </div>
           <div
             v-else-if="isRegisteredUser(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
           >
-            <UserRound class="w-4 h-4 text-blue-600 dark:text-blue-300" />
+            <UserRound class="w-4 h-4 text-primary" />
           </div>
           <div
             v-else
-            class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-accent flex items-center justify-center"
           >
-            <Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+            <Globe class="w-4 h-4 text-accent-foreground" />
           </div>
         </div>
 
@@ -38,15 +39,18 @@
           <span class="text-xs text-muted-foreground px-1">{{ message.sender_identifier }}</span>
           <div
             :class="cn(
-              'rounded-lg px-3 py-2 text-sm',
+              'rounded-lg px-3 py-2 text-sm overflow-hidden',
               isCurrentUser(message.sender_identifier)
                 ? 'bg-primary text-primary-foreground'
                 : isLLMAgent(message.sender_identifier)
-                  ? 'bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800'
+                  ? 'bg-primary/10 border border-primary/20'
                   : 'bg-muted',
             )"
           >
-            <div v-html="md.render(message.message)" />
+            <div
+              class="overflow-x-auto max-w-full"
+              v-html="md.render(preprocessMarkdown(message.message))"
+            />
           </div>
           <div class="flex items-center gap-1 px-1">
             <template v-if="message.ai_provider_id && message.model">
@@ -210,14 +214,16 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
 import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
 import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Send, Bot, UserRound, Globe } from 'lucide-vue-next'
-import { computed, onMounted, watch } from 'vue'
+import { Bot, UserRound, Globe } from 'lucide-vue-next'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
 import { FormField, FormItem, FormMessage } from '~/components/ui/form'
@@ -232,6 +238,19 @@ import { z } from 'zod'
 
 const route = useRoute()
 const { chatroomId } = route.params
+
+const messagesContainer = ref<HTMLElement>()
+
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    nextTick(() => {
+      messagesContainer.value?.scrollTo({
+        top: messagesContainer.value.scrollHeight,
+        behavior: 'smooth'
+      })
+    })
+  }
+}
 
 const userStore = useUserStore()
 const liveUpdateStore = useLiveUpdateStore()
@@ -250,7 +269,62 @@ const lastUsedAIModel = computed(() => chatroomMessagesStore.lastUsedAIModel)
 
 const { state, isMobile } = useSidebar()
 
-const md = new MarkdownIt()
+const md = new MarkdownIt({
+  breaks: true,
+  linkify: true,
+  typographer: true,
+  html: true,
+  highlight: function (str: string, lang: string) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value
+      } catch (__) {}
+    }
+    return ''
+  }
+})
+
+const preprocessMarkdown = (text: string) => {
+  let processed = text
+
+  const protectedTexts: string[] = []
+
+  processed = processed.replace(/```[\s\S]*?```/g, (match) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(match)
+    return placeholder
+  })
+
+  processed = processed.replace(/`[^`]+`/g, (match) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(match)
+    return placeholder
+  })
+
+  processed = processed.replace(/\*\*([^*]+)\*\*/g, (match, content) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(`**${content}**`)
+    return placeholder
+  })
+
+  processed = processed.replace(/\b\w+-\w+\b/g, (match) => {
+    const placeholder = `__PROTECTED_${protectedTexts.length}__`
+    protectedTexts.push(match)
+    return placeholder
+  })
+
+  processed = processed.replace(/:\s*-\s*/g, ':\n\n- ')
+
+  processed = processed.replace(/([.!?])\s*-\s*/g, '$1\n\n- ')
+
+  processed = processed.replace(/([a-z.!?])\s*-\s*/g, '$1\n\n- ')
+
+  protectedTexts.forEach((content, index) => {
+    processed = processed.replace(`__PROTECTED_${index}__`, content)
+  })
+
+  return processed
+}
 
 const sidebarWidth = computed(() =>
   state.value === 'expanded' ? SIDEBAR_WIDTH : '0rem',
@@ -273,8 +347,8 @@ const form = useForm({
   initialValues: {
     ai_provider: undefined as string | undefined,
     models: [] as string[],
-    is_internal: false as boolean,
-    ai_mode: false as boolean,
+    is_internal: chatroomId === NEW_CHAT ? true : false as boolean,
+    ai_mode: chatroomId === NEW_CHAT ? true : false as boolean,
     message: '',
     sender_identifier: userStore.userIdentifier,
     chatroom_identifier: chatroomId as string,
@@ -370,6 +444,8 @@ const send = form.handleSubmit(async (values) => {
       model: values.models?.[0],
     })
 
+    scrollToBottom()
+
     if (selectedChatroom?.value?.uuid === NEW_CHAT) {
       const newChatroomId = response?.chatroom_identifier
       if (newChatroomId) {
@@ -447,6 +523,7 @@ onMounted(async () => {
     }
 
     setFormValuesFromLastMessage()
+    scrollToBottom()
   }
   catch (e: unknown) {
     console.error(e)
@@ -454,3 +531,97 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+:deep(.prose) {
+  line-height: 1.6;
+}
+
+:deep(p) {
+  margin-bottom: 0.75rem;
+}
+
+:deep(ul) {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+:deep(li) {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+  list-style-position: outside;
+}
+
+:deep(strong) {
+  font-weight: 600;
+}
+
+:deep(h1, h2, h3, h4, h5, h6) {
+  margin: 1.5rem 0 0.75rem 0;
+  font-weight: 600;
+}
+
+:deep(br) {
+  content: "";
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+:deep(pre) {
+  background-color: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  max-width: 100%;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:deep(code) {
+  background-color: hsl(var(--muted));
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+:deep(pre code) {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+:deep(.hljs-keyword) {
+  color: #0000ff;
+  font-weight: bold;
+}
+
+:deep(.hljs-string) {
+  color: #008000;
+}
+
+:deep(.hljs-comment) {
+  color: #808080;
+  font-style: italic;
+}
+
+:deep(.hljs-tag) {
+  color: #0000ff;
+}
+
+:deep(.hljs-attr) {
+  color: #ff0000;
+}
+</style>

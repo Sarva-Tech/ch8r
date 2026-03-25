@@ -10,7 +10,7 @@ interface HeaderProps {
 export function Header({ appName, appDescription, appLogoUrl, onClose }: HeaderProps) {
   return (
     <div
-      class="flex items-center justify-between px-4 py-3"
+      class="flex items-center justify-between px-4 py-2"
       style={{ backgroundColor: 'var(--ch8r-accent)', color: 'var(--ch8r-accent-fg)' }}
     >
       <div class="flex items-center gap-3 min-w-0">
@@ -24,9 +24,9 @@ export function Header({ appName, appDescription, appLogoUrl, onClose }: HeaderP
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
           />
         )}
-        <div class="min-w-0">
-          <p class="font-semibold text-sm truncate">{appName ?? 'Ch8r'}</p>
-          <p class="text-xs opacity-80 truncate">
+        <div class="min-w-0 leading-tight">
+          <div class="font-semibold text-sm truncate">{appName ?? 'Ch8r'}</div>
+          <div class="text-xs opacity-80 truncate">
             {appDescription ?? (
               <span>
                 Powered by{' '}
@@ -40,7 +40,7 @@ export function Header({ appName, appDescription, appLogoUrl, onClose }: HeaderP
                 </a>
               </span>
             )}
-          </p>
+          </div>
         </div>
       </div>
       <button

@@ -2,6 +2,7 @@ import { h } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import type { Message } from '../types/index';
 import { TypingIndicator } from './TypingIndicator';
+import { renderMarkdown } from '../utils/markdown';
 
 interface MessageListProps {
   messages: Message[];
@@ -80,14 +81,19 @@ export function MessageList({ messages, isTyping }: MessageListProps) {
           <Avatar senderIdentifier={msg.senderIdentifier} isOwn={msg.isOwn} />
           <div class={`flex flex-col gap-0.5 max-w-[75%] ${msg.isOwn ? 'items-end' : 'items-start'}`}>
             <div
-              class={`px-3 py-2 rounded-2xl text-sm break-words ${
+              class={`px-3 py-2 rounded-2xl text-sm break-words overflow-hidden ${
                 msg.isOwn
                   ? 'rounded-br-sm text-white'
                   : 'rounded-bl-sm bg-gray-100 text-gray-900'
               }`}
               style={msg.isOwn ? { backgroundColor: 'var(--ch8r-accent)', color: 'var(--ch8r-accent-fg)' } : undefined}
             >
-              {msg.message}
+              <div 
+                class="break-words overflow-wrap-anywhere"
+                dangerouslySetInnerHTML={{ 
+                  __html: renderMarkdown(msg.message) 
+                }}
+              />
             </div>
             <span class="text-xs text-gray-400 px-1">
               {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
