@@ -75,14 +75,13 @@ export function SupportForm() {
   if (submitted) {
     return (
       <div class="flex flex-col items-center justify-center h-full px-6 py-8 text-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-green-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-primary mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
-        <p class="text-sm text-gray-700">Your message has been sent. We'll get back to you soon.</p>
+        <p class="text-sm text-muted-foreground">Your message has been sent. We'll get back to you soon.</p>
         <button
           onClick={() => setSubmitted(false)}
-          class="mt-4 text-sm underline hover:no-underline"
-          style={{ color: 'var(--ch8r-accent)' }}
+          class="mt-4 text-sm text-primary underline hover:no-underline"
         >
           Send another message
         </button>
@@ -94,14 +93,14 @@ export function SupportForm() {
     <div class="flex-1 overflow-y-auto px-4 py-4">
       <form onSubmit={handleSubmit} noValidate class="flex flex-col gap-4">
         {apiError && (
-          <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-700">
+          <div class="bg-muted border border-border rounded-lg px-3 py-2 text-sm text-destructive">
             {apiError}
           </div>
         )}
 
         {/* Name */}
         <div class="flex flex-col gap-1">
-          <label htmlFor="ch8r-name" class="text-sm font-medium text-gray-700">
+          <label htmlFor="ch8r-name" class="text-sm font-medium text-foreground">
             Name
           </label>
           <input
@@ -110,16 +109,16 @@ export function SupportForm() {
             value={form.name}
             onInput={setField('name')}
             placeholder="Your name"
-            class={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-              errors.name ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'
+            class={`rounded-lg border px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
+              errors.name ? 'border-destructive focus:ring-destructive/30' : 'border-input'
             }`}
           />
-          {errors.name && <p class="text-xs text-red-600">{errors.name}</p>}
+          {errors.name && <p class="text-xs text-destructive">{errors.name}</p>}
         </div>
 
         {/* Email */}
         <div class="flex flex-col gap-1">
-          <label htmlFor="ch8r-email" class="text-sm font-medium text-gray-700">
+          <label htmlFor="ch8r-email" class="text-sm font-medium text-foreground">
             Email
           </label>
           <input
@@ -128,16 +127,16 @@ export function SupportForm() {
             value={form.email}
             onInput={setField('email')}
             placeholder="you@example.com"
-            class={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-              errors.email ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'
+            class={`rounded-lg border px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
+              errors.email ? 'border-destructive focus:ring-destructive/30' : 'border-input'
             }`}
           />
-          {errors.email && <p class="text-xs text-red-600">{errors.email}</p>}
+          {errors.email && <p class="text-xs text-destructive">{errors.email}</p>}
         </div>
 
         {/* Subject */}
         <div class="flex flex-col gap-1">
-          <label htmlFor="ch8r-subject" class="text-sm font-medium text-gray-700">
+          <label htmlFor="ch8r-subject" class="text-sm font-medium text-foreground">
             Subject
           </label>
           <input
@@ -146,16 +145,16 @@ export function SupportForm() {
             value={form.subject}
             onInput={setField('subject')}
             placeholder="How can we help?"
-            class={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
-              errors.subject ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'
+            class={`rounded-lg border px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
+              errors.subject ? 'border-destructive focus:ring-destructive/30' : 'border-input'
             }`}
           />
-          {errors.subject && <p class="text-xs text-red-600">{errors.subject}</p>}
+          {errors.subject && <p class="text-xs text-destructive">{errors.subject}</p>}
         </div>
 
         {/* Body */}
         <div class="flex flex-col gap-1">
-          <label htmlFor="ch8r-body" class="text-sm font-medium text-gray-700">
+          <label htmlFor="ch8r-body" class="text-sm font-medium text-foreground">
             Message
           </label>
           <textarea
@@ -164,18 +163,17 @@ export function SupportForm() {
             onInput={setField('body')}
             placeholder="Describe your issue…"
             rows={4}
-            class={`rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-none ${
-              errors.body ? 'border-red-400 focus:ring-red-300' : 'border-gray-300'
+            class={`rounded-lg border px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
+              errors.body ? 'border-destructive focus:ring-destructive/30' : 'border-input'
             }`}
           />
-          {errors.body && <p class="text-xs text-red-600">{errors.body}</p>}
+          {errors.body && <p class="text-xs text-destructive">{errors.body}</p>}
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          class="w-full rounded-lg py-2 text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ backgroundColor: 'var(--ch8r-accent)', color: 'var(--ch8r-accent-fg)' }}
+          class="w-full rounded-lg py-2 text-sm font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-primary-foreground"
         >
           {loading ? 'Sending…' : 'Send Message'}
         </button>

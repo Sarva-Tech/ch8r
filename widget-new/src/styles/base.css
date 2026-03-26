@@ -8,10 +8,22 @@
 }
 
 :host {
-  --ch8r-accent: #6366f1;
-  --ch8r-accent-fg: #ffffff;
   --ch8r-radius: 0.5rem;
   --ch8r-font: system-ui, sans-serif;
+}
+
+/* Override @tailwindcss/forms hardcoded white background on inputs/textareas */
+input,
+textarea,
+select {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
 }
 
 .prose {
@@ -50,8 +62,8 @@ br {
 }
 
 pre {
-  background-color: #f6f8fa;
-  border: 1px solid #e1e4e8;
+  background-color: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 1rem;
   margin: 1rem 0;
@@ -66,7 +78,7 @@ pre {
 }
 
 code {
-  background-color: #f6f8fa;
+  background-color: var(--muted);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-family: 'Courier New', Courier, monospace;
@@ -172,3 +184,26 @@ pre code {
 .hljs-meta-string {
   color: #032f62;
 }
+
+/* Dark mode syntax highlighting */
+:host(.dark) .hljs-keyword   { color: #ff7b72; }
+:host(.dark) .hljs-string    { color: #a5d6ff; }
+:host(.dark) .hljs-comment   { color: #8b949e; }
+:host(.dark) .hljs-number    { color: #79c0ff; }
+:host(.dark) .hljs-function  { color: #d2a8ff; }
+:host(.dark) .hljs-tag       { color: #7ee787; }
+:host(.dark) .hljs-attr      { color: #d2a8ff; }
+:host(.dark) .hljs-variable  { color: #ffa657; }
+:host(.dark) .hljs-built_in  { color: #79c0ff; }
+:host(.dark) .hljs-operator  { color: #ff7b72; }
+:host(.dark) .hljs-punctuation { color: #c9d1d9; }
+:host(.dark) .hljs-title     { color: #d2a8ff; font-weight: bold; }
+:host(.dark) .hljs-class     { color: #d2a8ff; font-weight: bold; }
+:host(.dark) .hljs-literal   { color: #79c0ff; }
+:host(.dark) .hljs-selector-tag   { color: #7ee787; }
+:host(.dark) .hljs-selector-id    { color: #d2a8ff; }
+:host(.dark) .hljs-selector-class { color: #d2a8ff; }
+:host(.dark) .hljs-attribute      { color: #d2a8ff; }
+:host(.dark) .hljs-meta           { color: #8b949e; }
+:host(.dark) .hljs-meta-keyword   { color: #ff7b72; font-weight: bold; }
+:host(.dark) .hljs-meta-string    { color: #a5d6ff; }

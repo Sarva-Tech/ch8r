@@ -18,11 +18,8 @@ export function Launcher({ isOpen, iconUrl, onOpen }: LauncherProps) {
         <button
           onClick={onOpen}
           aria-label="Open chat"
-          style={{
-            backgroundColor: 'var(--ch8r-accent)',
-            color: 'var(--ch8r-accent-fg)',
-          }}
           class="w-14 h-14 rounded-full shadow-lg flex items-center justify-center"
+          style={{ background: 'var(--header-bg)', color: 'var(--header-fg)' }}
         >
           {iconUrl ? (
             <img src={iconUrl} alt="" aria-hidden="true" class="w-7 h-7 object-contain" />
@@ -42,7 +39,7 @@ export function Launcher({ isOpen, iconUrl, onOpen }: LauncherProps) {
         {unreadCount.value > 0 && (
           <span
             aria-label="Unread messages"
-            class="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"
+            class="absolute top-0 right-0 w-3.5 h-3.5 bg-destructive rounded-full border-2 border-background"
           />
         )}
       </div>

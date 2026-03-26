@@ -13,9 +13,6 @@ interface AppProps {
 
 export function App({ shadowHost }: AppProps) {
   useEffect(() => {
-    shadowHost.style.setProperty('--ch8r-accent', config.value?.accentColor ?? '#6366f1');
-    shadowHost.style.setProperty('--ch8r-accent-fg', '#ffffff');
-
     const appUuid = config.value?.appUuid ?? '';
     const senderIdentifier = sessionStore.getSenderIdentifier(config.value?.userIdentifier, appUuid);
     const apiClient = createApiClient(

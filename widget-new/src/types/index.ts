@@ -1,9 +1,14 @@
 export type WidgetPosition = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 
+export type WidgetTheme = 'neutral' | 'gray' | 'blue' | 'rose' | 'orange' | 'green' | 'yellow' | 'violet';
+
+export type DarkModeConfig = 'auto' | 'true' | 'false';
+
 export interface WidgetConfig {
   appUuid: string;
   token: string;
-  accentColor?: string;
+  theme?: WidgetTheme;
+  darkMode?: DarkModeConfig;
   position?: WidgetPosition;
   offsetTop?: number;
   offsetBottom?: number;

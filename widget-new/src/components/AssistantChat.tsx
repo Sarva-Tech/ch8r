@@ -190,23 +190,23 @@ export function AssistantChat() {
 
   return (
     <div class="flex flex-col h-full">
-      <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+      <div class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted">
         <button
           onClick={handleBack}
           aria-label="Back to conversations"
-          class="p-1 rounded hover:bg-gray-200 transition-colors text-gray-600"
+          class="p-1 rounded hover:bg-accent transition-colors text-muted-foreground"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
             <path fill-rule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 1 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clip-rule="evenodd" />
           </svg>
         </button>
-        <span class="text-sm font-medium text-gray-700 truncate flex-1">
+        <span class="text-sm font-medium text-foreground truncate flex-1">
           {chatroomName || activeChatroom.name}
         </span>
       </div>
 
       {sendError.value && (
-        <div class="bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div class="bg-muted border-b border-border px-4 py-2 text-sm text-destructive">
           Failed to send message. Please try again.
         </div>
       )}

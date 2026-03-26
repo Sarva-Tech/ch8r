@@ -1,10 +1,16 @@
 import { h, render } from 'preact';
 import { App } from './components/App';
 import { config } from './store/signals';
-import type { WidgetConfig, WidgetPosition } from './types/index';
+import type { WidgetConfig, WidgetPosition, WidgetTheme, DarkModeConfig } from './types/index';
 import widgetCss from './styles/widget.css?raw';
+import { injectTheme, buildThemeCSS } from './themes/themeInjector';
+import { createDarkModeDetector } from './themes/darkModeDetector';
 
 const VALID_POSITIONS: WidgetPosition[] = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
+
+export const VALID_THEMES: WidgetTheme[] = [
+  'neutral', 'gray', 'blue', 'rose', 'orange', 'green', 'yellow', 'violet',
+];
 
 export function parsePosition(raw: string | null): WidgetPosition {
   return VALID_POSITIONS.includes(raw as WidgetPosition) ? (raw as WidgetPosition) : 'bottom-right';
@@ -15,21 +21,49 @@ export function parseOffset(raw: string | null): number {
   return Number.isFinite(n) && n >= 0 ? n : 16;
 }
 
+export function parseTheme(raw: string | null): WidgetTheme {
+  if (VALID_THEMES.includes(raw as WidgetTheme)) {
+    return raw as WidgetTheme;
+  }
+  if (raw !== null) {
+    console.warn(`[Ch8rWidget] Unknown theme "${raw}", falling back to "neutral".`);
+  }
+  return 'neutral';
+}
+
+export function parseDarkMode(raw: string | null): DarkModeConfig {
+  const VALID: DarkModeConfig[] = ['true', 'false', 'auto'];
+  if (VALID.includes(raw as DarkModeConfig)) {
+    return raw as DarkModeConfig;
+  }
+  if (raw !== null) {
+    console.warn(`[Ch8rWidget] Unknown darkMode "${raw}", falling back to "auto".`);
+  }
+  return 'auto';
+}
+
 (function () {
   const currentScript = document.currentScript as HTMLScriptElement | null;
 
   let parsedConfig: WidgetConfig | null = null;
+  let theme: WidgetTheme = 'neutral';
+  let darkMode: DarkModeConfig = 'auto';
 
   if (window.Ch8rWidgetConfig) {
     parsedConfig = window.Ch8rWidgetConfig as WidgetConfig;
+    theme = parseTheme(parsedConfig.theme ?? null);
+    darkMode = parseDarkMode(parsedConfig.darkMode ?? null);
   } else if (currentScript) {
     const appUuid = currentScript.getAttribute('data-app-uuid') ?? undefined;
     const token = currentScript.getAttribute('data-token') ?? undefined;
     if (appUuid && token) {
+      theme = parseTheme(currentScript.getAttribute('data-theme'));
+      darkMode = parseDarkMode(currentScript.getAttribute('data-dark-mode'));
       parsedConfig = {
         appUuid,
         token,
-        accentColor: currentScript.getAttribute('data-accent-color') ?? undefined,
+        theme,
+        darkMode,
         position: parsePosition(currentScript.getAttribute('data-position')),
         offsetTop: parseOffset(currentScript.getAttribute('data-offset-top')),
         offsetBottom: parseOffset(currentScript.getAttribute('data-offset-bottom')),
@@ -54,6 +88,10 @@ export function parseOffset(raw: string | null): number {
 
   config.value = parsedConfig;
 
+  // Expose for live preview postMessage updates
+  (window as any).__ch8rConfig = config;
+  (window as any).__ch8rBuildThemeCSS = buildThemeCSS;
+
   const hostEl = document.createElement('div');
   hostEl.id = 'ch8r-widget-root';
   const shadow = hostEl.attachShadow({ mode: 'open' });
@@ -65,9 +103,10 @@ export function parseOffset(raw: string | null): number {
   const appRoot = document.createElement('div');
   shadow.appendChild(appRoot);
 
-  hostEl.style.setProperty('--ch8r-accent', parsedConfig.accentColor ?? '#6366f1');
-  hostEl.style.setProperty('--ch8r-accent-fg', '#ffffff');
+  injectTheme(shadow, theme);
 
   document.body.appendChild(hostEl);
   render(<App shadowHost={hostEl} />, appRoot);
+
+  createDarkModeDetector(hostEl, darkMode);
 })();

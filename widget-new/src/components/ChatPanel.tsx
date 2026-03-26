@@ -43,7 +43,7 @@ export function ChatPanel({ onClose, showSupportForm = false }: ChatPanelProps) 
       role="dialog"
       aria-modal="true"
       aria-label="Chat panel"
-      class="w-[380px] h-[560px] rounded-xl shadow-xl bg-white flex flex-col overflow-hidden ch8r-panel-enter"
+      class="w-[380px] h-[560px] rounded-xl shadow-xl bg-background flex flex-col overflow-hidden ch8r-panel-enter"
       style={computePositionStyles(config.value).panel}
     >
       <Header
