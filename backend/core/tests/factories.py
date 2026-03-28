@@ -43,7 +43,7 @@ class IntegrationFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f"Integration {n}")
     integration_type = factory.Iterator(['github', 'slack', 'jira'])
-    config = factory.Lambda(lambda: {
+    config = factory.LazyFunction(lambda: {
         'token': 'test_token',
         'api_url': 'https://api.example.com'
     })
@@ -55,7 +55,7 @@ class AppIntegrationFactory(factory.django.DjangoModelFactory):
 
     application = factory.SubFactory(ApplicationFactory)
     integration = factory.SubFactory(IntegrationFactory)
-    metadata = factory.Lambda(lambda: {
+    metadata = factory.LazyFunction(lambda: {
         'enabled': True,
         'sync_frequency': 'daily'
     })
