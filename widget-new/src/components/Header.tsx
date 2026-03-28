@@ -44,7 +44,7 @@ export function Header({ appName, appDescription, appLogoUrl, onClose }: HeaderP
                   rel="noopener noreferrer"
                   style={{ color: 'inherit', textDecoration: 'underline' }}
                 >
-                  Ch8r
+                  ch8r
                 </a>
               </span>
             )}
