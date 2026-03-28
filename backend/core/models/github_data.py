@@ -9,7 +9,7 @@ class GitHubRepository(BaseModel):
     name = models.CharField(max_length=255)
     repo_owner = models.CharField(max_length=255)
     full_name = models.CharField(max_length=511, unique=True)
-    description = models.TextField(blank=True)
+    description = models.TextField(blank=True, null=True)
     url = models.URLField()
     is_private = models.BooleanField(default=False)
     default_branch = models.CharField(max_length=100, default='main')

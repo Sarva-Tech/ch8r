@@ -32,7 +32,7 @@ class GitHubGraphQLIngestionService:
     def __init__(self, app_integration: AppIntegration):
         self.app_integration = app_integration
         self.graphql_client = None
-        self.rest_client = None  # Still needed for some operations like PR files
+        self.rest_client = None
         self.repository = None
 
     def _get_graphql_client(self) -> GitHubGraphQLClient:

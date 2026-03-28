@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'channels',
     'core',
-    'github_data',
     'corsheaders',
     'rest_framework_api_key',
 ]
