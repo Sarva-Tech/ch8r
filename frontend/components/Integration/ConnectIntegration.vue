@@ -49,6 +49,26 @@
 
       <FormField
         v-slot="{ componentField }"
+        name="token"
+      >
+        <FormItem>
+          <FormLabel class="flex items-center">
+            Token
+            <RequiredLabel />
+          </FormLabel>
+          <FormControl>
+            <Input
+              v-bind="componentField"
+              type="password"
+              placeholder="Enter your token"
+            />
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      </FormField>
+
+      <FormField
+        v-slot="{ componentField }"
         name="name"
       >
         <FormItem>
@@ -72,26 +92,6 @@
                 <Sparkles class="h-4 w-4" />
               </C8Button>
             </div>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      </FormField>
-
-      <FormField
-        v-slot="{ componentField }"
-        name="token"
-      >
-        <FormItem>
-          <FormLabel class="flex items-center">
-            Token
-            <RequiredLabel />
-          </FormLabel>
-          <FormControl>
-            <Input
-              v-bind="componentField"
-              type="password"
-              placeholder="Enter your token"
-            />
           </FormControl>
           <FormMessage />
         </FormItem>

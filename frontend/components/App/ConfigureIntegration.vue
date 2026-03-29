@@ -42,7 +42,6 @@
             </FormItem>
           </FormField>
 
-          <!-- Repo combobox — shown when requiresRepo is true -->
           <FormField
             v-if="config.requiresRepo"
             name="repo"
