@@ -68,7 +68,7 @@ class ConfigureAppIntegrationView(APIView):
 
         existing_app_integration = AppIntegration.objects.filter(
             application=application,
-            integration__type=integration.type
+            integration=integration
         ).first()
 
         if existing_app_integration:

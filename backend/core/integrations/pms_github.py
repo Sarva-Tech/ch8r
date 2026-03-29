@@ -1,3 +1,4 @@
+import json
 import requests
 import logging
 
@@ -62,8 +63,9 @@ def list_github_issues(app_integration, **kwargs):
     logger.info("Listing GitHub issues...")
     query = kwargs.get("query", "").strip()
 
-    token = app_integration.integration.config["token"]
-    repo = app_integration.metadata.get("branch_name")
+    credentials = json.loads(app_integration.integration.credentials)
+    token = credentials["token"]
+    repo = app_integration.metadata.get("repo")
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -103,8 +105,9 @@ def create_github_issue(app_integration, **kwargs):
     if not title:
         raise ValueError("title is required to create a GitHub issue")
 
-    token = app_integration.integration.config["token"]
-    repo = app_integration.metadata.get("branch_name")
+    credentials = json.loads(app_integration.integration.credentials)
+    token = credentials["token"]
+    repo = app_integration.metadata.get("repo")
 
     headers = {
         "Authorization": f"Bearer {token}",

@@ -42,11 +42,9 @@ class IntegrationFactory(factory.django.DjangoModelFactory):
         model = Integration
 
     name = factory.Sequence(lambda n: f"Integration {n}")
-    integration_type = factory.Iterator(['github', 'slack', 'jira'])
-    config = factory.LazyFunction(lambda: {
-        'token': 'test_token',
-        'api_url': 'https://api.example.com'
-    })
+    provider = 'github'
+    credentials = '{"token": "test_token_123"}'
+    creator = factory.SubFactory(UserFactory)
 
 
 class AppIntegrationFactory(factory.django.DjangoModelFactory):
@@ -55,7 +53,6 @@ class AppIntegrationFactory(factory.django.DjangoModelFactory):
 
     application = factory.SubFactory(ApplicationFactory)
     integration = factory.SubFactory(IntegrationFactory)
-    metadata = factory.LazyFunction(lambda: {
-        'enabled': True,
-        'sync_frequency': 'daily'
-    })
+    integration_type = 'version_control'
+    metadata = factory.LazyFunction(lambda: {'repo': 'owner/repo'})
+    is_active = True

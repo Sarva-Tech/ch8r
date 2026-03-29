@@ -62,16 +62,18 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
         owner = data['owner']
         repo = data['repo']
         since = data.get('since')
-        app_integration_id = data['app_integration_id']
+        application_uuid = data['application_uuid']
         full_name = f'{owner}/{repo}'
 
-        app_integration = AppIntegration.objects.select_related('application').get(
-            id=app_integration_id
+        from core.models import Application
+        application = Application.objects.get(uuid=application_uuid)
+        app_integration = AppIntegration.objects.select_related('integration', 'application').get(
+            application=application, integration_type='version_control'
         )
 
         existing_repo = GitHubRepository.objects.filter(
             full_name=full_name,
-            app_integration_id=app_integration_id,
+            app_integration=app_integration,
             ingestion_status='running',
         ).first()
 
@@ -108,7 +110,7 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
         send_kb_update(kb, kb.status)
 
         since_str = since.isoformat() if since else None
-        ingest_github_repository_task.delay(app_integration_id, owner, repo, since_str)
+        ingest_github_repository_task.delay(app_integration.id, owner, repo, since_str)
 
         return Response(
             {
@@ -124,30 +126,26 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
         operation_description="List all ingested repositories for an app integration.",
         manual_parameters=[
             openapi.Parameter(
-                'app_integration_id', openapi.IN_QUERY,
-                type=openapi.TYPE_INTEGER, required=True,
+                'application_uuid', openapi.IN_QUERY,
+                type=openapi.TYPE_STRING, required=True,
             )
         ],
         responses={200: GitHubRepositorySerializer(many=True)},
     )
     @action(detail=False, methods=['get'], url_path='repositories')
     def list_repositories(self, request):
-        app_integration_id = request.query_params.get('app_integration_id')
-        if not app_integration_id:
+        application_uuid = request.query_params.get('application_uuid')
+        if not application_uuid:
             return Response(
-                {'error': 'app_integration_id is required'},
+                {'error': 'application_uuid is required'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        from core.models import Application
+        application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
         app_integration = get_object_or_404(
-            AppIntegration.objects.select_related('application__owner'),
-            id=app_integration_id,
+            AppIntegration, application=application, integration_type='version_control'
         )
-        if app_integration.application.owner != request.user:
-            return Response(
-                {'error': 'You do not have access to this integration'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         repositories = GitHubRepository.objects.filter(
             app_integration=app_integration

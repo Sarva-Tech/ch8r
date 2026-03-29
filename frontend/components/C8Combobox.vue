@@ -38,6 +38,10 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
   searchPlaceholder: {
     type: String,
     default: 'Type to search or add',
@@ -164,6 +168,7 @@ function getDisplayLabel(value: string) {
           variant="outline"
           role="combobox"
           :aria-expanded="open"
+          :disabled="props.disabled"
           class="w-full justify-between h-9"
         >
           <span

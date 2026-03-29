@@ -1,86 +1,171 @@
 <template>
   <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
-    <div class="w-full space-y-4">
+    <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
-          <NewIntegration />
+          <ConnectIntegration @connected="integrationStore.load()" />
         </div>
       </div>
 
-      <C8Table
-        :data="integrations"
-        :columns="columns"
-        :expandable="false"
-        :delete-fn="deleteIntegration"
-      />
+      <div
+        v-for="supported in integrationStore.supportedIntegrations"
+        :key="supported.id"
+        class="space-y-2"
+      >
+        <template v-if="getConnectedAll(supported.id).length > 0">
+          <C8Item
+            v-for="integration in getConnectedAll(supported.id)"
+            :key="integration.uuid"
+            :icon="getIntegrationIcon(supported.id)"
+            container-class="w-full"
+            item-class="w-full"
+          >
+            <template #title>
+              <div class="flex items-center gap-2">
+                {{ integration.name }}
+              </div>
+            </template>
+            <template #details>
+              <ItemDescription>
+                <div class="inline-flex space-x-3">
+                  <div class="flex items-center space-x-1">
+                    <ServerCog class="w-4 h-4" />
+                    <div>{{ integrationProviderDetails(integration.provider) }}</div>
+                  </div>
+                  <div
+                    v-if="integration.supported_types?.includes('version_control')"
+                    class="flex items-center space-x-1"
+                  >
+                    <FolderGit class="w-4 h-4" />
+                    <div>Version Control</div>
+                  </div>
+                  <div
+                    v-if="integration.supported_types?.includes('project_management')"
+                    class="flex items-center space-x-1"
+                  >
+                    <SquareKanban class="w-4 h-4" />
+                    <div>Project Management</div>
+                  </div>
+                  <div
+                    v-if="(integration.metadata as any)?.account?.login"
+                    class="flex items-center space-x-1"
+                  >
+                    <Link class="w-4 h-4" />
+                    <a
+                      :href="(integration.metadata as any).account.html_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="hover:underline"
+                    >
+                      {{ (integration.metadata as any).account.login }}
+                    </a>
+                  </div>
+                </div>
+              </ItemDescription>
+            </template>
+            <template #dropdown>
+              <DropdownMenuItem @click="updateIntegration(integration)">
+                <PencilLine class="h-4 w-4" />
+                Update
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                class="text-destructive"
+                @click="openDeleteDialog(integration)"
+              >
+                <Trash class="h-4 w-4 text-destructive" />
+                Delete
+              </DropdownMenuItem>
+            </template>
+          </C8Item>
+        </template>
+      </div>
+
+      <div
+        v-if="integrationStore.integrations.length === 0"
+        class="text-center py-12 text-sm text-muted-foreground"
+      >
+        No integrations connected yet. Click "Add New Integration" to get started.
+      </div>
+
+      <UpdateIntegration ref="updateSlide" />
+
+      <C8Dialog
+        v-model:open="isDeleteDialogOpen"
+        :title="`Delete ${integrationToDelete?.name}`"
+        confirm-text="Delete"
+        :destructive="true"
+        @confirm="confirmDelete"
+      >
+        <template #description>
+          Are you sure you want to delete
+          <span class="font-bold">{{ integrationToDelete?.name }}</span>?
+          Any applications using this integration will lose access.
+        </template>
+      </C8Dialog>
     </div>
   </div>
 </template>
+
 <script setup lang="ts">
-import { computed, h } from 'vue'
-import type { ColumnDef } from '@tanstack/vue-table'
-import NewIntegration from '~/components/Integration/NewIntegration.vue'
-import GitHubIcon from '~/components/icons/GitHubIcon.vue'
+import { ref, onMounted } from 'vue'
+import ConnectIntegration from '~/components/Integration/ConnectIntegration.vue'
+import UpdateIntegration from '~/components/Integration/UpdateIntegration.vue'
+import { useIntegrationIcon } from '~/composables/useIntegrationIcon'
+import C8Dialog from '~/components/C8Dialog.vue'
+import C8Item from '~/components/C8Item.vue'
+import { ItemDescription } from '~/components/ui/item'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { PencilLine, Trash, Link, ServerCog, FolderGit, SquareKanban } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useIntegrationStore } from '~/stores/integration'
+import type { Integration } from '~/stores/integration'
 
 const integrationStore = useIntegrationStore()
-const user = useUserStore()
+const updateSlide = ref<InstanceType<typeof UpdateIntegration> | null>(null)
+const isDeleteDialogOpen = ref(false)
+const integrationToDelete = ref<Integration | null>(null)
 
-await integrationStore.load()
-await integrationStore.loadSupportedIntegrations()
+onMounted(async () => {
+  try {
+    await integrationStore.load()
+  }
+  catch (e) {
+    toast.error('Failed to load integrations')
+  }
+})
 
-const integrations = computed(() =>
-  integrationStore.integrations.map((i) => ({
-    ...i,
-    canDelete: i.owner === user.authUser.id,
-    canUpdate: false,
-  }))
-)
+function getIntegrationIcon(provider: string) {
+  return useIntegrationIcon(provider).value
+}
 
-const getProviderIcon = (provider: string) => {
-  switch (provider) {
+function integrationProviderDetails(provider: string): string {
+  switch (provider.toLowerCase()) {
     case 'github':
-      return GitHubIcon
+      return 'GitHub'
     default:
-      return null
+      return provider.charAt(0).toUpperCase() + provider.slice(1)
   }
 }
 
-const columns: ColumnDef<unknown, string | number>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: (info) => {
-      const row = info.row.original as any
-      const IconComponent = getProviderIcon(row.provider)
-      
-      return h('div', { class: 'flex items-center gap-2' }, [
-        IconComponent ? h(IconComponent, { class: 'h-4 w-4' }) : null,
-        h('span', {}, info.getValue())
-      ])
-    },
-  },
-  {
-    accessorKey: 'provider',
-    header: 'Provider',
-    cell: (info) => {
-      const provider = info.getValue() as string
-      const IconComponent = getProviderIcon(provider)
-      
-      return h('div', { class: 'flex items-center gap-2' }, [
-        IconComponent ? h(IconComponent, { class: 'h-4 w-4' }) : null,
-        h('span', {}, provider.charAt(0).toUpperCase() + provider.slice(1))
-      ])
-    },
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: () => '',
-  },
-]
+function getConnectedAll(providerId: string): Integration[] {
+  return integrationStore.integrations.filter(i => i.provider === providerId)
+}
 
-function deleteIntegration(uuid: string) {
-  integrationStore.delete(uuid)
+function updateIntegration(integration: Integration) {
+  updateSlide.value?.open(integration)
+}
+
+function openDeleteDialog(integration: Integration) {
+  integrationToDelete.value = integration
+  isDeleteDialogOpen.value = true
+}
+
+function confirmDelete() {
+  if (!integrationToDelete.value) return
+  integrationStore.delete(integrationToDelete.value.uuid).then((response) => {
+    if (response?.detail === 'deleted') {
+      toast.success('Integration deleted')
+    }
+  })
 }
 </script>

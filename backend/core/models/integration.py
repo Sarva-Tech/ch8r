@@ -1,37 +1,19 @@
-import uuid
-
 from django.contrib.auth.models import User
-from django.db import (models)
+from django.db import models
 
-class Integration(models.Model):
-    TYPE_CHOICES = [
-        ("pms", "Project Management System"),
-        ("crm", "Customer Relationship Management"),
-        ("custom", "Custom Integration"),
-    ]
+from core.fields import EncryptedCharField
 
-    id = models.AutoField(primary_key=True)
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    name = models.CharField(unique=True, max_length=255)
-    type = models.CharField(max_length=50, choices=TYPE_CHOICES)
+from .base_model import BaseModel
+
+
+class Integration(BaseModel):
+    name = models.CharField(max_length=255, null=True, blank=True)
     provider = models.CharField(max_length=255)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='integrations')
+    credentials = EncryptedCharField(max_length=2000)
+    creator = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    _config = models.TextField(db_column="config")
-    metadata = models.JSONField(blank=True, null=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        ordering = ['created_at']
 
     def __str__(self):
         return f"{self.name} ({self.provider})"
-
-    @property
-    def config(self):
-        from core.services.encryption import decrypt
-        return decrypt(self._config)
-
-    @config.setter
-    def config(self, value):
-        from core.services.encryption import encrypt
-        self._config = encrypt(value or {})

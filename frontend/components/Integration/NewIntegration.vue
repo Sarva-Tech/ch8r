@@ -6,7 +6,10 @@
     <template #trigger>
       <C8Button label="Create New Integration" />
     </template>
-    <form class="space-y-5" @submit.prevent="">
+    <form
+      class="space-y-5"
+      @submit.prevent=""
+    >
       <C8Select
         :options="integrationTypes"
         :model-value="selectedIntegrationType?.value"
@@ -21,7 +24,10 @@
         @update:model-value="(val) => (selectedIntegrationProvider = val)"
       />
 
-      <FormField v-slot="{ componentField }" name="name">
+      <FormField
+        v-slot="{ componentField }"
+        name="name"
+      >
         <FormItem>
           <FormLabel class="flex items-center">
             <div>
@@ -30,12 +36,18 @@
             </div>
           </FormLabel>
           <FormControl>
-            <Input v-bind="componentField" placeholder="Ch8r PMS" />
+            <Input
+              v-bind="componentField"
+              placeholder="Ch8r PMS"
+            />
           </FormControl>
           <FormMessage />
         </FormItem>
       </FormField>
-      <component :is="dynamicIntegrationComponent" :form="form" />
+      <component
+        :is="dynamicIntegrationComponent"
+        :form="form"
+      />
     </form>
 
     <template #submitBtn>
@@ -48,6 +60,7 @@
     </template>
   </SlideOver>
 </template>
+
 <script setup lang="ts">
 import SlideOver from '~/components/SlideOver.vue'
 import { toast } from 'vue-sonner'
@@ -57,7 +70,7 @@ import RequiredLabel from '~/components/RequiredLabel.vue'
 import C8Select from '~/components/C8Select.vue'
 import { useIntegrationStore } from '~/stores/integration'
 import PMSGitHub from '~/components/Integration/PMSGitHub.vue'
-import GitHubIcon from '~/components/icons/GitHubIcon.vue'
+import { useIntegrationIcon } from '~/composables/useIntegrationIcon'
 import { useForm } from 'vee-validate'
 import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
@@ -88,24 +101,24 @@ const selectedIntegrationType = ref(integrationTypes.value[0])
 
 const providerMap: Record<
   string,
-  { label: string; icon?: any }
+  { label: string, icon?: any }
 > = {
-  github: { label: "GitHub", icon: GitHubIcon },
-  jira: { label: "Jira", icon: "jira-icon" },
+  github: { label: 'GitHub' },
+  jira: { label: 'Jira', icon: 'jira-icon' },
 }
 
 const integrationProviders = computed(() => {
   if (!selectedIntegrationType.value) return []
 
-  const providers =
-    supportedIntegrations.value?.supported_providers?.[selectedIntegrationType.value.value] || []
+  const providers
+    = supportedIntegrations.value?.supported_providers?.[selectedIntegrationType.value.value] || []
 
   return providers.map((p: string) => {
     const mapped = providerMap[p]
     return {
       label: mapped?.label || p,
       value: p,
-      icon: mapped?.icon || undefined,
+      icon: useIntegrationIcon(p).value,
       logo: mapped?.logo || undefined,
     }
   })
@@ -123,11 +136,11 @@ const schema = z.object({
     .max(255),
   token: z.string().optional()
 }).refine(
-  (data) =>
-    !(data.provider === "github") || !!data.token,
+  data =>
+    !(data.provider === 'github') || !!data.token,
   {
-    message: "Token is required for GitHub integrations",
-    path: ["token"],
+    message: 'Token is required for GitHub integrations',
+    path: ['token'],
   }
 )
 
@@ -165,8 +178,8 @@ watch(
 
 const dynamicIntegrationComponent = computed(() => {
   if (
-    selectedIntegrationType.value?.value === "pms" &&
-    selectedIntegrationProvider.value === "github"
+    selectedIntegrationType.value?.value === 'pms'
+    && selectedIntegrationProvider.value === 'github'
   ) {
     return PMSGitHub
   }

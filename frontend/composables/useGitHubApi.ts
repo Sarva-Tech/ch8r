@@ -16,8 +16,8 @@ export const useGitHubApi = () => {
     return httpPost<GitHubRepository>('/github-ingestion/ingest-repository/', data as any)
   }
 
-  const getRepositories = async (appIntegrationId: number) => {
-    return httpGet<GitHubRepositoryResponse[]>('/github-ingestion/repositories/', { app_integration_id: appIntegrationId }, true)
+  const getRepositories = async (applicationUuid: string) => {
+    return httpGet<GitHubRepositoryResponse[]>('/github-ingestion/repositories/', { application_uuid: applicationUuid }, true)
   }
 
   const deleteRepository = async (repositoryId: number) => {

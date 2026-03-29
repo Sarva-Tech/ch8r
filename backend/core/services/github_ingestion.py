@@ -1,9 +1,8 @@
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q
 
 from core.models.github_data import (
     GitHubRepository, GitHubIssue, GitHubIssueComment, GitHubPullRequest,
@@ -12,18 +11,11 @@ from core.models.github_data import (
 from core.models import AppIntegration
 from core.services.github_client import GitHubAPIClient
 from core.services.github_graphql_ingestion import GitHubGraphQLIngestionService
-from core.services.ingestion import chunk_text, embed_text, embed_sparse
-from core.models import IngestedChunk
-from core.qdrant import qdrant, COLLECTION_NAME
-from qdrant_client.http.models import PointStruct
-from qdrant_client.models import SparseVector
-import uuid
 
 logger = logging.getLogger(__name__)
 
 
 class GitHubDataIngestionService:
-    """Production-grade GitHub data ingestion service with GraphQL support"""
 
     def __init__(self, app_integration: AppIntegration, use_graphql: bool = True):
         self.app_integration = app_integration
@@ -33,22 +25,21 @@ class GitHubDataIngestionService:
         self.repository = None
 
     def _get_graphql_service(self) -> GitHubGraphQLIngestionService:
-        """Initialize GraphQL service"""
         if not self.graphql_service:
             self.graphql_service = GitHubGraphQLIngestionService(self.app_integration)
         return self.graphql_service
 
     def _get_github_client(self) -> GitHubAPIClient:
-        """Initialize GitHub client"""
         if not self.github_client:
-            token = self.app_integration.integration.config.get('token')
+            import json
+            credentials = json.loads(self.app_integration.integration.credentials or '{}')
+            token = credentials.get('token')
             if not token:
                 raise ValueError("GitHub token not found in integration config")
             self.github_client = GitHubAPIClient(token)
         return self.github_client
 
     def _get_or_create_repository(self, owner: str, repo: str) -> GitHubRepository:
-        """Get or create repository record"""
         full_name = f"{owner}/{repo}"
 
         repository, created = GitHubRepository.objects.get_or_create(
@@ -82,7 +73,6 @@ class GitHubDataIngestionService:
         return repository
 
     def _ingest_issues(self, owner: str, repo: str, since: Optional[str] = None):
-        """Ingest issues and comments"""
         client = self._get_github_client()
 
         try:
@@ -97,7 +87,6 @@ class GitHubDataIngestionService:
             raise
 
     def _ingest_single_issue(self, issue_data: Dict[str, Any], owner: str, repo: str):
-        """Ingest a single issue and its comments"""
         client = self._get_github_client()
 
         with transaction.atomic():
@@ -150,7 +139,6 @@ class GitHubDataIngestionService:
                 logger.warning(f"Comment ingestion traceback: {traceback.format_exc()}")
 
     def _ingest_pull_requests(self, owner: str, repo: str, since: Optional[str] = None):
-        """Ingest pull requests, comments, and files"""
         client = self._get_github_client()
 
         try:
@@ -175,7 +163,6 @@ class GitHubDataIngestionService:
             raise
 
     def _ingest_single_pull_request(self, pr_data: Dict[str, Any], owner: str, repo: str):
-        """Ingest a single pull request and its related data"""
         client = self._get_github_client()
         pr_number = pr_data.get('number', 'unknown')
 
@@ -267,12 +254,10 @@ class GitHubDataIngestionService:
             raise
 
     def _ingest_code_comments(self, owner: str, repo: str):
-        """Ingest code comments from key files"""
         logger.info("Code comment ingestion not yet implemented")
         pass
 
     def _create_knowledge_base_content(self) -> str:
-        """Create knowledge base content from all ingested data"""
         content_parts = []
 
         if not self.repository:
@@ -316,7 +301,6 @@ class GitHubDataIngestionService:
         return "\n".join(content_parts)
 
     def _ingest_to_knowledge_base(self):
-        """Ingest all GitHub data into the knowledge base"""
         from core.models import KnowledgeBase
         from core.tasks.kb import send_kb_update
 
@@ -354,7 +338,6 @@ class GitHubDataIngestionService:
         send_kb_update(kb, kb.status)
 
     def _parse_datetime(self, dt_str: Optional[str]) -> Optional[datetime]:
-        """Parse datetime string from GitHub API"""
         if not dt_str:
             return None
 
@@ -369,7 +352,6 @@ class GitHubDataIngestionService:
             return timezone.now()
 
     def ingest_repository(self, owner: str, repo: str, since: Optional[str] = None):
-        """Main method to ingest all GitHub data for a repository"""
         try:
             logger.info(f"[GitHubIngestion] Starting ingestion for {owner}/{repo} (since={since}), using GraphQL: {self.use_graphql}")
 

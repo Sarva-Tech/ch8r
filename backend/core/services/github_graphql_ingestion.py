@@ -37,7 +37,9 @@ class GitHubGraphQLIngestionService:
 
     def _get_graphql_client(self) -> GitHubGraphQLClient:
         if not self.graphql_client:
-            token = self.app_integration.integration.config.get('token')
+            import json
+            credentials = json.loads(self.app_integration.integration.credentials or '{}')
+            token = credentials.get('token')
             if not token:
                 raise ValueError("GitHub token not found in integration config")
             self.graphql_client = GitHubGraphQLClient(token)
@@ -45,7 +47,9 @@ class GitHubGraphQLIngestionService:
 
     def _get_rest_client(self) -> GitHubAPIClient:
         if not self.rest_client:
-            token = self.app_integration.integration.config.get('token')
+            import json
+            credentials = json.loads(self.app_integration.integration.credentials or '{}')
+            token = credentials.get('token')
             if not token:
                 raise ValueError("GitHub token not found in integration config")
             self.rest_client = GitHubAPIClient(token)

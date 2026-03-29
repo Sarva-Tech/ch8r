@@ -182,14 +182,19 @@ class GitHubIngestionRequestSerializer(serializers.Serializer):
     owner = serializers.CharField(max_length=255)
     repo = serializers.CharField(max_length=255)
     since = serializers.DateTimeField(required=False, allow_null=True)
-    app_integration_id = serializers.IntegerField()
+    application_uuid = serializers.UUIDField()
 
-    def validate_app_integration_id(self, value):
-        from core.models import AppIntegration
+    def validate_application_uuid(self, value):
+        from core.models import Application, AppIntegration
         request = self.context.get('request')
-        qs = AppIntegration.objects.filter(id=value)
-        if request:
-            qs = qs.filter(application__owner=request.user)
-        if not qs.exists():
-            raise serializers.ValidationError("Invalid app_integration_id or access denied.")
+        try:
+            self._application = Application.objects.get(uuid=value, owner=request.user)
+        except Application.DoesNotExist:
+            raise serializers.ValidationError("Invalid application_uuid or access denied.")
+        if not AppIntegration.objects.filter(
+            application=self._application, integration_type='version_control'
+        ).exists():
+            raise serializers.ValidationError(
+                "No version_control integration configured for this application"
+            )
         return value

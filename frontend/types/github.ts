@@ -179,7 +179,7 @@ export interface GitHubIngestionRequest {
   owner: string
   repo: string
   since?: string
-  app_integration_id: number
+  application_uuid: string
 }
 
 export interface GitHubRepositoryResponse extends GitHubRepository {

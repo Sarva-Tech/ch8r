@@ -19,3 +19,14 @@ SUPPORTED_AI_PROVIDERS = [
         'base_url': ''
     }
 ]
+
+SUPPORTED_INTEGRATIONS = [
+    {
+        'id': 'github',
+        'label': 'GitHub',
+        'description': 'Connect your GitHub account for repository ingestion and issue management.',
+        'supported_types': ['version_control', 'project_management'],
+        'credential_fields': ['token'],
+        'validate': 'core.integrations.github_validator.validate_github_token',
+    }
+]

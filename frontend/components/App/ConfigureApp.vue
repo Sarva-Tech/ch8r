@@ -38,15 +38,15 @@ import { toast } from 'vue-sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import AppAIModelsConfiguration from '~/components/App/AppAIModelsConfiguration.vue'
-import AppPMSConfiguration from '~/components/App/AppPMSConfiguration.vue'
+import AppIntegrationsConfiguration from '~/components/App/AppIntegrationsConfiguration.vue'
 import AppNotificationConfiguration from '~/components/App/AppNotificationConfiguration.vue'
 
 const getTabComponent = (tab: string) => {
   switch (tab) {
     case 'models':
       return AppAIModelsConfiguration
-    case 'project_management':
-      return AppPMSConfiguration
+    case 'integrations':
+      return AppIntegrationsConfiguration
     case 'notifications':
       return AppNotificationConfiguration
     default:
@@ -56,7 +56,7 @@ const getTabComponent = (tab: string) => {
 
 const tabs = [
   { label: 'AI Models', value: 'models' },
-  { label: 'Project Management', value: 'project_management' },
+  { label: 'Integrations', value: 'integrations' },
   { label: 'Notifications', value: 'notifications' }
 ]
 

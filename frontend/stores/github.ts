@@ -141,24 +141,7 @@ export const useGitHubStore = defineStore('github', () => {
     }
   }
 
-  const fetchRepositories = async (appIntegrationId: number) => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const response = await githubApi.getRepositories(appIntegrationId)
-      repositories.value = response
-
-      return response
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch repositories')
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const ingestRepository = async (data: { owner: string; repo: string; app_integration_id: number; since?: string }) => {
+  const ingestRepository = async (data: { owner: string; repo: string; application_uuid: string; since?: string }) => {
     try {
       setLoading(true)
       setError(null)
@@ -170,6 +153,23 @@ export const useGitHubStore = defineStore('github', () => {
     } catch (err: any) {
       setError(err.message || 'Failed to ingest repository')
       setIngestionStatus('failed')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchRepositories = async (applicationUuid: string) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await githubApi.getRepositories(applicationUuid)
+      repositories.value = response
+
+      return response
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch repositories')
       throw err
     } finally {
       setLoading(false)

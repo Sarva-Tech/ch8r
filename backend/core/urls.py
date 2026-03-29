@@ -14,7 +14,6 @@ from core.views.custom_auth import CustomAuthToken
 from core.views.application import ApplicationViewSet, ApplicationChatRoomsPreviewView, UserChatRoomsView
 from core.views.chatroom import ChatRoomDetailView
 from core.views.configure_app import ConfigureAppIntegrationView, LoadAppConfigurationView
-from core.views.integration import supported_integrations
 from core.views.llm_model import LLMModelViewSet
 from core.views.message import SendMessageView
 from core.views.human_agent import HumanAgentInfoView
@@ -33,12 +32,12 @@ router.register(r'ai-providers', AIProviderViewSet, basename='ai-provider')
 router.register(r'notification-profiles', NotificationProfileViewSet, basename='notificationprofile')
 router.register(r'models', LLMModelViewSet, basename='model'),
 router.register(r'integrations', IntegrationViewSet, basename='integration')
-router.register(r'app-integrations', AppIntegrationViewSet, basename='app-integration')
 router.register(r'github-ingestion', GitHubIngestionViewSet, basename='github-ingestion'),
 
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')
 nested_router.register(r'knowledge-bases', KnowledgeBaseViewSet, basename='application-knowledge-bases')
 nested_router.register(r'ai-providers', AppAIProviderViewSet, basename='application-ai-providers')
+nested_router.register(r'integrations', AppIntegrationViewSet, basename='application-integrations')
 
 urlpatterns = [
     path('login/', CustomAuthToken.as_view(), name='api_login'),
@@ -99,8 +98,6 @@ urlpatterns = [
         AppNotificationUpdateView.as_view(),
         name="app-notification-update"
     ),
-
-    path('supported-integrations/', supported_integrations, name='supported-integrations'),
 
     path('', include(router.urls)),
     path('', include(nested_router.urls)),
