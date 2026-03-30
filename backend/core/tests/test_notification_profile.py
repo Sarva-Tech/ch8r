@@ -78,7 +78,7 @@ class TestNotificationProfileAPI(BaseAPITestCase):
             'name': 'My Slack Notifications',
             'type': 'slack',
             'config': {
-                'webhookUrl': 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+                'webhookUrl': 'https://example.com/'
             }
         }
 
