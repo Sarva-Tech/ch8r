@@ -14,18 +14,21 @@
         </ItemDescription>
       </ItemContent>
       
-      <ItemActions v-if="hasActions || $slots.actions || $slots.dropdown">
+      <ItemActions v-if="hasActions || $slots.actions || $slots.dropdown || $slots['before-dropdown']">
         <slot name="actions">
-          <DropdownMenu v-if="$slots.dropdown">
-            <DropdownMenuTrigger as-child>
-              <Button size="sm" variant="outline" class="h-8 w-8 p-0">
-                <EllipsisVertical class="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <slot name="dropdown" />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div class="flex items-center gap-2">
+            <slot name="before-dropdown" />
+            <DropdownMenu v-if="$slots.dropdown">
+              <DropdownMenuTrigger as-child>
+                <Button size="sm" variant="outline" class="h-8 w-8 p-0">
+                  <EllipsisVertical class="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <slot name="dropdown" />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </slot>
       </ItemActions>
     </Item>

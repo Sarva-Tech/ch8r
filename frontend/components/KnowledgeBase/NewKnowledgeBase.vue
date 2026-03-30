@@ -4,7 +4,10 @@
     title="Add to Knowledge Base"
   >
     <template #trigger>
-      <C8Button label="Add to Knowledge Base" />
+      <C8Button
+        label="Add to Knowledge Base"
+        :icon="Plus"
+      />
     </template>
     <div class="space-y-4">
       <SourceSelector
@@ -66,6 +69,7 @@ import { KB_SOURCES } from '~/lib/consts'
 import { computed, ref, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import RequiredLabel from '~/components/RequiredLabel.vue'
+import { Plus } from 'lucide-vue-next'
 import type { GitHubIngestionRequest } from '~/types/github'
 
 const newKBSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
