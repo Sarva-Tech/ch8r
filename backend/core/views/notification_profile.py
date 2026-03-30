@@ -23,3 +23,10 @@ class NotificationProfileViewSet(viewsets.ModelViewSet):
             {"detail": "PUT method not allowed. Use PATCH instead."},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)

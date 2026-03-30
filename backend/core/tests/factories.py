@@ -4,7 +4,8 @@ from core.models import (
     Application,
     AIProvider,
     Integration,
-    AppIntegration
+    AppIntegration,
+    NotificationProfile
 )
 
 class UserFactory(factory.django.DjangoModelFactory):
@@ -56,3 +57,20 @@ class AppIntegrationFactory(factory.django.DjangoModelFactory):
     integration_type = 'version_control'
     metadata = factory.LazyFunction(lambda: {'repo': 'owner/repo'})
     is_active = True
+
+
+class NotificationProfileFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = NotificationProfile
+
+    name = factory.Sequence(lambda n: f"Notification Profile {n}")
+    type = factory.Iterator(['email', 'slack', 'discord'])
+    owner = factory.SubFactory(UserFactory)
+    uuid = factory.Faker('uuid4')
+
+    @factory.post_generation
+    def set_config(obj, create, extracted, **kwargs):
+        if obj.type == 'email':
+            obj.config = {'email': factory.Faker('email').generate()}
+        else:
+            obj.config = {'webhookUrl': f'https://hooks.{obj.type}.com/test/webhook'}

@@ -1,77 +1,158 @@
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import UpdateNotificationProfiles from '~/components/notification/UpdateNotificationProfile.vue'
-import Ch8rTable from '~/components/C8Table.vue'
-import NewNotificationProfile from '~/components/notification/NewNotificationProfile.vue'
-import { useNotificationProfileStore } from '~/stores/notificationProfile'
-import type { ColumnDef } from '@tanstack/vue-table'
-
-const updateNotification = ref<InstanceType<
-  typeof UpdateNotificationProfiles
-> | null>(null)
-
-const notificationProfileStore = useNotificationProfileStore()
-const user = useUserStore()
-
-const isLoading = ref(false)
-
-const profiles = computed(() =>
-  notificationProfileStore.profiles.map((profile) => ({
-    ...profile,
-    canDelete: profile.owner === user.authUser.id,
-    canUpdate: profile.owner === user.authUser.id,
-  }))
-)
-
-onMounted(async () => {
-  isLoading.value = true
-  try {
-    await notificationProfileStore.load()
-  } catch (err) {
-    console.error('Failed to fetch notification profiles:', err)
-  } finally {
-    isLoading.value = false
-  }
-})
-
-function handleEdit(profile: NotificationProfile) {
-  updateNotification.value?.openSheet(profile)
-}
-
-function handleDelete(identifier: number | string) {
-  notificationProfileStore.delete(identifier)
-}
-
-const columns: ColumnDef<never>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: (info) => info.getValue(),
-  },
-  {
-    id: 'actions',
-    header: 'Actions',
-    cell: () => '',
-  },
-]
-</script>
-
 <template>
   <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
-    <div class="w-full space-y-4">
+    <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
           <NewNotificationProfile />
         </div>
       </div>
-      <Ch8rTable
-        :data="profiles"
-        :columns="columns"
-        :update-fn="handleEdit"
-        :delete-fn="handleDelete"
-        :expandable="false"
-      />
+
+      <C8Item
+        v-for="(profile, index) in notificationProfiles"
+        :key="index"
+        :icon="getNotificationIcon(profile.type)"
+        container-class="w-full"
+        item-class="w-full"
+      >
+        <template #title>
+          {{ profile.name }}
+        </template>
+        <template #details>
+          <ItemDescription>
+            <div class="inline-flex space-x-3">
+              <div class="flex items-center space-x-1">
+                <Bell class="w-4 h-4" />
+                <div>{{ typeDisplayName(profile.type) }}</div>
+              </div>
+              <div
+                v-if="profile.config?.email"
+                class="flex items-center space-x-1"
+              >
+                <Mail class="w-4 h-4" />
+                <div>{{ profile.config.email }}</div>
+              </div>
+            </div>
+          </ItemDescription>
+        </template>
+
+        <template #dropdown>
+          <DropdownMenuItem
+            :disabled="!canManageProfile(profile)"
+            @click="updateProfile(profile)"
+          >
+            <PencilLine class="h-4 w-4" />
+            Update
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            class="text-destructive"
+            :disabled="!canManageProfile(profile)"
+            @click="openDeleteDialog(profile)"
+          >
+            <Trash class="h-4 w-4 text-destructive" />
+            Delete
+          </DropdownMenuItem>
+        </template>
+      </C8Item>
+      <UpdateNotificationProfile ref="updateNotificationProfileSlide" />
+      <C8Dialog
+        v-model:open="isDeleteDialogOpen"
+        :title="`Delete Notification Profile ${profileToDelete?.name}`"
+        :confirm-text="'Delete'"
+        :destructive="true"
+        @confirm="confirmDelete"
+      >
+        <template #description>
+          <div>
+            Are you sure you want to delete the notification profile <span class="font-bold">{{ profileToDelete?.name }}</span>?
+          </div>
+        </template>
+      </C8Dialog>
     </div>
-    <UpdateNotificationProfiles ref="updateNotification" />
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import NewNotificationProfile from '~/components/notification/NewNotificationProfile.vue'
+import UpdateNotificationProfile from '~/components/notification/UpdateNotificationProfile.vue'
+import C8Dialog from '~/components/C8Dialog.vue'
+import C8Item from '~/components/C8Item.vue'
+import { ItemDescription } from '~/components/ui/item'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { useNotificationProviderIcon } from '~/composables/useNotificationProviderIcon'
+import { toast } from 'vue-sonner'
+import { PencilLine, Trash, Bell, Mail } from 'lucide-vue-next'
+
+const updateNotificationProfileSlide = ref<InstanceType<typeof UpdateNotificationProfile> | null>(null)
+const isDeleteDialogOpen = ref(false)
+const profileToDelete = ref<NotificationProfile | null>(null)
+
+const notificationProfileStore = useNotificationProfileStore()
+const user = useUserStore()
+
+const loading = ref(false)
+
+function getNotificationIcon(type: string) {
+  return useNotificationProviderIcon(type).value
+}
+
+function canManageProfile(profile: NotificationProfile) {
+  return user.authUser?.id === profile.owner
+}
+
+function typeDisplayName(type: string) {
+  switch (type?.toLowerCase()) {
+    case 'slack':
+      return 'Slack'
+    case 'discord':
+      return 'Discord'
+    case 'email':
+      return 'Email'
+    default:
+      return type?.charAt(0).toUpperCase() + type?.slice(1)
+  }
+}
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    await notificationProfileStore.load()
+  }
+  catch (e: unknown) {
+    console.error(e)
+    toast.error('Failed to load notification profiles')
+  }
+  finally {
+    loading.value = false
+  }
+})
+
+const notificationProfiles = computed(() => notificationProfileStore.profiles)
+
+function updateProfile(profile: NotificationProfile) {
+  updateNotificationProfileSlide.value?.open(profile)
+}
+
+function openDeleteDialog(profile: NotificationProfile) {
+  profileToDelete.value = profile
+  isDeleteDialogOpen.value = true
+}
+
+function confirmDelete() {
+  if (profileToDelete.value) {
+    deleteProfile(profileToDelete.value)
+  }
+}
+
+function deleteProfile(profile: NotificationProfile) {
+  const id = profile.id || profile.uuid
+  if (!id) return
+
+  notificationProfileStore.delete(id).then(() => {
+    toast.success('Notification profile deleted')
+  }).catch((e) => {
+    console.error(e)
+    toast.error('Failed to delete notification profile')
+  })
+}
+</script>
