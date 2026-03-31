@@ -8,21 +8,21 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from core.models import AppIntegration, VCRepository, VCIssue, VCIssueComment, VCPullRequest, VCPRComment, VCPRFile
-from core.serializers.github_serializers import (
-    GitHubIngestionRequestSerializer,
+from core.models import AppIntegration
+from core.models.version_control import VCRepository
+from core.serializers.version_control_serializers import (
+    VCIngestionRequestSerializer,
     VCIssueSerializer,
     VCPullRequestSerializer,
     VCRepositoryDetailSerializer,
     VCRepositorySerializer,
 )
-from core.tasks.github_tasks import ingest_github_repository_task
+from core.tasks.vc_tasks import ingest_vc_repository_task
 
 logger = logging.getLogger(__name__)
 
 
 def _get_repository_for_user(pk, user):
-    """Fetch a VCRepository and verify ownership in one place."""
     repo = get_object_or_404(
         VCRepository.objects.select_related('app_integration__application__owner'),
         pk=pk,
@@ -35,14 +35,12 @@ def _get_repository_for_user(pk, user):
     return repo, None
 
 
-class GitHubIngestionViewSet(viewsets.ViewSet):
-    """API endpoints for GitHub data ingestion and retrieval."""
-
+class VCIngestionViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
-        operation_description="Queue async ingestion of a GitHub repository.",
-        request_body=GitHubIngestionRequestSerializer,
+        operation_description="Queue async ingestion of a version control repository.",
+        request_body=VCIngestionRequestSerializer,
         responses={
             202: openapi.Response(description="Ingestion queued"),
             400: openapi.Response(description="Invalid parameters"),
@@ -51,7 +49,7 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
     )
     @action(detail=False, methods=['post'], url_path='ingest-repository')
     def ingest_repository(self, request):
-        serializer = GitHubIngestionRequestSerializer(
+        serializer = VCIngestionRequestSerializer(
             data=request.data, context={'request': request}
         )
         if not serializer.is_valid():
@@ -62,6 +60,7 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
         repo = data['repo']
         since = data.get('since')
         application_uuid = data['application_uuid']
+        provider = data.get('provider', 'github_graphql')
         full_name = f'{owner}/{repo}'
 
         from core.models import Application
@@ -99,22 +98,23 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
         from core.tasks.kb import send_kb_update
         kb, _ = KnowledgeBase.objects.get_or_create(
             application=app_integration.application,
-            source_type='github',
+            source_type='version_control',
             path=full_name,
             defaults={
                 'status': 'pending',
-                'metadata': {'source': 'github', 'repository': full_name, 'content': ''},
+                'metadata': {'source': 'version_control', 'provider': provider, 'repository': full_name, 'content': ''},
             }
         )
         send_kb_update(kb, kb.status)
 
         since_str = since.isoformat() if since else None
-        ingest_github_repository_task.delay(app_integration.id, owner, repo, since_str)
+        ingest_vc_repository_task.delay(app_integration.id, owner, repo, since_str, provider)
 
         return Response(
             {
                 'status': 'queued',
                 'repository': full_name,
+                'provider': provider,
                 'message': 'Repository ingestion started.',
                 'kb_uuid': str(kb.uuid),
             },
@@ -127,6 +127,11 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
             openapi.Parameter(
                 'application_uuid', openapi.IN_QUERY,
                 type=openapi.TYPE_STRING, required=True,
+            ),
+            openapi.Parameter(
+                'provider', openapi.IN_QUERY,
+                type=openapi.TYPE_STRING, required=False,
+                description='Filter by provider (github)',
             )
         ],
         responses={200: VCRepositorySerializer(many=True)},
@@ -146,9 +151,13 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
             AppIntegration, application=application, integration_type='version_control'
         )
 
-        repositories = VCRepository.objects.filter(
-            app_integration=app_integration
-        ).order_by('-created_at')
+        queryset = VCRepository.objects.filter(app_integration=app_integration)
+
+        provider = request.query_params.get('provider')
+        if provider:
+            queryset = queryset.filter(provider=provider)
+
+        repositories = queryset.order_by('-created_at')
         return Response(VCRepositorySerializer(repositories, many=True).data)
 
     @swagger_auto_schema(
@@ -187,7 +196,7 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
         return Response(VCIssueSerializer(issues, many=True).data)
 
     @swagger_auto_schema(
-        operation_description="List pull requests for a repository.",
+        operation_description="List pull/merge requests for a repository.",
         manual_parameters=[
             openapi.Parameter(
                 'state', openapi.IN_QUERY,
@@ -210,9 +219,6 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
 
         return Response(VCPullRequestSerializer(prs, many=True).data)
 
-
-
-
     @swagger_auto_schema(
         operation_description="Queue re-ingestion of an already-ingested repository.",
         request_body=openapi.Schema(
@@ -220,7 +226,12 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
             properties={
                 'since': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    description='ISO datetime — only ingest data after this point (optional)',
+                    description='ISO datetime - only ingest data after this point (optional)',
+                ),
+                'provider': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Provider to use (optional, defaults to existing provider)',
+                    enum=['github', 'github_graphql'],
                 )
             },
         ),
@@ -256,15 +267,17 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
                 )
 
         since = request.data.get('since') or request.query_params.get('since')
+        provider = request.data.get('provider') or repository.provider
         owner, repo = repository.full_name.split('/', 1)
-        ingest_github_repository_task.delay(
-            repository.app_integration_id, owner, repo, since
+        ingest_vc_repository_task.delay(
+            repository.app_integration_id, owner, repo, since, provider
         )
 
         return Response(
             {
                 'status': 'queued',
                 'repository': repository.full_name,
+                'provider': provider,
                 'message': 'Repository re-ingestion started.',
             },
             status=status.HTTP_202_ACCEPTED,
@@ -292,7 +305,7 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
 
             kb = KnowledgeBase.objects.filter(
                 application=app,
-                source_type='github',
+                source_type='version_control',
                 path=full_name,
             ).first()
 
@@ -307,6 +320,6 @@ class GitHubIngestionViewSet(viewsets.ViewSet):
             logger.warning(f"Failed to clean up KB/vectors for {full_name}: {e}")
 
         repository.delete()
-        logger.info(f"Deleted GitHub repository record: {full_name}")
+        logger.info(f"Deleted repository record: {full_name}")
 
         return Response(status=status.HTTP_204_NO_CONTENT)
