@@ -25,6 +25,7 @@ from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
 from core.views.ai_provider import AIProviderViewSet
 from core.views.app_ai_provider import AppAIProviderViewSet
 from core.views.github_ingestion import GitHubIngestionViewSet
+from core.views.tool_config import ToolConfigView
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
@@ -97,6 +98,17 @@ urlpatterns = [
         "applications/<uuid:app_uuid>/app-notification-update/",
         AppNotificationUpdateView.as_view(),
         name="app-notification-update"
+    ),
+
+    path(
+        'applications/<uuid:app_uuid>/integrations/<uuid:integration_uuid>/tools/',
+        ToolConfigView.as_view(),
+        name='tool-config-list',
+    ),
+    path(
+        'applications/<uuid:app_uuid>/integrations/<uuid:integration_uuid>/tools/<uuid:tool_uuid>/',
+        ToolConfigView.as_view(),
+        name='tool-config-detail',
     ),
 
     path('', include(router.urls)),

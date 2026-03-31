@@ -22,3 +22,4 @@ from .github_data import (
     GitHubPRComment, GitHubPRFile, GitHubDiscussion, GitHubDiscussionComment,
     GitHubWikiPage, GitHubRepositoryFile
 )
+from .tool_config import ToolConfig

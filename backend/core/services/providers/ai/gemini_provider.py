@@ -1,5 +1,6 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from google import genai
+from google.genai import types
 from google.genai.types import GenerateContentConfig
 from ...contracts.ai_provider_contract import AIProviderContract
 from core.agent_response_schema import SupportAgentResponse
@@ -28,6 +29,46 @@ class GeminiProvider(AIProviderContract):
 
         except Exception as e:
             raise ValueError(f"Gemini API error: {e}")
+
+    def generate_with_tools(self, model: str, contents: list, tool_schemas: List[dict]) -> types.GenerateContentResponse:
+        ROLE_MAP = {"assistant": "model", "system": "system"}
+        system_parts = []
+        filtered_contents = []
+        for msg in contents:
+            role = msg.get("role", "") if isinstance(msg, dict) else getattr(msg, "role", "")
+            if role == "system":
+                parts = msg.get("parts", []) if isinstance(msg, dict) else getattr(msg, "parts", [])
+                for p in parts:
+                    text = p.get("text", "") if isinstance(p, dict) else getattr(p, "text", "")
+                    if text:
+                        system_parts.append(types.Part.from_text(text=text))
+            else:
+                gemini_role = ROLE_MAP.get(role, role)
+                if isinstance(msg, dict):
+                    filtered_contents.append({**msg, "role": gemini_role})
+                else:
+                    filtered_contents.append(msg)
+
+        function_declarations = []
+        for tool in tool_schemas:
+            fn = tool.get("function", tool)
+            function_declarations.append({
+                "name": fn["name"],
+                "description": fn.get("description", ""),
+                "parameters": fn.get("parameters", {"type": "object", "properties": {}}),
+            })
+
+        gemini_tools = types.Tool(function_declarations=function_declarations)
+        config = types.GenerateContentConfig(
+            tools=[gemini_tools],
+            system_instruction=types.Content(parts=system_parts) if system_parts else None,
+        )
+
+        return self.client.models.generate_content(
+            model=model,
+            contents=filtered_contents,
+            config=config,
+        )
 
     def validate_connection(self) -> tuple[bool, list[Dict[str, Any]]]:
         try:
