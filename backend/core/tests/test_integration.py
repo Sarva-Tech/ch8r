@@ -47,7 +47,7 @@ class TestIntegrationAPI(BaseAPITestCase):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_create_integration_valid_token(self, mock_validate):
         """Valid token: POST returns 201."""
         user = UserFactory()
@@ -62,7 +62,7 @@ class TestIntegrationAPI(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.json()['name'], 'My GitHub')
 
-    @patch(MOCK_TARGET, return_value=(False, 'bad token'))
+    @patch(MOCK_TARGET, return_value=(False, 'bad token', {}))
     def test_create_integration_invalid_token(self, mock_validate):
         """Invalid token: POST returns 400 with error key."""
         user = UserFactory()
@@ -90,7 +90,7 @@ class TestIntegrationAPI(BaseAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_retrieve_own_integration(self, mock_validate):
         """GET detail of own integration returns 200."""
         user = UserFactory()
@@ -100,7 +100,7 @@ class TestIntegrationAPI(BaseAPITestCase):
         response = self.client.get(f'{self.list_url}{integration.uuid}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_retrieve_other_users_integration(self, mock_validate):
         """GET detail of another user's integration returns 404."""
         user_a = UserFactory()
@@ -111,7 +111,7 @@ class TestIntegrationAPI(BaseAPITestCase):
         response = self.client.get(f'{self.list_url}{integration.uuid}/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_update_own_integration(self, mock_validate):
         """PATCH name of own integration returns 200."""
         user = UserFactory()
@@ -179,7 +179,7 @@ class TestAppIntegrationAPI(BaseAPITestCase):
     def _app_integration_detail_url(self, app_uuid, integration_uuid):
         return f'/api/applications/{app_uuid}/integrations/{integration_uuid}/'
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_create_app_integration_valid(self, mock_validate):
         """Mock validator, create integration, POST to app integrations returns 201."""
         user = UserFactory()
@@ -197,7 +197,7 @@ class TestAppIntegrationAPI(BaseAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_create_app_integration_unsupported_type(self, mock_validate):
         """POST with unsupported integration_type returns 400."""
         user = UserFactory()
@@ -252,7 +252,7 @@ class TestAppIntegrationAPI(BaseAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("You don't own this integration", str(response.json()))
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_app_integration_upsert(self, mock_validate):
         """POST twice with same integration_type results in DB count == 1."""
         user = UserFactory()
@@ -291,7 +291,7 @@ class TestAppIntegrationAPI(BaseAPITestCase):
                 integration_type='version_control',
             )
 
-    @patch(MOCK_TARGET, return_value=(True, ''))
+    @patch(MOCK_TARGET, return_value=(True, '', {}))
     def test_delete_app_integration(self, mock_validate):
         """DELETE app integration returns 200 with {"detail": "deleted"}."""
         user = UserFactory()

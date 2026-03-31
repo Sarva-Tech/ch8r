@@ -14,11 +14,8 @@ class NotificationProfileSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         config = validated_data.pop('config', {})
-
         instance = NotificationProfile(**validated_data)
-
-        encrypted_config = encrypt(config)
-        instance._config = encrypt(encrypted_config)
+        instance.config = config
         instance.save()
         return instance
 

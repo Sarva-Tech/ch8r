@@ -1,4 +1,5 @@
 import factory
+from faker import Faker as RealFaker
 from django.contrib.auth.models import User
 from core.models import (
     Application,
@@ -7,6 +8,8 @@ from core.models import (
     AppIntegration,
     NotificationProfile
 )
+
+fake = RealFaker()
 
 class UserFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -71,6 +74,6 @@ class NotificationProfileFactory(factory.django.DjangoModelFactory):
     @factory.post_generation
     def set_config(obj, create, extracted, **kwargs):
         if obj.type == 'email':
-            obj.config = {'email': factory.Faker('email').generate()}
+            obj.config = extracted if extracted else {'email': fake.email()}
         else:
-            obj.config = {'webhookUrl': f'https://hooks.{obj.type}.com/test/webhook'}
+            obj.config = extracted if extracted else {'webhookUrl': f'https://hooks.{obj.type}.com/test/webhook'}
