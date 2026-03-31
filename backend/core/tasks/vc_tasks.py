@@ -5,14 +5,15 @@ from channels.layers import get_channel_layer
 from django.utils import timezone
 from datetime import datetime, timedelta
 
-from core.models import AppIntegration, VCRepository
-from core.services.github_ingestion import GitHubDataIngestionService
+from core.models import AppIntegration
+from core.models.version_control import VCRepository
+from core.services.vc_ingestion import VCIngestionService
 from core.consts import DASHBOARD_USER_ID_PREFIX, LIVE_UPDATES_PREFIX
 
 logger = logging.getLogger(__name__)
 
 
-def send_github_ingestion_update(repository, ingestion_status):
+def send_vc_ingestion_update(repository, ingestion_status):
     try:
         channel_layer = get_channel_layer()
         owner_id = repository.app_integration.application.owner.id
@@ -25,6 +26,7 @@ def send_github_ingestion_update(repository, ingestion_status):
                 "data": {
                     "id": str(repository.id),
                     "repository": repository.full_name,
+                    "provider": repository.provider,
                     "ingestion_status": ingestion_status,
                 },
             }
@@ -34,16 +36,17 @@ def send_github_ingestion_update(repository, ingestion_status):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def ingest_github_repository_task(self, app_integration_id, owner, repo, since=None):
-    """Celery task for GitHub repository ingestion"""
-    logger.info(f"[Task] ingest_github_repository_task started: {owner}/{repo} (app_integration={app_integration_id}, retry={self.request.retries})")
+def ingest_vc_repository_task(self, app_integration_id, owner, repo, since=None, provider='github_graphql'):
+    logger.info(f"[Task] ingest_vc_repository_task started: {owner}/{repo} "
+                f"(app_integration={app_integration_id}, provider={provider}, retry={self.request.retries})")
+
     try:
         app_integration = AppIntegration.objects.select_related(
             'application__owner', 'integration'
         ).get(id=app_integration_id)
         logger.info(f"[Task] AppIntegration found: id={app_integration_id}, app={app_integration.application.name}")
 
-        ingestion_service = GitHubDataIngestionService(app_integration, use_graphql=True)
+        ingestion_service = VCIngestionService(app_integration, provider_name=provider)
         ingestion_service.ingest_repository(owner, repo, since)
 
         logger.info(f"[Task] ingest_repository completed for {owner}/{repo}")
@@ -53,13 +56,14 @@ def ingest_github_repository_task(self, app_integration_id, owner, repo, since=N
                 app_integration_id=app_integration_id,
                 full_name=f'{owner}/{repo}'
             )
-            send_github_ingestion_update(repository, 'completed')
+            send_vc_ingestion_update(repository, 'completed')
         except VCRepository.DoesNotExist:
             logger.warning(f"[Task] VCRepository not found after ingestion: {owner}/{repo}")
 
         return {
             'status': 'success',
             'repository': f'{owner}/{repo}',
+            'provider': provider,
             'completed_at': timezone.now().isoformat()
         }
 
@@ -68,7 +72,7 @@ def ingest_github_repository_task(self, app_integration_id, owner, repo, since=N
         raise
 
     except Exception as exc:
-        logger.error(f"[Task] ingest_github_repository_task failed for {owner}/{repo}: {exc}", exc_info=True)
+        logger.error(f"[Task] ingest_vc_repository_task failed for {owner}/{repo}: {exc}", exc_info=True)
 
         try:
             repository = VCRepository.objects.get(
@@ -77,13 +81,13 @@ def ingest_github_repository_task(self, app_integration_id, owner, repo, since=N
             )
             repository.ingestion_status = 'failed'
             repository.save()
-            send_github_ingestion_update(repository, 'failed')
+            send_vc_ingestion_update(repository, 'failed')
 
             from core.models import KnowledgeBase
             from core.tasks.kb import send_kb_update
             kb = KnowledgeBase.objects.filter(
                 application=repository.app_integration.application,
-                source_type='github',
+                source_type='version_control',
                 path=repository.full_name,
             ).first()
             if kb:

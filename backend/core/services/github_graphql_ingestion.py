@@ -5,10 +5,7 @@ from typing import Dict, List, Optional, Any
 from django.utils import timezone
 from django.db import transaction
 
-from core.models.github_data import (
-    GitHubRepository, GitHubIssue, GitHubIssueComment, GitHubPullRequest,
-    GitHubPRComment, GitHubPRFile
-)
+from core.models import VCRepository, VCIssue, VCIssueComment, VCPullRequest, VCPRComment, VCPRFile
 from core.models import AppIntegration
 from core.services.github_graphql_client import GitHubGraphQLClient
 from core.services.github_client import GitHubAPIClient
@@ -55,16 +52,17 @@ class GitHubGraphQLIngestionService:
             self.rest_client = GitHubAPIClient(token)
         return self.rest_client
 
-    def _get_or_create_repository(self, owner: str, repo: str) -> GitHubRepository:
+    def _get_or_create_repository(self, owner: str, repo: str) -> VCRepository:
         full_name = f"{owner}/{repo}"
 
-        repository, created = GitHubRepository.objects.get_or_create(
+        repository, created = VCRepository.objects.get_or_create(
             full_name=full_name,
             defaults={
                 'name': repo,
                 'repo_owner': owner,
                 'app_integration': self.app_integration,
-                'ingestion_status': 'pending'
+                'ingestion_status': 'pending',
+                'provider': 'github'
             }
         )
 
@@ -136,9 +134,9 @@ class GitHubGraphQLIngestionService:
 
             milestone = issue_data.get('milestone', {}).get('title') if issue_data.get('milestone') else None
 
-            issue, created = GitHubIssue.objects.update_or_create(
+            issue, created = VCIssue.objects.update_or_create(
                 repository=self.repository,
-                github_id=issue_data['number'],
+                external_id=str(issue_data['number']),
                 defaults={
                     'number': issue_data['number'],
                     'title': issue_data['title'],
@@ -169,12 +167,12 @@ class GitHubGraphQLIngestionService:
 
             logger.debug(f"[GraphQLIngestion] {'Created' if created else 'Updated'} issue #{issue.number} with {len(comments_data)} comments")
 
-    def _ingest_issue_comment_from_graphql(self, issue: GitHubIssue, comment_data: Dict[str, Any]):
+    def _ingest_issue_comment_from_graphql(self, issue: VCIssue, comment_data: Dict[str, Any]):
         author = comment_data.get('author', {}).get('login', '') if comment_data.get('author') else ''
 
-        GitHubIssueComment.objects.update_or_create(
+        VCIssueComment.objects.update_or_create(
             issue=issue,
-            github_id=_extract_numeric_id_from_global_id(comment_data['id']),
+            external_id=str(_extract_numeric_id_from_global_id(comment_data['id'])),
             defaults={
                 'body': comment_data['body'],
                 'author': author,
@@ -242,9 +240,9 @@ class GitHubGraphQLIngestionService:
 
                 merge_commit_sha = pr_data.get('mergeCommit', {}).get('oid', '') if pr_data.get('mergeCommit') else ''
 
-                pr, created = GitHubPullRequest.objects.update_or_create(
+                pr, created = VCPullRequest.objects.update_or_create(
                     repository=self.repository,
-                    github_id=pr_data['number'],
+                    external_id=str(pr_data['number']),
                     defaults={
                         'number': pr_data['number'],
                         'title': pr_data['title'],
@@ -289,7 +287,7 @@ class GitHubGraphQLIngestionService:
                     logger.debug(f"[GraphQLIngestion] Found {len(files)} files for PR #{pr_number}")
 
                     for file_data in files:
-                        GitHubPRFile.objects.update_or_create(
+                        VCPRFile.objects.update_or_create(
                             pull_request=pr,
                             filename=file_data['filename'],
                             defaults={
@@ -312,12 +310,12 @@ class GitHubGraphQLIngestionService:
             logger.error(f"Failed to ingest single PR #{pr_number}: {e}")
             raise
 
-    def _ingest_pr_comment_from_graphql(self, pull_request: GitHubPullRequest, comment_data: Dict[str, Any]):
+    def _ingest_pr_comment_from_graphql(self, pull_request: VCPullRequest, comment_data: Dict[str, Any]):
         author = comment_data.get('author', {}).get('login', '') if comment_data.get('author') else ''
 
-        GitHubPRComment.objects.update_or_create(
+        VCPRComment.objects.update_or_create(
             pull_request=pull_request,
-            github_id=_extract_numeric_id_from_global_id(comment_data['id']),
+            external_id=str(_extract_numeric_id_from_global_id(comment_data['id'])),
             defaults={
                 'body': comment_data['body'],
                 'author': author,

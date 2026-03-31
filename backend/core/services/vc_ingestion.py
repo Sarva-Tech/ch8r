@@ -4,64 +4,61 @@ from typing import Dict, Optional, Any
 from django.utils import timezone
 from django.db import transaction
 
-from core.models import VCRepository, VCIssue, VCIssueComment, VCPullRequest, VCPRComment, VCPRFile
+from core.models.version_control import (
+    VCRepository, VCIssue, VCIssueComment, VCPullRequest,
+    VCPRComment, VCPRFile
+)
 from core.models import AppIntegration
-from core.services.github_client import GitHubAPIClient
-from core.services.github_graphql_ingestion import GitHubGraphQLIngestionService
+from core.services.providers.version_control import VCProviderRegistry
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubDataIngestionService:
-
-    def __init__(self, app_integration: AppIntegration, use_graphql: bool = True):
+class VCIngestionService:
+    def __init__(self, app_integration: AppIntegration, provider_name: Optional[str] = None):
         self.app_integration = app_integration
-        self.use_graphql = use_graphql
-        self.github_client = None
-        self.graphql_service = None
-        self.repository = None
+        self.provider_name = provider_name or self._detect_provider()
+        self.provider = self._get_provider()
+        self.repository: Optional[VCRepository] = None
 
-    def _get_graphql_service(self) -> GitHubGraphQLIngestionService:
-        if not self.graphql_service:
-            self.graphql_service = GitHubGraphQLIngestionService(self.app_integration)
-        return self.graphql_service
+    def _detect_provider(self) -> str:
+        metadata = self.app_integration.metadata or {}
+        if 'provider' in metadata:
+            return metadata['provider']
 
-    def _get_github_client(self) -> GitHubAPIClient:
-        if not self.github_client:
-            import json
-            credentials = json.loads(self.app_integration.integration.credentials or '{}')
-            token = credentials.get('token')
-            if not token:
-                raise ValueError("GitHub token not found in integration config")
-            self.github_client = GitHubAPIClient(token)
-        return self.github_client
+        return 'github_graphql'
+
+    def _get_provider(self):
+        import json
+        credentials = json.loads(self.app_integration.integration.credentials or '{}')
+        return VCProviderRegistry.get_provider(self.provider_name, credentials)
 
     def _get_or_create_repository(self, owner: str, repo: str) -> VCRepository:
         full_name = f"{owner}/{repo}"
 
         repository, created = VCRepository.objects.get_or_create(
+            app_integration=self.app_integration,
             full_name=full_name,
+            provider=self.provider_name,
             defaults={
                 'name': repo,
                 'repo_owner': owner,
-                'app_integration': self.app_integration,
-                'ingestion_status': 'pending',
-                'provider': 'github'
+                'ingestion_status': 'pending'
             }
         )
 
         if created:
             try:
-                client = self._get_github_client()
-                repo_info = client.get_repository_info(owner, repo)
+                repo_info = self.provider.get_repository_info(owner, repo)
 
+                repository.external_id = repo_info.get('id', '')
                 repository.description = repo_info.get('description', '')
-                repository.url = repo_info.get('html_url', '')
-                repository.is_private = repo_info.get('private', False)
+                repository.url = repo_info.get('url', '')
+                repository.is_private = repo_info.get('is_private', False)
                 repository.default_branch = repo_info.get('default_branch', 'main')
                 repository.save()
 
-                logger.info(f"Created repository record for {full_name}")
+                logger.info(f"Created repository record for {full_name} ({self.provider_name})")
             except Exception as e:
                 logger.error(f"Failed to fetch repository info for {full_name}: {e}")
                 repository.delete()
@@ -71,58 +68,56 @@ class GitHubDataIngestionService:
         return repository
 
     def _ingest_issues(self, owner: str, repo: str, since: Optional[str] = None):
-        client = self._get_github_client()
-
         try:
-            issues = client.get_issues(owner, repo, state='all', since=since)
+            issues = self.provider.get_issues(owner, repo, state='all', since=since)
             logger.info(f"Found {len(issues)} issues for {owner}/{repo}")
 
             for issue_data in issues:
-                self._ingest_single_issue(issue_data, owner, repo)
+                self._ingest_single_issue(issue_data)
 
         except Exception as e:
             logger.error(f"Failed to ingest issues for {owner}/{repo}: {e}")
             raise
 
-    def _ingest_single_issue(self, issue_data: Dict[str, Any], owner: str, repo: str):
-        client = self._get_github_client()
-
+    def _ingest_single_issue(self, issue_data: Dict[str, Any]):
         with transaction.atomic():
             issue, created = VCIssue.objects.update_or_create(
                 repository=self.repository,
-                external_id=str(issue_data['id']),
+                external_id=issue_data['id'],
                 defaults={
                     'number': issue_data['number'],
                     'title': issue_data['title'],
                     'body': issue_data.get('body', '') or '',
                     'state': issue_data['state'],
-                    'author': issue_data['user']['login'] if issue_data.get('user') else '',
+                    'author': issue_data.get('author', ''),
                     'author_association': issue_data.get('author_association', ''),
-                    'assignees': [user['login'] for user in issue_data.get('assignees', [])],
-                    'labels': [label['name'] for label in issue_data.get('labels', [])],
+                    'assignees': issue_data.get('assignees', []),
+                    'labels': issue_data.get('labels', []),
                     'milestone': issue_data.get('milestone'),
                     'locked': issue_data.get('locked', False),
-                    'created_at': self._parse_datetime(issue_data['created_at']),
-                    'updated_at': self._parse_datetime(issue_data['updated_at']),
-                    'closed_at': self._parse_datetime(issue_data.get('closed_at')),
-                    'url': issue_data['html_url']
+                    'created_at': self.provider._parse_datetime(issue_data['created_at']),
+                    'updated_at': self.provider._parse_datetime(issue_data['updated_at']),
+                    'closed_at': self.provider._parse_datetime(issue_data.get('closed_at')),
+                    'url': issue_data['url']
                 }
             )
 
             try:
-                comments = client.get_issue_comments(owner, repo, issue_data['number'])
+                owner = self.repository.repo_owner
+                repo = self.repository.name
+                comments = self.provider.get_issue_comments(owner, repo, issue_data['number'])
                 for comment_data in comments:
                     try:
                         VCIssueComment.objects.update_or_create(
                             issue=issue,
-                            external_id=str(comment_data['id']),
+                            external_id=comment_data['id'],
                             defaults={
                                 'body': comment_data['body'],
-                                'author': comment_data['user']['login'] if comment_data.get('user') else '',
+                                'author': comment_data.get('author', ''),
                                 'author_association': comment_data.get('author_association', ''),
-                                'created_at': self._parse_datetime(comment_data['created_at']),
-                                'updated_at': self._parse_datetime(comment_data['updated_at']),
-                                'url': comment_data['html_url']
+                                'created_at': self.provider._parse_datetime(comment_data['created_at']),
+                                'updated_at': self.provider._parse_datetime(comment_data['updated_at']),
+                                'url': comment_data['url']
                             }
                         )
                     except Exception as inner_e:
@@ -133,98 +128,85 @@ class GitHubDataIngestionService:
 
             except Exception as e:
                 logger.warning(f"Failed to ingest comments for issue #{issue.number}: {e}")
-                import traceback
-                logger.warning(f"Comment ingestion traceback: {traceback.format_exc()}")
 
     def _ingest_pull_requests(self, owner: str, repo: str, since: Optional[str] = None):
-        client = self._get_github_client()
-
         try:
-            logger.info(f"[GitHubIngestion] Starting PR ingestion for {owner}/{repo}")
-            prs = client.get_pull_requests(owner, repo, state='all', since=since)
+            logger.info(f"[VCIngestion] Starting PR ingestion for {owner}/{repo}")
+            prs = self.provider.get_pull_requests(owner, repo, state='all', since=since)
             logger.info(f"Found {len(prs)} pull requests for {owner}/{repo}")
 
             for i, pr_data in enumerate(prs, 1):
                 try:
-                    logger.info(f"[GitHubIngestion] Processing PR {i}/{len(prs)}: #{pr_data.get('number', 'unknown')}")
-                    self._ingest_single_pull_request(pr_data, owner, repo)
+                    logger.info(f"[VCIngestion] Processing PR {i}/{len(prs)}: #{pr_data.get('number', 'unknown')}")
+                    self._ingest_single_pull_request(pr_data)
                 except Exception as inner_e:
                     logger.warning(f"Failed to ingest PR #{pr_data.get('number', 'unknown')}: {inner_e}")
                     continue
 
-            logger.info(f"[GitHubIngestion] Completed PR ingestion for {owner}/{repo}")
+            logger.info(f"[VCIngestion] Completed PR ingestion for {owner}/{repo}")
 
         except Exception as e:
             logger.error(f"Failed to ingest pull requests for {owner}/{repo}: {e}")
-            import traceback
-            logger.warning(f"PR ingestion traceback: {traceback.format_exc()}")
             raise
 
-    def _ingest_single_pull_request(self, pr_data: Dict[str, Any], owner: str, repo: str):
-        client = self._get_github_client()
+    def _ingest_single_pull_request(self, pr_data: Dict[str, Any]):
         pr_number = pr_data.get('number', 'unknown')
+        owner = self.repository.repo_owner
+        repo = self.repository.name
 
         try:
-            logger.info(f"[GitHubIngestion] Ingesting PR #{pr_number} for {owner}/{repo}")
-
             with transaction.atomic():
                 pr, created = VCPullRequest.objects.update_or_create(
                     repository=self.repository,
-                    external_id=str(pr_data['id']),
+                    external_id=pr_data['id'],
                     defaults={
                         'number': pr_data['number'],
                         'title': pr_data['title'],
                         'body': pr_data.get('body', '') or '',
                         'state': pr_data['state'],
-                        'author': pr_data['user']['login'] if pr_data.get('user') else '',
+                        'author': pr_data.get('author', ''),
                         'author_association': pr_data.get('author_association', ''),
-                        'assignees': [user['login'] for user in pr_data.get('assignees', [])],
-                        'reviewers': [user['login'] for user in pr_data.get('requested_reviewers', [])],
-                        'labels': [label['name'] for label in pr_data.get('labels', [])],
+                        'assignees': pr_data.get('assignees', []),
+                        'reviewers': pr_data.get('reviewers', []),
+                        'labels': pr_data.get('labels', []),
                         'milestone': pr_data.get('milestone'),
-                        'head_branch': pr_data['head']['ref'] if pr_data.get('head') else '',
-                        'base_branch': pr_data['base']['ref'] if pr_data.get('base') else '',
+                        'head_branch': pr_data.get('head_branch', ''),
+                        'base_branch': pr_data.get('base_branch', ''),
                         'merged': pr_data.get('merged', False),
-                        'merged_at': self._parse_datetime(pr_data.get('merged_at')),
+                        'merged_at': self.provider._parse_datetime(pr_data.get('merged_at')),
                         'merge_commit_sha': pr_data.get('merge_commit_sha', ''),
                         'additions': pr_data.get('additions', 0),
                         'deletions': pr_data.get('deletions', 0),
                         'changed_files': pr_data.get('changed_files', 0),
-                        'created_at': self._parse_datetime(pr_data['created_at']),
-                        'updated_at': self._parse_datetime(pr_data['updated_at']),
-                        'closed_at': self._parse_datetime(pr_data.get('closed_at')),
-                        'url': pr_data['html_url']
+                        'created_at': self.provider._parse_datetime(pr_data['created_at']),
+                        'updated_at': self.provider._parse_datetime(pr_data['updated_at']),
+                        'closed_at': self.provider._parse_datetime(pr_data.get('closed_at')),
+                        'url': pr_data['url']
                     }
                 )
 
-                logger.debug(f"[GitHubIngestion] {'Created' if created else 'Updated'} PR #{pr_number}")
+                logger.debug(f"[VCIngestion] {'Created' if created else 'Updated'} PR #{pr_number}")
 
                 try:
-                    logger.debug(f"[GitHubIngestion] Fetching comments for PR #{pr_number}")
-                    comments = client.get_pull_request_comments(owner, repo, pr_data['number'])
-                    logger.debug(f"[GitHubIngestion] Found {len(comments)} comments for PR #{pr_number}")
-
+                    comments = self.provider.get_pull_request_comments(owner, repo, pr_data['number'])
                     for comment_data in comments:
                         VCPRComment.objects.update_or_create(
                             pull_request=pr,
-                            external_id=str(comment_data['id']),
+                            external_id=comment_data['id'],
                             defaults={
                                 'body': comment_data['body'],
-                                'author': comment_data['user']['login'] if comment_data.get('user') else '',
+                                'author': comment_data.get('author', ''),
                                 'author_association': comment_data.get('author_association', ''),
-                                'created_at': self._parse_datetime(comment_data['created_at']),
-                                'updated_at': self._parse_datetime(comment_data['updated_at']),
-                                'url': comment_data['html_url']
+                                'created_at': self.provider._parse_datetime(comment_data['created_at']),
+                                'updated_at': self.provider._parse_datetime(comment_data['updated_at']),
+                                'url': comment_data['url']
                             }
                         )
                 except Exception as e:
                     logger.warning(f"Failed to ingest comments for PR #{pr_number}: {e}")
 
                 try:
-                    logger.debug(f"[GitHubIngestion] Fetching files for PR #{pr_number}")
-                    files = client.get_pull_request_files(owner, repo, pr_data['number'])
-                    logger.debug(f"[GitHubIngestion] Found {len(files)} files for PR #{pr_number}")
-
+                    files = self.provider.get_pull_request_files(owner, repo, pr_data['number'])
                     for file_data in files:
                         VCPRFile.objects.update_or_create(
                             pull_request=pr,
@@ -243,17 +225,11 @@ class GitHubDataIngestionService:
                 except Exception as e:
                     logger.warning(f"Failed to ingest files for PR #{pr_number}: {e}")
 
-                logger.debug(f"[GitHubIngestion] Completed PR #{pr_number}")
+                logger.debug(f"[VCIngestion] Completed PR #{pr_number}")
 
         except Exception as e:
             logger.error(f"Failed to ingest single PR #{pr_number}: {e}")
-            import traceback
-            logger.warning(f"Single PR ingestion traceback: {traceback.format_exc()}")
             raise
-
-    def _ingest_code_comments(self, owner: str, repo: str):
-        logger.info("Code comment ingestion not yet implemented")
-        pass
 
     def _create_knowledge_base_content(self) -> str:
         content_parts = []
@@ -301,88 +277,71 @@ class GitHubDataIngestionService:
     def _ingest_to_knowledge_base(self):
         from core.models import KnowledgeBase
         from core.tasks.kb import send_kb_update
+        from core.services.ingestion import ingest_kb
 
         app = self.app_integration.application
         full_name = self.repository.full_name
-        logger.info(f"[GitHubIngestion] _ingest_to_knowledge_base: app={app.name}, repo={full_name}")
+        logger.info(f"[VCIngestion] _ingest_to_knowledge_base: app={app.name}, repo={full_name}")
 
         kb, created = KnowledgeBase.objects.get_or_create(
             application=app,
-            source_type='github',
+            source_type='version_control',
             path=full_name,
             defaults={
                 'metadata': {
-                    'source': 'github',
+                    'source': 'version_control',
+                    'provider': self.provider_name,
                     'repository': full_name,
                     'content': self._create_knowledge_base_content()
                 },
                 'status': 'pending'
             }
         )
-        logger.info(f"[GitHubIngestion] KnowledgeBase {'created' if created else 'found'}: uuid={kb.uuid}, status={kb.status}")
+        logger.info(f"[VCIngestion] KnowledgeBase {'created' if created else 'found'}: uuid={kb.uuid}, status={kb.status}")
 
         if not created:
-            logger.info(f"[GitHubIngestion] Updating existing KB content for {full_name}")
+            logger.info(f"[VCIngestion] Updating existing KB content for {full_name}")
             kb.metadata['content'] = self._create_knowledge_base_content()
+            kb.metadata['provider'] = self.provider_name
             kb.save()
 
         send_kb_update(kb, 'processing')
 
-        from core.services.ingestion import ingest_kb
-        logger.info(f"[GitHubIngestion] Calling ingest_kb for kb={kb.uuid}")
+        logger.info(f"[VCIngestion] Calling ingest_kb for kb={kb.uuid}")
         ingest_kb(kb, app)
-        logger.info(f"[GitHubIngestion] ingest_kb completed for kb={kb.uuid}, final status={kb.status}")
+        logger.info(f"[VCIngestion] ingest_kb completed for kb={kb.uuid}, final status={kb.status}")
 
         send_kb_update(kb, kb.status)
 
-    def _parse_datetime(self, dt_str: Optional[str]) -> Optional[datetime]:
-        if not dt_str:
-            return None
-
-        try:
-            if dt_str.endswith('Z'):
-                naive_dt = datetime.fromisoformat(dt_str.replace('Z', ''))
-                return timezone.make_aware(naive_dt)
-            else:
-                return datetime.fromisoformat(dt_str)
-        except Exception as e:
-            logger.warning(f"Failed to parse datetime: {dt_str}, error: {e}")
-            return timezone.now()
-
     def ingest_repository(self, owner: str, repo: str, since: Optional[str] = None):
         try:
-            logger.info(f"[GitHubIngestion] Starting ingestion for {owner}/{repo} (since={since}), using GraphQL: {self.use_graphql}")
-
-            if self.use_graphql:
-                graphql_service = self._get_graphql_service()
-                return graphql_service.ingest_repository(owner, repo, since)
+            logger.info(f"[VCIngestion] Starting ingestion for {owner}/{repo} (provider={self.provider_name}, since={since})")
 
             repository = self._get_or_create_repository(owner, repo)
             repository.ingestion_status = 'running'
             repository.save()
-            logger.info(f"[GitHubIngestion] Repository record ready: id={repository.id}, full_name={repository.full_name}")
+            logger.info(f"[VCIngestion] Repository record ready: id={repository.id}, full_name={repository.full_name}")
 
-            logger.info(f"[GitHubIngestion] Ingesting issues...")
+            logger.info(f"[VCIngestion] Ingesting issues...")
             self._ingest_issues(owner, repo, since)
 
-            logger.info(f"[GitHubIngestion] Ingesting pull requests...")
+            logger.info(f"[VCIngestion] Ingesting pull requests...")
             self._ingest_pull_requests(owner, repo, since)
 
-            logger.info(f"[GitHubIngestion] Building knowledge base content...")
+            logger.info(f"[VCIngestion] Building knowledge base content...")
             self._ingest_to_knowledge_base()
 
             repository.ingestion_status = 'completed'
             repository.last_ingested_at = timezone.now()
             repository.save()
-            logger.info(f"[GitHubIngestion] Completed ingestion for {owner}/{repo}")
+            logger.info(f"[VCIngestion] Completed ingestion for {owner}/{repo}")
 
         except Exception as e:
-            logger.error(f"[GitHubIngestion] Failed ingestion for {owner}/{repo}: {e}", exc_info=True)
+            logger.error(f"[VCIngestion] Failed ingestion for {owner}/{repo}: {e}", exc_info=True)
             if self.repository:
                 self.repository.ingestion_status = 'failed'
                 self.repository.save()
             raise
 
         finally:
-            if self.github_client:
-                self.github_client.close()
+            self.provider.close()
