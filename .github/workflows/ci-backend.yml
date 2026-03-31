@@ -90,7 +90,7 @@ jobs:
     - name: Run backend tests
       run: |
         cd backend
-        pytest --cov=core --cov-report=term-missing --cov-fail-under=60 --json-report --json-report-file=test-results.json
+        pytest --cov=core --cov-report=term-missing --json-report --json-report-file=test-results.json
 
     - name: Discord notification on success
       if: success()

@@ -36,8 +36,8 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      domain: process.env.DOMAIN || 'localhost:8000',
-      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8000/api',
+      domain: process.env.DOMAIN || 'localhost:8002',
+      apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:8002/api',
       NUXT_PUBLIC_KEY: process.env.NUXT_PUBLIC_KEY || ''
     },
   },
