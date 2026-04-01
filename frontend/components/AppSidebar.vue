@@ -15,9 +15,14 @@ import {
   ChevronUp,
   Puzzle,
   Lock,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import SlideOver from '~/components/SlideOver.vue'
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import dayjs from 'dayjs'
 
 import {
   Sidebar,
@@ -31,10 +36,14 @@ import {
 
 import { useNavigation } from '~/composables/useNavigation'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '~/components/ui/dropdown-menu'
 import { Button } from '~/components/ui/button'
+import C8Dialog from '~/components/C8Dialog.vue'
 import ConfigureApp from '~/components/App/ConfigureApp.vue'
 import { useRoute } from 'vue-router'
 import NewApp from '~/components/App/NewApp.vue'
@@ -154,6 +163,94 @@ async function initNewChat() {
   if (selectedApplication.value) {
     await navigateTo(`/applications/${selectedApplication.value.uuid}/messages/new_chat`)
   }
+}
+const editingChatroomId = ref<string | null>(null)
+const openMenuChatroomId = ref<string | null>(null)
+const editingName = ref('')
+const originalName = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
+const chatroomToDelete = ref<ChatroomPreview | null>(null)
+const showDeleteDialog = ref(false)
+
+function setRenameInputRef(el: HTMLInputElement | null, chatroomUuid: string) {
+  if (el && editingChatroomId.value === chatroomUuid) {
+    renameInputRef.value = el
+  }
+}
+
+function startRename(chatroom: ChatroomPreview) {
+  openMenuChatroomId.value = null
+  editingChatroomId.value = chatroom.uuid
+  editingName.value = chatroom.name
+  originalName.value = chatroom.name
+  nextTick(() => {
+    renameInputRef.value?.focus()
+    renameInputRef.value?.select()
+  })
+}
+
+function formatTimeShort(date: string | undefined): string {
+  if (!date) return ''
+  const now = dayjs()
+  const then = dayjs(date)
+  const diffSeconds = now.diff(then, 'second')
+  const diffMinutes = now.diff(then, 'minute')
+  const diffHours = now.diff(then, 'hour')
+  const diffDays = now.diff(then, 'day')
+  const diffWeeks = now.diff(then, 'week')
+  const diffMonths = now.diff(then, 'month')
+  const diffYears = now.diff(then, 'year')
+
+  if (diffSeconds < 60) return 'now'
+  if (diffMinutes < 60) return `${diffMinutes}m`
+  if (diffHours < 24) return `${diffHours}h`
+  if (diffDays < 7) return `${diffDays}d`
+  if (diffWeeks < 4) return `${diffWeeks}w`
+  if (diffMonths < 12) return `${diffMonths}mo`
+  return `${diffYears}y`
+}
+
+async function saveRename() {
+  const trimmedName = editingName.value.trim()
+  const trimmedOriginal = originalName.value.trim()
+  const hasChanged = trimmedName !== trimmedOriginal
+  if (editingChatroomId.value && trimmedName && hasChanged) {
+    await chatroomStore.renameChatroom(
+      selectedApplication.value?.uuid || '',
+      editingChatroomId.value,
+      trimmedName
+    )
+    toast.success('Chatroom renamed')
+  }
+  editingChatroomId.value = null
+  editingName.value = ''
+  originalName.value = ''
+}
+
+function cancelRename() {
+  editingChatroomId.value = null
+  editingName.value = ''
+  originalName.value = ''
+}
+
+function confirmDelete(chatroom: ChatroomPreview) {
+  chatroomToDelete.value = chatroom
+  showDeleteDialog.value = true
+}
+
+async function handleDelete() {
+  if (chatroomToDelete.value) {
+    await chatroomStore.deleteChatroom(
+      selectedApplication.value?.uuid || '',
+      chatroomToDelete.value.uuid
+    )
+    toast.success('Chatroom deleted')
+    if (activeMenu.value === chatroomToDelete.value.uuid) {
+      navigateTo(`/applications/${selectedApplication.value?.uuid}/messages/new_chat`)
+    }
+  }
+  showDeleteDialog.value = false
+  chatroomToDelete.value = null
 }
 </script>
 
@@ -378,30 +475,82 @@ async function initNewChat() {
       <SidebarContent class="">
         <SidebarGroup class="p-0 m-0 overflow-visible">
           <SidebarGroupContent class="p-2 space-y-1 overflow-visible">
-            <NuxtLink
+            <div
               v-for="chatroom in chatrooms"
               :key="chatroom.uuid"
-              :to="`/applications/${selectedApplication.uuid}/messages/${chatroom.uuid}`"
-              :class="[
-                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-2 px-4 py-2 text-sm leading-tight rounded-lg min-w-0',
-                activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : '',
-                chatroom.has_unread && activeMenu !== chatroom.uuid ? 'bg-primary/10 border border-border' : ''
-              ]"
-              @click="() => { chatroomStore.markRead(chatroom.uuid); setActiveMenu(chatroom.uuid) }"
+              class="relative"
             >
-              <div class="flex flex-col items-start gap-1 flex-1 min-w-0">
-                <div class="flex w-full items-center gap-2 min-w-0">
-                  <span class="truncate flex-1">{{ ellipsis(chatroom.name, 30) }}</span>
-                  <span class="text-xs flex-shrink-0">
-                    {{ $dayjs(chatroom.last_message?.created_at).fromNow() }}
+              <NuxtLink
+                :to="`/applications/${selectedApplication?.uuid}/messages/${chatroom.uuid}`"
+                :class="[
+                  'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-2 px-4 py-2 text-sm leading-tight rounded-lg min-w-0',
+                  activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : '',
+                  chatroom.has_unread && activeMenu !== chatroom.uuid ? 'bg-primary/10 border border-border' : ''
+                ]"
+                @click="() => { chatroomStore.markRead(chatroom.uuid); setActiveMenu(chatroom.uuid) }"
+              >
+                <div class="flex flex-col items-start gap-1 flex-1 min-w-0">
+                  <div class="flex w-full items-center gap-2 min-w-0">
+                    <template v-if="editingChatroomId === chatroom.uuid">
+                      <input
+                        :ref="(el) => setRenameInputRef(el as HTMLInputElement, chatroom.uuid)"
+                        v-model="editingName"
+                        type="text"
+                        class="flex-1 bg-transparent outline-none min-w-0 text-sm"
+                        @blur="saveRename"
+                        @keydown.enter="saveRename"
+                        @keydown.esc="cancelRename"
+                      >
+                    </template>
+                    <template v-else>
+                      <span
+                        class="truncate flex-1 cursor-pointer"
+                        @dblclick="startRename(chatroom)"
+                      >{{ ellipsis(chatroom.name, 30) }}</span>
+                    </template>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <span class="text-xs text-muted-foreground">
+                        {{ formatTimeShort(chatroom.last_message?.created_at) }}
+                      </span>
+                      <DropdownMenu
+                        v-if="editingChatroomId !== chatroom.uuid"
+                        :open="openMenuChatroomId === chatroom.uuid"
+                        @update:open="(open) => openMenuChatroomId = open ? chatroom.uuid : null"
+                      >
+                        <DropdownMenuTrigger as-child>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            class="h-6 w-6 p-0 -mr-2"
+                            @click.prevent
+                          >
+                            <MoreVertical class="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-32">
+                          <DropdownMenuItem @click="startRename(chatroom)">
+                            <Pencil class="h-4 w-4 mr-2" />
+                            Rename
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            class="text-destructive focus:text-destructive"
+                            @click="confirmDelete(chatroom)"
+                          >
+                            <Trash2 class="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  <span class="line-clamp-2 whitespace-break-spaces text-xs w-full min-w-0">
+                    {{ chatroom.last_message?.message }}
                   </span>
                 </div>
-                <span class="line-clamp-2 whitespace-break-spaces text-xs w-full min-w-0">
-                  {{ chatroom.last_message?.message }}
-                </span>
-              </div>
-              <UnreadBadge v-if="chatroom.has_unread" class="flex-shrink-0" />
-            </NuxtLink>
+                <UnreadBadge v-if="chatroom.has_unread" class="flex-shrink-0" />
+              </NuxtLink>
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
@@ -421,4 +570,21 @@ async function initNewChat() {
   >
     <ConfigureApp />
   </SlideOver>
+  <C8Dialog
+    v-model:open="showDeleteDialog"
+    title="Delete Conversation"
+    confirm-text="Delete"
+    cancel-text="Cancel"
+    :destructive="true"
+    @confirm="handleDelete"
+    @cancel="showDeleteDialog = false; chatroomToDelete = null"
+  >
+    <template #description>
+      <div>
+        Are you sure you want to delete:  <span class="font-bold"> {{ chatroomToDelete?.name }} </span>?
+        <br>
+        This action cannot be undone.
+      </div>
+    </template>
+  </C8Dialog>
 </template>
