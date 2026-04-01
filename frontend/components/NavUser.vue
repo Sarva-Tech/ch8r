@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import {
   ChevronsUpDown,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-vue-next'
 
 import {
@@ -33,6 +34,17 @@ defineProps<{
 }>()
 
 const { logout } = useLogout()
+
+function getInitials(name: string): string {
+  console.log(name)
+  if (!name) return '??'
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
+}
 </script>
 
 <template>
@@ -47,7 +59,7 @@ const { logout } = useLogout()
             <Avatar class="h-5 w-5 rounded-md">
               <AvatarImage :src="getGravatarUrl(user.email)" :alt="user.name" />
               <AvatarFallback class="rounded-md">
-                CN
+                {{ getInitials(user.name) }}
               </AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
@@ -63,20 +75,10 @@ const { logout } = useLogout()
           align="end"
           :side-offset="4"
         >
-          <DropdownMenuLabel class="p-0 font-normal">
-            <div class="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-              <Avatar class="h-5 w-5 rounded-md">
-                <AvatarImage :src="getGravatarUrl(user.email)" :alt="user.name" />
-                <AvatarFallback class="rounded-lg">
-                  CN
-                </AvatarFallback>
-              </Avatar>
-              <div class="grid flex-1 text-left text-sm leading-tight">
-                <span class="truncate font-semibold">{{ user.name }}</span>
-                <span class="truncate text-xs">{{ user.email }}</span>
-              </div>
-            </div>
-          </DropdownMenuLabel>
+          <DropdownMenuItem @click="$router.push('/settings')">
+            <Settings />
+            Settings
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem class="text-destructive group" @click="logout">
             <LogOut class="text-destructive group-hover:text-destructive-foreground"/>
