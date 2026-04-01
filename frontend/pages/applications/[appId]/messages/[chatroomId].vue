@@ -72,8 +72,8 @@
     </div>
 
     <div
-      class="fixed bottom-0 transition-[left] duration-300 ease-in-out px-6 pb-4 bg-background"
-      :style="{ left: isMobile ? '0' : sidebarWidth, right: '0' }"
+      class="fixed bottom-0 transition-[left,width] duration-300 ease-in-out px-6 pb-4 bg-background"
+      :style="{ left: isMobile ? '0' : sidebarWidth, width: isMobile ? '100%' : `calc(100% - ${sidebarWidth})` }"
     >
       <div class="w-full space-y-2">
         <form

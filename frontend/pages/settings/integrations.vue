@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
+  <div class="flex flex-col min-h-0 flex-1 p-4 pt-[72px] pb-[120px] overflow-y-auto">
     <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
@@ -108,6 +108,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useIntegrationStore } from '~/stores/integration'
 import ConnectIntegration from '~/components/Integration/ConnectIntegration.vue'
 import UpdateIntegration from '~/components/Integration/UpdateIntegration.vue'
 import { useIntegrationIcon } from '~/composables/useIntegrationIcon'
@@ -117,7 +118,6 @@ import { ItemDescription } from '~/components/ui/item'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { PencilLine, Trash, Link, ServerCog, FolderGit, SquareKanban } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import { useIntegrationStore } from '~/stores/integration'
 import type { Integration } from '~/stores/integration'
 
 const integrationStore = useIntegrationStore()

@@ -7,14 +7,13 @@ import {
   KeyRound,
   MessageSquare,
   Plus,
-  Settings,
   Settings2,
-  Bell,
   Box,
-  ChevronDown,
-  ChevronUp,
   Puzzle,
+  Bell,
+  File,
   Lock,
+  ChevronLeft,
 } from 'lucide-vue-next'
 import SlideOver from '~/components/SlideOver.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
@@ -45,32 +44,6 @@ const configureAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 const activeMenu = ref('')
 const route = useRoute()
 
-const settingsExpanded = ref(
-  localStorage.getItem('settingsExpanded') === 'true',
-)
-
-function setActiveMenu(uuid: string) {
-  activeMenu.value = uuid
-  localStorage.setItem('activeMenu', uuid)
-}
-
-const toggleSettings = () => {
-  settingsExpanded.value = !settingsExpanded.value
-  localStorage.setItem('settingsExpanded', settingsExpanded.value.toString())
-}
-
-onMounted(() => {
-  const savedActiveMenu = localStorage.getItem('activeMenu')
-  if (savedActiveMenu) {
-    activeMenu.value = savedActiveMenu
-  }
-
-  const savedSettingsExpanded = localStorage.getItem('settingsExpanded')
-  if (savedSettingsExpanded !== null) {
-    settingsExpanded.value = savedSettingsExpanded === 'true'
-  }
-})
-
 watch(
   () => route.path,
   (newPath) => {
@@ -83,16 +56,6 @@ watch(
 
     if (newPath.includes('/messages/new_chat')) {
       setActiveMenu('newChat')
-    }
-
-    if (newPath.startsWith('/settings/')) {
-      const settingType = newPath.split('/')[2]
-      setActiveMenu(settingType)
-
-      if (!settingsExpanded.value) {
-        settingsExpanded.value = true
-        localStorage.setItem('settingsExpanded', 'true')
-      }
     }
 
     if (
@@ -144,11 +107,26 @@ watch(() => liveUpdateStore.isConnected, (connected, wasConnected) => {
 const { selectAppAndNavigate } = useNavigation()
 const { ellipsis } = useTextUtils()
 
+function setActiveMenu(uuid: string) {
+  activeMenu.value = uuid
+  localStorage.setItem('activeMenu', uuid)
+}
+
 const applications = computed(() => applicationsStore.applications)
 const selectedApplication = computed(
   () => applicationsStore.selectedApplication,
 )
 const chatrooms = computed(() => chatroomStore.chatrooms)
+
+const isSettingsRoute = computed(() => route.path.startsWith('/settings'))
+
+const settingsItems = [
+  { name: 'AI Provider', path: '/settings/ai-providers', icon: Box, key: 'models' },
+  { name: 'Integrations', path: '/settings/integrations', icon: Puzzle, key: 'integrations' },
+  { name: 'Notification Profile', path: '/settings/notification-profile', icon: Bell, key: 'notification-profile' },
+  { name: 'Change Password', path: '/settings/change-password', icon: Lock, key: 'change-password' },
+]
+
 async function initNewChat() {
   setActiveMenu('newChat')
   if (selectedApplication.value) {
@@ -160,221 +138,165 @@ async function initNewChat() {
 <template>
   <Sidebar class="hidden flex-1 md:flex">
     <SidebarHeader class="gap-3 border-b">
-      <div class="flex w-full items-center justify-between space-x-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <SidebarMenuButton
-              size="lg"
-              class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <AppWindow class="ml-auto size-4" />
-              <div
-                class="grid flex-1 text-left text-sm leading-tight theme-neutral"
-              >
-                <span class="truncate font-semibold">
-                  {{ selectedApplication?.name }}
-                </span>
-              </div>
-              <ChevronsUpDown class="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            class="w-[--reka-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            :side="isMobile ? 'bottom' : 'right'"
-            align="start"
-            :side-offset="4"
+      <!-- Settings Navigation -->
+      <template v-if="isSettingsRoute">
+        <div class="p-2">
+          <NuxtLink
+            to="/"
+            class="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
           >
-            <DropdownMenuGroup>
-              <SidebarGroupLabel>Applications</SidebarGroupLabel>
-              <DropdownMenuItem
-                v-for="application in applications"
-                :key="application?.uuid"
-                @click="selectAppAndNavigate(application)"
+            <ChevronLeft class="size-4" />
+            Back to App
+          </NuxtLink>
+        </div>
+        <SidebarGroup class="p-0 m-0">
+          <SidebarGroupContent class="space-y-1">
+            <SidebarMenuButton
+              v-for="item in settingsItems"
+              :key="item.path"
+              :class="[
+                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap',
+                route.path === item.path
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : '',
+              ]"
+            >
+              <NuxtLink
+                :to="item.path"
+                class="flex w-full items-center space-x-2"
               >
-                <Sparkles />
-                {{ application?.name }}
-              </DropdownMenuItem>
+                <component :is="item.icon" class="size-4" />
+                <div>{{ item.name }}</div>
+              </NuxtLink>
+            </SidebarMenuButton>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </template>
 
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                class="gap-2 p-2"
-                @click="newAppSlideOver?.openSlide()"
+      <!-- App Navigation -->
+      <template v-else>
+        <div class="flex w-full items-center justify-between space-x-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <SidebarMenuButton
+                size="lg"
+                class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus class="size-4" />
-                </div>
+                <AppWindow class="ml-auto size-4" />
                 <div
-                  class="font-medium text-muted-foreground"
+                  class="grid flex-1 text-left text-sm leading-tight theme-neutral"
                 >
-                  Create New Application
+                  <span class="truncate font-semibold">
+                    {{ selectedApplication?.name }}
+                  </span>
                 </div>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          class="w-8 h-8"
-          variant="ghost"
-          size="icon"
-          @click="configureAppSlideOver?.openSlide()"
-        >
-          <Settings2 class="w-4 h-4" />
-        </Button>
-      </div>
-      <SidebarGroup class="p-0 m-0">
-        <SidebarGroupContent class="space-y-1">
-          <SidebarMenuButton
-            data-settings-button
-            class="flex items-center justify-between text-sm"
-            @click="toggleSettings"
-          >
-            <div class="flex items-center gap-2">
-              <Settings class="size-4" />
-              <span class="">Settings</span>
-            </div>
-            <ChevronUp
-              v-if="settingsExpanded"
-              class="size-4"
-            />
-            <ChevronDown
-              v-else
-              class="size-4"
-            />
-          </SidebarMenuButton>
-          <div
-            v-if="settingsExpanded"
-            data-settings-menu
-            class="flex flex-col space-y-1"
-          >
-            <SidebarMenuButton
-              :class="[
-                'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                activeMenu === 'models'
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                  : '',
-              ]"
+                <ChevronsUpDown class="ml-auto size-4" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              class="w-[--reka-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              :side="isMobile ? 'bottom' : 'right'"
+              align="start"
+              :side-offset="4"
             >
-              <NuxtLink
-                to="/settings/ai-providers"
-                class="flex items-center gap-2 w-full"
-                @click="setActiveMenu('models')"
-              >
-                <Box class="size-4" />
-                <span>Models</span>
-              </NuxtLink>
-            </SidebarMenuButton>
+              <DropdownMenuGroup>
+                <SidebarGroupLabel>Applications</SidebarGroupLabel>
+                <DropdownMenuItem
+                  v-for="application in applications"
+                  :key="application?.uuid"
+                  @click="selectAppAndNavigate(application)"
+                >
+                  <Sparkles />
+                  {{ application?.name }}
+                </DropdownMenuItem>
 
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  class="gap-2 p-2"
+                  @click="newAppSlideOver?.openSlide()"
+                >
+                  <div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                    <Plus class="size-4" />
+                  </div>
+                  <div
+                    class="font-medium text-muted-foreground"
+                  >
+                    Create New Application
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            class="w-8 h-8"
+            variant="ghost"
+            size="icon"
+            @click="configureAppSlideOver?.openSlide()"
+          >
+            <Settings2 class="w-4 h-4" />
+          </Button>
+        </div>
+        <SidebarGroup class="p-0 m-0">
+          <SidebarGroupContent class="space-y-1">
             <SidebarMenuButton
               :class="[
-                'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                activeMenu === 'integrations'
+                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap',
+                activeMenu === 'knowledge-base'
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                   : '',
               ]"
             >
               <NuxtLink
-                to="/settings/integrations"
-                class="flex items-center gap-2 w-full"
-                @click="setActiveMenu('integrations')"
+                :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
+                class="flex w-full items-center space-x-2"
+                @click="setActiveMenu('knowledge-base')"
               >
-                <Puzzle class="size-4" />
-                <span>Integrations</span>
+                <BookOpen class="size-4" />
+                <div>Knowledge Base</div>
               </NuxtLink>
             </SidebarMenuButton>
-
             <SidebarMenuButton
               :class="[
-                'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                activeMenu === 'notification-profile'
+                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap',
+                activeMenu === 'api-keys'
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                   : '',
               ]"
             >
               <NuxtLink
-                to="/settings/notification-profile"
-                class="flex items-center gap-2 w-full"
-                @click="setActiveMenu('notification-profile')"
+                :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
+                class="flex w-full items-center space-x-2"
+                @click="setActiveMenu('api-keys')"
               >
-                <Bell class="size-4" />
-                <span>Notification Profile</span>
+                <KeyRound class="size-4" />
+                <div>API Keys & Widget</div>
               </NuxtLink>
             </SidebarMenuButton>
-
             <SidebarMenuButton
               :class="[
-                'px-4 py-2 rounded-lg text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                activeMenu === 'change-password'
+                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap cursor-pointer',
+                activeMenu === 'newChat'
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
                   : '',
               ]"
+              @click="initNewChat"
             >
-              <NuxtLink
-                to="/settings/change-password"
-                class="flex items-center gap-2 w-full"
-                @click="setActiveMenu('change-password')"
-              >
-                <Lock class="size-4" />
-                <span>Change Password</span>
-              </NuxtLink>
+              <div class="flex w-full items-center space-x-2">
+                <MessageSquare class="size-4" />
+                <div>Start New Conversation</div>
+              </div>
             </SidebarMenuButton>
-          </div>
-          <SidebarMenuButton
-            :class="[
-              'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap',
-              activeMenu === 'knowledge-base'
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                : '',
-            ]"
-          >
-            <NuxtLink
-              :to="`/applications/${selectedApplication?.uuid}/knowledge-base`"
-              class="flex w-full items-center space-x-2"
-              @click="setActiveMenu('knowledge-base')"
-            >
-              <BookOpen class="size-4" />
-              <div>Knowledge Base</div>
-            </NuxtLink>
-          </SidebarMenuButton>
-          <SidebarMenuButton
-            :class="[
-              'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap',
-              activeMenu === 'api-keys'
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                : '',
-            ]"
-          >
-            <NuxtLink
-              :to="`/applications/${selectedApplication?.uuid}/api-keys-and-widget`"
-              class="flex w-full items-center space-x-2"
-              @click="setActiveMenu('api-keys')"
-            >
-              <KeyRound class="size-4" />
-              <div>API Keys & Widget</div>
-            </NuxtLink>
-          </SidebarMenuButton>
-          <SidebarMenuButton
-            :class="[
-              'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap cursor-pointer',
-              activeMenu === 'newChat'
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
-                : '',
-            ]"
-            @click="initNewChat"
-          >
-            <div class="flex w-full items-center space-x-2">
-              <MessageSquare class="size-4" />
-              <div>Start New Conversation</div>
-            </div>
-          </SidebarMenuButton>
-        </SidebarGroupContent>
-      </SidebarGroup>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </template>
     </SidebarHeader>
 
-    <div class="flex w-full items-center px-3 py-1">
-      <SidebarGroupLabel class="text-xs font-medium">Conversations</SidebarGroupLabel>
-    </div>
+    <template v-if="!isSettingsRoute">
+      <div class="flex w-full items-center px-3 py-1">
+        <SidebarGroupLabel class="text-xs font-medium">Conversations</SidebarGroupLabel>
+      </div>
 
-    <ScrollArea class="h-full">
+      <ScrollArea class="h-full">
       <SidebarContent class="">
         <SidebarGroup class="p-0 m-0 overflow-visible">
           <SidebarGroupContent class="p-2 space-y-1 overflow-visible">
@@ -406,6 +328,7 @@ async function initNewChat() {
         </SidebarGroup>
       </SidebarContent>
     </ScrollArea>
+    </template>
   </Sidebar>
   <NewApp
     ref="newAppSlideOver"

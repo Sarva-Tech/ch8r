@@ -9,10 +9,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useHttpClient } from '~/composables/useHttpClient'
 
-definePageMeta({
-  layout: 'default',
-})
-
 const currentPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
@@ -138,7 +134,7 @@ const passwordStrength = computed(() => {
 </script>
 
 <template>
-  <div class="container max-w-2xl mx-auto py-8 px-4 pt-[72px]">
+  <div class="container max-w-2xl mx-auto py-8 px-4 pt-[72px] pb-[120px]">
     <div class="mb-8">
       <h1 class="text-3xl font-bold tracking-tight">Change Password</h1>
       <p class="text-muted-foreground mt-2">

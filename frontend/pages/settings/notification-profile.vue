@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto">
+  <div class="flex flex-col min-h-0 flex-1 p-4 pt-[72px] pb-[120px] overflow-y-auto">
     <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
