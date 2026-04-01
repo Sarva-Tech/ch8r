@@ -1,8 +1,12 @@
-export interface GitHubRepository {
+export type VCProvider = 'github_graphql'
+
+export interface VCRepository {
   id: number
   uuid: string
+  provider: VCProvider
+  external_id: string
   name: string
-  owner: string
+  repo_owner: string
   full_name: string
   description: string
   url: string
@@ -10,14 +14,15 @@ export interface GitHubRepository {
   default_branch: string
   last_ingested_at: string | null
   ingestion_status: 'pending' | 'running' | 'completed' | 'failed'
+  metadata: Record<string, any>
   created_at: string
   updated_at: string
 }
 
-export interface GitHubIssue {
+export interface VCIssue {
   id: number
   uuid: string
-  github_id: number
+  external_id: string
   number: number
   title: string
   body: string
@@ -32,14 +37,15 @@ export interface GitHubIssue {
   updated_at: string
   closed_at: string | null
   url: string
-  comments: GitHubIssueComment[]
+  repository: string
+  comments: VCIssueComment[]
   comment_count: number
 }
 
-export interface GitHubIssueComment {
+export interface VCIssueComment {
   id: number
   uuid: string
-  github_id: number
+  external_id: string
   body: string
   author: string
   author_association: string
@@ -48,10 +54,10 @@ export interface GitHubIssueComment {
   url: string
 }
 
-export interface GitHubPullRequest {
+export interface VCPullRequest {
   id: number
   uuid: string
-  github_id: number
+  external_id: string
   number: number
   title: string
   body: string
@@ -74,16 +80,17 @@ export interface GitHubPullRequest {
   updated_at: string
   closed_at: string | null
   url: string
-  comments: GitHubPRComment[]
-  files: GitHubPRFile[]
+  repository: string
+  comments: VCPRComment[]
+  files: VCPRFile[]
   comment_count: number
   file_count: number
 }
 
-export interface GitHubPRComment {
+export interface VCPRComment {
   id: number
   uuid: string
-  github_id: number
+  external_id: string
   body: string
   author: string
   author_association: string
@@ -92,7 +99,7 @@ export interface GitHubPRComment {
   url: string
 }
 
-export interface GitHubPRFile {
+export interface VCPRFile {
   id: number
   uuid: string
   filename: string
@@ -106,105 +113,34 @@ export interface GitHubPRFile {
   contents_url: string
 }
 
-export interface GitHubDiscussion {
-  id: number
-  uuid: string
-  github_id: number
-  number: number
-  title: string
-  body: string
-  author: string
-  author_association: string
-  category: {
-    id: number
-    name: string
-    emoji: string
-    description: string
-  }
-  answer_chosen_at: string | null
-  answer_chosen_by: string
-  upvote_count: number
-  viewer_has_upvoted: boolean
-  created_at: string
-  updated_at: string
-  last_edited_at: string | null
-  url: string
-  comments: GitHubDiscussionComment[]
-  comment_count: number
-}
-
-export interface GitHubDiscussionComment {
-  id: number
-  uuid: string
-  github_id: number
-  body: string
-  author: string
-  author_association: string
-  created_at: string
-  updated_at: string
-  last_edited_at: string | null
-  upvote_count: number
-  viewer_has_upvoted: boolean
-  parent_comment: number | null
-  replies: GitHubDiscussionComment[]
-}
-
-export interface GitHubWikiPage {
-  id: number
-  uuid: string
-  title: string
-  content: string
-  sha: string
-  html_url: string
-  download_url: string
-  last_modified: string
-}
-
-export interface GitHubRepositoryFile {
-  id: number
-  uuid: string
-  path: string
-  name: string
-  content: string
-  sha: string
-  size: number
-  content_type: string
-  encoding: string
-  html_url: string
-  download_url: string
-  last_modified: string
-}
-
-export interface GitHubIngestionRequest {
+export interface VCIngestionRequest {
   owner: string
   repo: string
   since?: string
   application_uuid: string
+  provider?: VCProvider
 }
 
-export interface GitHubRepositoryResponse extends GitHubRepository {
+export interface VCRepositoryDetail extends VCRepository {
   issue_count: number
   pr_count: number
-  discussion_count: number
-  wiki_page_count: number
-  file_count: number
 }
 
-export interface GitHubIssuesResponse {
+export interface VCIssuesResponse {
   count: number
   next: string | null
   previous: string | null
-  results: GitHubIssue[]
+  results: VCIssue[]
 }
 
-export interface GitHubPullRequestsResponse {
+export interface VCPullRequestsResponse {
   count: number
   next: string | null
   previous: string | null
-  results: GitHubPullRequest[]
+  results: VCPullRequest[]
 }
 
-export interface GitHubIngestionStatus {
+export interface VCIngestionStatus {
   status: 'success' | 'error' | 'pending'
   repository: string
   message: string
@@ -212,17 +148,17 @@ export interface GitHubIngestionStatus {
   error?: string
 }
 
-export interface GitHubIngestionState {
-  repositories: GitHubRepository[]
-  currentRepository: GitHubRepository | null
-  issues: GitHubIssue[]
-  pullRequests: GitHubPullRequest[]
+export interface VCState {
+  repositories: VCRepository[]
+  currentRepository: VCRepository | null
+  issues: VCIssue[]
+  pullRequests: VCPullRequest[]
   loading: boolean
   error: string | null
   ingestionStatus: 'idle' | 'ingesting' | 'completed' | 'failed'
 }
 
-export interface GitHubFilters {
+export interface VCFilters {
   state: 'all' | 'open' | 'closed' | 'merged'
   author: string
   labels: string[]
@@ -231,14 +167,11 @@ export interface GitHubFilters {
   search: string
 }
 
-export interface GitHubStats {
+export interface VCStats {
   totalIssues: number
   openIssues: number
   closedIssues: number
   totalPRs: number
   openPRs: number
   mergedPRs: number
-  totalDiscussions: number
-  totalWikiPages: number
-  totalFiles: number
 }
