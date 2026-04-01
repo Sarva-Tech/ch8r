@@ -62,7 +62,7 @@ class GitHubGraphQLIngestionService:
                 'repo_owner': owner,
                 'app_integration': self.app_integration,
                 'ingestion_status': 'pending',
-                'provider': 'github'
+                'provider': 'github_graphql'
             }
         )
 

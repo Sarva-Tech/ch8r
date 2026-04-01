@@ -6,21 +6,22 @@
 
 <script setup lang="ts">
 const userStore = useUserStore()
+const config = useRuntimeConfig()
 
 useHead({
   script: [
     {
       'src': '/widget.js',
       'defer': true,
-      'data-api-base-url': 'http://localhost:8000',
-      'data-app-uuid': '2279ab6a-2bd2-4112-ad82-eddbfc561e2b',
-      'data-token': 'widget_g30-gq_WYQioyG70tRLZ1m1yU8n-fAJUNN-58ASLvaY',
+      'data-api-base-url': config.public.widgetApiBaseUrl,
+      'data-app-uuid': config.public.widgetAppUuid,
+      'data-token': config.public.widgetToken,
       'data-user-identifier': userStore.getUser.id,
-      'data-app-name': 'ch8r support',
-      'data-app-description': 'We\'re here to help',
-      'data-app-logo-url': 'http://localhost:3000/favicon.ico',
-      'data-offset-bottom': '64',
-      'data-theme': 'blue',
+      'data-app-name': config.public.widgetAppName,
+      'data-app-description': config.public.widgetAppDescription,
+      'data-app-logo-url': config.public.widgetAppLogoUrl,
+      'data-offset-bottom': config.public.widgetOffsetBottom,
+      'data-theme': config.public.widgetTheme,
     }
   ]
 })

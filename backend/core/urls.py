@@ -5,7 +5,7 @@ from rest_framework_nested.routers import NestedDefaultRouter
 
 from core.views import (
     UserRegisterView, VerifyEmailView, KnowledgeBaseViewSet, ChatRoomMessagesView,
-    MeView, GenerateAPIKeyView,
+    MeView, GenerateAPIKeyView, ChatRoomNameUpdateView, ChatRoomDeleteView,
     IntegrationViewSet, AppIntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
 )
 from core.views.change_password import ChangePasswordView
@@ -24,7 +24,6 @@ from core.views.forgot_password import ForgotPasswordView
 from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
 from core.views.ai_provider import AIProviderViewSet
 from core.views.app_ai_provider import AppAIProviderViewSet
-from core.views.github_ingestion import GitHubIngestionViewSet
 from core.views.vc_ingestion import VCIngestionViewSet
 from core.views.tool_config import ToolConfigView
 
@@ -34,7 +33,6 @@ router.register(r'ai-providers', AIProviderViewSet, basename='ai-provider')
 router.register(r'notification-profiles', NotificationProfileViewSet, basename='notificationprofile')
 router.register(r'models', LLMModelViewSet, basename='model'),
 router.register(r'integrations', IntegrationViewSet, basename='integration')
-router.register(r'github-ingestion', GitHubIngestionViewSet, basename='github-ingestion'),
 router.register(r'vc-ingestion', VCIngestionViewSet, basename='vc-ingestion'),
 
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')
@@ -56,6 +54,18 @@ urlpatterns = [
         'applications/<uuid:application_uuid>/chatrooms/send-message/',
         SendMessageView.as_view(),
         name='send-message'
+    ),
+
+    path(
+        'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/',
+        ChatRoomNameUpdateView.as_view(),
+        name='chatroom-name-update'
+    ),
+
+    path(
+        'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/delete/',
+        ChatRoomDeleteView.as_view(),
+        name='chatroom-delete'
     ),
 
     path(

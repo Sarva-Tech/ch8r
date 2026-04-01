@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import type { GitHubIngestionRequest } from '~/types/github'
+import type { VCIngestionRequest } from '~/types/version_control'
 import { useIntegrationIcon } from '~/composables/useIntegrationIcon'
 import { FolderGit2 } from 'lucide-vue-next'
 import { useAppIntegrationStore } from '~/stores/appIntegration'
@@ -60,7 +60,7 @@ import { useAppIntegrationStore } from '~/stores/appIntegration'
 withDefaults(defineProps<{ loading?: boolean }>(), { loading: false })
 
 const emit = defineEmits<{
-  update: [data: GitHubIngestionRequest | null]
+  update: [data: VCIngestionRequest | null]
 }>()
 
 const appStore = useApplicationsStore()
