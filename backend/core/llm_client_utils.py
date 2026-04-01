@@ -6,9 +6,11 @@ AI_ROLE_MAP = {
     "widget_": AI_ROLE_USER,
 }
 
-def messages_to_llm_conversation(messages_queryset):
+def messages_to_llm_conversation(messages_queryset, platform=None):
     conversation = []
     for msg in messages_queryset.order_by("created_at"):
+        if platform == "widget" and msg.is_internal:
+            continue
         role = next((r for prefix, r in AI_ROLE_MAP.items() if msg.sender_identifier.startswith(prefix)), AI_ROLE_UNKNOWN)
         conversation.append({"role": role, "content": msg.message})
     return conversation

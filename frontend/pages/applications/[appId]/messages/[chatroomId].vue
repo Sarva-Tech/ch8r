@@ -10,6 +10,7 @@
         :key="message.id"
         :class="cn('flex gap-3 items-start', isCurrentUser(message.sender_identifier) ? 'flex-row-reverse' : 'flex-row')"
       >
+        <!-- Avatar -->
         <div class="flex-shrink-0 mt-1">
           <div
             v-if="isLLMAgent(message.sender_identifier)"
@@ -31,12 +32,15 @@
           </div>
         </div>
 
-        <!-- Bubble -->
+        <!-- Bubble column -->
         <div
           class="flex flex-col gap-1 max-w-[70%] lg:max-w-[60%] xl:max-w-[50%]"
           :class="isCurrentUser(message.sender_identifier) ? 'items-end' : 'items-start'"
         >
+            <!-- Sender label -->
           <span class="text-xs text-muted-foreground px-1">{{ message.sender_identifier }}</span>
+
+          <!-- Message bubble -->
           <div
             :class="cn(
               'rounded-lg px-3 py-2 text-sm overflow-hidden',
@@ -52,7 +56,99 @@
               v-html="md.render(preprocessMarkdown(message.message))"
             />
           </div>
-          <div class="flex items-center gap-1 px-1">
+
+          <!-- Tool calls — single Toolbox button → Popover with full details -->
+          <div
+            v-if="(message.metadata?.tool_calls as ToolCall[])?.length > 0"
+            class="px-1 mt-1"
+          >
+            <Popover>
+              <PopoverTrigger as-child>
+                <button class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-md px-2 py-1 bg-muted/40 hover:bg-muted transition-colors">
+                  <Hammer class="w-3.5 h-3.5" />
+                  <span>Tools</span>
+                  <span class="opacity-50">({{ (message.metadata.tool_calls as ToolCall[]).length }})</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent class="w-[480px] max-h-[480px] overflow-y-auto p-0" align="start">
+                <div class="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <Hammer class="w-4 h-4 text-muted-foreground" />
+                  <span class="text-sm font-medium">Tool Calls</span>
+                  <span class="text-xs text-muted-foreground ml-auto">{{ (message.metadata.tool_calls as ToolCall[]).length }} call{{ (message.metadata.tool_calls as ToolCall[]).length > 1 ? 's' : '' }}</span>
+                </div>
+                <div class="divide-y divide-border">
+                  <div
+                    v-for="(tool, tIdx) in (message.metadata.tool_calls as ToolCall[])"
+                    :key="tIdx"
+                    class="px-4 py-3 space-y-3"
+                  >
+                    <!-- Tool header row -->
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono text-sm font-medium text-foreground">{{ tool.name }}</span>
+                      <div class="ml-auto flex items-center gap-2 shrink-0">
+                        <!-- Duration -->
+                        <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <Timer class="w-3 h-3" />
+                          {{ tool.duration_ms }}ms
+                        </span>
+                        <!-- Status -->
+                        <span
+                          v-if="!tool.error"
+                          class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium"
+                        >
+                          <CheckCircle2 class="w-3.5 h-3.5" />
+                          success
+                        </span>
+                        <span
+                          v-else
+                          class="inline-flex items-center gap-1 text-xs text-red-500 font-medium"
+                        >
+                          <XCircle class="w-3.5 h-3.5" />
+                          failed
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- URL -->
+                    <div v-if="tool.url" class="space-y-1">
+                      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide">URL</p>
+                      <p class="font-mono text-xs break-all text-foreground bg-muted rounded px-2 py-1.5">{{ tool.url }}</p>
+                    </div>
+
+                    <!-- Input -->
+                    <div v-if="tool.input_parameters && Object.keys(tool.input_parameters).length" class="space-y-1">
+                      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide flex items-center gap-1">
+                        <ArrowRight class="w-3 h-3" />
+                        Input
+                      </p>
+                      <pre class="text-xs rounded overflow-x-auto p-2 bg-muted leading-relaxed" v-html="highlightJson(tool.input_parameters)" />
+                    </div>
+
+                    <!-- Result -->
+                    <div v-if="!tool.error && tool.raw_result" class="space-y-1">
+                      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide flex items-center gap-1">
+                        <ArrowLeft class="w-3 h-3" />
+                        Result
+                      </p>
+                      <pre class="text-xs rounded overflow-x-auto p-2 bg-muted leading-relaxed" v-html="highlightJson(tool.raw_result)" />
+                    </div>
+
+                    <!-- Error -->
+                    <div v-if="tool.error" class="space-y-1">
+                      <p class="text-xs text-red-500 font-medium uppercase tracking-wide flex items-center gap-1">
+                        <XCircle class="w-3 h-3" />
+                        Error
+                      </p>
+                      <pre class="text-xs rounded overflow-x-auto p-2 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 leading-relaxed">{{ typeof tool.error === 'object' ? JSON.stringify(tool.error, null, 2) : tool.error }}</pre>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <!-- Footer: provider / model / time / escalation / internal -->
+          <div class="flex items-center gap-1.5 px-1 flex-wrap">
             <template v-if="message.ai_provider_id && message.model">
               <component
                 :is="useAIProviderIcon(getMessageProvider(message.ai_provider_id)?.provider ?? '').value"
@@ -63,9 +159,15 @@
               <template v-if="message.ai_provider_id && message.model">{{ getMessageProvider(message.ai_provider_id)?.name }} · {{ message.model.startsWith('models/') ? message.model.substring(7) : message.model }} · </template>{{ new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
             </span>
             <span
-              v-if="message.is_internal"
+              v-if="message.ai_mode && message.is_internal"
               class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded px-1 py-0.5 whitespace-nowrap"
             >internal</span>
+            <!-- Escalation indicator — only on AI-generated messages -->
+            <span
+              v-if="message.ai_mode && message.metadata?.escalation"
+              class="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded px-1 py-0.5 whitespace-nowrap"
+              :title="(message.metadata.reason_for_escalation as string) || 'Escalated'"
+            >escalated</span>
           </div>
         </div>
       </div>
@@ -133,9 +235,7 @@
             </FormItem>
           </FormField>
           <div class="flex gap-4 items-end">
-            <div
-              class="flex gap-4 items-end flex-1 justify-between"
-            >
+            <div class="flex gap-4 items-end flex-1 justify-between">
               <div class="flex items-center gap-4">
                 <FormField
                   v-slot="{ componentField, handleChange }"
@@ -177,7 +277,7 @@
                         v-if="form.values.is_internal"
                         class="text-muted-foreground text-xs"
                       >
-                        {{ form.values.ai_mode ? 'This will trigger an AI response' : 'This won’t trigger an AI response' }}
+                        {{ form.values.ai_mode ? 'This will trigger an AI response' : 'This won\'t trigger an AI response' }}
                       </p>
                       <p
                         v-else
@@ -222,7 +322,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Bot, UserRound, Globe } from 'lucide-vue-next'
+import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
@@ -235,11 +335,43 @@ import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
+interface ToolCall {
+  name: string
+  input_parameters: Record<string, unknown>
+  url: string
+  raw_arguments: Record<string, unknown>
+  raw_result: Record<string, unknown>
+  timestamp: string
+  duration_ms: number
+  error: string | null
+}
 
 const route = useRoute()
 const { chatroomId } = route.params
 
 const messagesContainer = ref<HTMLElement>()
+
+// Track which individual tool call detail panels are expanded
+const openToolCalls = ref<Set<string>>(new Set())
+
+const toggleToolCall = (messageUuid: string, idx: number) => {
+  const key = `${messageUuid}-${idx}`
+  const next = new Set(openToolCalls.value)
+  if (next.has(key)) {
+    next.delete(key)
+  } else {
+    next.add(key)
+  }
+  openToolCalls.value = next
+}
+
+// Syntax-highlight a JSON value using hljs
+const highlightJson = (value: unknown): string => {
+  const json = JSON.stringify(value, null, 2)
+  return hljs.highlight(json, { language: 'json' }).value
+}
 
 const scrollToBottom = () => {
   if (messagesContainer.value) {
@@ -286,7 +418,6 @@ const md = new MarkdownIt({
 
 const preprocessMarkdown = (text: string) => {
   let processed = text
-
   const protectedTexts: string[] = []
 
   processed = processed.replace(/```[\s\S]*?```/g, (match) => {
@@ -314,9 +445,7 @@ const preprocessMarkdown = (text: string) => {
   })
 
   processed = processed.replace(/:\s*-\s*/g, ':\n\n- ')
-
   processed = processed.replace(/([.!?])\s*-\s*/g, '$1\n\n- ')
-
   processed = processed.replace(/([a-z.!?])\s*-\s*/g, '$1\n\n- ')
 
   protectedTexts.forEach((content, index) => {
@@ -623,5 +752,19 @@ onMounted(async () => {
 
 :deep(.hljs-attr) {
   color: #ff0000;
+}
+
+/* Accordion transition */
+.accordion-enter-active,
+.accordion-leave-active {
+  transition: opacity 0.2s ease, max-height 0.25s ease;
+  max-height: 1000px;
+  overflow: hidden;
+}
+
+.accordion-enter-from,
+.accordion-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 </style>

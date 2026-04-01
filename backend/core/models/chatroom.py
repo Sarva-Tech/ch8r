@@ -10,6 +10,9 @@ class ChatRoom(models.Model):
     ai_provider = models.ForeignKey('AIProvider', on_delete=models.SET_NULL, null=True, blank=True)
     model = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_escalated = models.BooleanField(default=False)
+    escalated_at = models.DateTimeField(null=True, blank=True)
+    escalation_cooldown_hours = models.IntegerField(default=24)
 
     def __str__(self):
         return self.name

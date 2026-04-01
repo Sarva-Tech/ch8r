@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db.models import Q
 
 from core.consts import LIVE_UPDATES_PREFIX
-from core.integrations.integration_dispatcher import get_enabled_tools_for_app, execute_tool_call
+from core.integrations.integration_dispatcher import get_enabled_tools_for_app
 from core.llm_client_utils import messages_to_llm_conversation, add_kb_to_convo, \
     add_instructions_to_convo
 from core.models import IngestedChunk, Application, Message
@@ -17,7 +17,8 @@ from core.serializers.message import ViewMessageSerializer
 from core.services.ingestion import get_chunks
 from core.services.template_loader import TemplateLoader
 from core.services.ai_client_service import AIClientService
-from core.services.providers.ai.gemini_provider import GeminiProvider
+from core.services.tool_call_executor import ToolCallExecutor
+from core.services.escalation_service import EscalationService
 
 logger = logging.getLogger(__name__)
 
@@ -141,121 +142,150 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     prompt_context = {"product_name": app.name, "tone": "professional", "integration_context": integration_context}
     system_instruction = TemplateLoader.render_template('prompts/default.j2', prompt_context)
 
-    conversation = messages_to_llm_conversation(messages)
+    conversation = messages_to_llm_conversation(messages, platform=user_message.platform)
     conversation = add_instructions_to_convo(conversation, system_instruction)
     conversation = add_kb_to_convo(conversation, kb_data)
 
-    answer = ""
-    metadata = {"status": "RESOLVED", "escalation": False, "reason_for_escalation": ""}
+    from core.agent_response_schema import SupportAgentResponse
+
+    agent_response = None
+    tool_call_records: list[dict] = []
+    intermediate_message = None
+    escalation_metadata: dict = {}
 
     try:
-        if tools and isinstance(provider, GeminiProvider):
-            logger.info(
-                "[generate_bot_response] Starting Gemini function-calling loop | max_rounds=%d",
-                MAX_TOOL_ROUNDS,
+        logger.info(
+            "[generate_bot_response] Starting two-shot pipeline | max_rounds=%d",
+            MAX_TOOL_ROUNDS,
+        )
+
+        executor = ToolCallExecutor()
+
+        for round_num in range(MAX_TOOL_ROUNDS):
+            logger.info("[generate_bot_response] Pipeline round %d/%d", round_num + 1, MAX_TOOL_ROUNDS)
+
+            # On the first round, pass tools so the model can decide to call them.
+            # On subsequent rounds (tool results already in conversation), pass no tools
+            # so the model produces a structured final answer instead of more tool calls.
+            tools_for_round = tools if round_num == 0 else None
+
+            agent_response, raw_tool_calls = provider.generate_with_conversation(
+                model, conversation, tools_for_round, SupportAgentResponse
             )
-            # --- Gemini function calling loop ---
-            contents = [
-                {"role": m["role"], "parts": [{"text": m["content"]}]}
-                for m in conversation
-            ]
 
-            response = None
-            for round_num in range(MAX_TOOL_ROUNDS):
-                logger.info("[generate_bot_response] Gemini round %d/%d", round_num + 1, MAX_TOOL_ROUNDS)
-                response = provider.generate_with_tools(model, contents, tools)
-                function_calls = getattr(response, "function_calls", None) or []
-
-                if not function_calls:
-                    answer = response.text or ""
-                    logger.info(
-                        "[generate_bot_response] Gemini final answer received | round=%d answer_length=%d",
-                        round_num + 1, len(answer),
-                    )
-                    break
-
+            if not raw_tool_calls:
+                # No tool calls — this is the final response
                 logger.info(
-                    "[generate_bot_response] Gemini requested %d tool call(s) | round=%d calls=%s",
-                    len(function_calls), round_num + 1, [fc.name for fc in function_calls],
+                    "[generate_bot_response] No tool calls in round %d — using as final response | "
+                    "answer_length=%d status=%s",
+                    round_num + 1, len(agent_response.answer), agent_response.status,
+                )
+                break
+
+            # Tool calls present
+            logger.info(
+                "[generate_bot_response] Tool calls requested | round=%d count=%d calls=%s",
+                round_num + 1, len(raw_tool_calls), [tc.get("name") for tc in raw_tool_calls],
+            )
+
+            # Save Intermediate_Message on the first round with tool calls
+            if intermediate_message is None:
+                intermediate_message = Message.objects.create(
+                    chatroom=chatroom,
+                    sender_identifier=AGENT_IDENTIFIER,
+                    message=str(raw_tool_calls),
+                    metadata={
+                        "tool_intent": [tc.get("name") for tc in raw_tool_calls],
+                        "tool_calls": [],
+                    },
+                    ai_provider_id=ai_provider_id,
+                    model=model,
+                    platform=user_message.platform,
+                    ai_mode=True,
+                    is_internal=True,
+                )
+                logger.info(
+                    "[generate_bot_response] Intermediate_Message saved | id=%s",
+                    intermediate_message.id,
                 )
 
-                contents.append(response.candidates[0].content)
+            # Execute all tool calls
+            round_records, tool_result_messages = executor.execute_all(str(app.uuid), raw_tool_calls)
+            tool_call_records.extend(round_records)
 
-                tool_response_parts = []
-                for fc in function_calls:
-                    logger.info(
-                        "[generate_bot_response] Executing tool | name=%s args=%s",
-                        fc.name, dict(fc.args),
-                    )
-                    try:
-                        result = execute_tool_call(str(app.uuid), fc.name, **dict(fc.args))
-                        logger.info(
-                            "[generate_bot_response] Tool result | name=%s result=%.200r",
-                            fc.name, result,
-                        )
-                    except Exception as exc:
-                        logger.error(
-                            "[generate_bot_response] Tool execution failed | name=%s args=%s error=%s",
-                            fc.name, dict(fc.args), exc,
-                        )
-                        result = {"error": str(exc)}
-
-                    tool_response_parts.append({
-                        "function_response": {
-                            "id": fc.id,
-                            "name": fc.name,
-                            "response": {"result": result},
-                        }
-                    })
-
-                contents.append({"role": "user", "parts": tool_response_parts})
-            else:
-                answer = getattr(response, "text", "") or "Unable to complete the request."
-                logger.warning(
-                    "[generate_bot_response] Gemini tool loop exhausted max rounds (%d), using last response",
-                    MAX_TOOL_ROUNDS,
-                )
+            # Append tool results to conversation for next round
+            conversation.extend(tool_result_messages)
 
         else:
-            logger.info(
-                "[generate_bot_response] Using standard text generation | provider=%s has_tools=%s",
-                type(provider).__name__, bool(tools),
+            # MAX_TOOL_ROUNDS exhausted
+            logger.warning(
+                "[generate_bot_response] MAX_TOOL_ROUNDS (%d) exhausted — using last response",
+                MAX_TOOL_ROUNDS,
             )
-            # --- Standard text generation (no tools or non-Gemini provider) ---
-            prompt = "\n".join(
-                [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in conversation]
-            )
-            agent_response = provider.generate_text(model, prompt)
-            answer = agent_response.answer
-            metadata = {
-                "status": agent_response.status,
-                "escalation": agent_response.escalation,
-                "reason_for_escalation": agent_response.reason_for_escalation,
+
+        # Update Intermediate_Message with accumulated tool_call_records
+        if intermediate_message is not None:
+            intermediate_message.metadata = {
+                **intermediate_message.metadata,
+                "tool_calls": tool_call_records,
             }
-            logger.info(
-                "[generate_bot_response] Standard generation complete | status=%s escalation=%s "
-                "reason=%r answer_length=%d",
-                agent_response.status, agent_response.escalation,
-                agent_response.reason_for_escalation, len(answer),
-            )
+            intermediate_message.save(update_fields=["metadata"])
 
     except Exception as e:
         logger.error(
             "[generate_bot_response] Failed to generate content | error=%s",
             e, exc_info=True,
         )
-        answer = str(e)
-        metadata = {
-            "status": "ERROR",
-            "escalation": True,
-            "reason_for_escalation": str(e),
-            "error_details": str(e),
-        }
+        bot_message = Message.objects.create(
+            chatroom=chatroom,
+            sender_identifier=AGENT_IDENTIFIER,
+            message=str(e),
+            metadata={
+                "status": "ERROR",
+                "escalation": True,
+                "reason_for_escalation": str(e),
+                "error_details": str(e),
+            },
+            ai_provider_id=ai_provider_id,
+            model=model,
+            platform=user_message.platform,
+            ai_mode=True,
+            is_internal=user_message.is_internal,
+        )
+        _send_live_update(bot_message, user_message)
+        return
+
+    # --- Escalation check — only for non-internal conversations ---
+    escalation_service = EscalationService()
+    if not user_message.is_internal and escalation_service.should_escalate(chatroom, agent_response, escalation_threshold=70):
+        logger.info(
+            "[generate_bot_response] Escalation triggered | score=%s status=%s",
+            agent_response.escalation_score, agent_response.status,
+        )
+        escalation_metadata = escalation_service.escalate(chatroom, app, agent_response)
+    else:
+        escalation_metadata = {}
+
+    # --- Build Final_Message metadata ---
+    # tool_calls go on Intermediate_Message when it exists, otherwise on Final_Message
+    final_tool_calls = [] if intermediate_message is not None else tool_call_records
+
+    metadata = {
+        "status": str(agent_response.status),
+        "escalation": agent_response.escalation,
+        "reason_for_escalation": agent_response.reason_for_escalation,
+        "sentiment_score": agent_response.sentiment_score,
+        "escalation_score": agent_response.escalation_score,
+        "criticality_score": agent_response.criticality_score,
+        "tool_calls": final_tool_calls,
+        "escalation_reason": escalation_metadata.get("escalation_reason", ""),
+        "notified_profiles": escalation_metadata.get("notified_profiles", []),
+    }
 
     bot_message = Message.objects.create(
         chatroom=chatroom,
         sender_identifier=AGENT_IDENTIFIER,
-        message=answer,
+        message=agent_response.answer,
         metadata=metadata,
         ai_provider_id=ai_provider_id,
         model=model,
@@ -264,7 +294,7 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         is_internal=user_message.is_internal,
     )
     logger.info(
-        "[generate_bot_response] Bot message saved | bot_message_id=%s status=%s escalation=%s",
+        "[generate_bot_response] Final_Message saved | bot_message_id=%s status=%s escalation=%s",
         bot_message.id, metadata.get("status"), metadata.get("escalation"),
     )
 

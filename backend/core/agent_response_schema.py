@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 class ResponseStatus(str, Enum):
     ANSWERED = "ANSWERED"
@@ -19,3 +19,11 @@ class SupportAgentResponse(BaseModel):
     status: ResponseStatus = Field(..., description="The result of the response analysis or next step needed.")
     escalation: bool = Field(..., description="Indicates whether the query should be escalated to human support.")
     reason_for_escalation: str = Field(..., description="Optional explanation for escalation. Can be an empty string.")
+    sentiment_score: int = Field(..., description="Emotional tone of the user's message (0 = very negative, 100 = very positive).")
+    escalation_score: int = Field(..., description="Likelihood that human escalation is needed (0–100).")
+    criticality_score: int = Field(..., description="Severity of the user's reported issue (0–100).")
+
+    @field_validator("sentiment_score", "escalation_score", "criticality_score", mode="before")
+    @classmethod
+    def clamp_score(cls, v: int) -> int:
+        return max(0, min(100, int(v)))
