@@ -6,7 +6,7 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 
 from core.models import AppIntegration, VCRepository
-from core.services.github_ingestion import GitHubDataIngestionService
+from core.services.github_graphql_ingestion import GitHubGraphQLIngestionService
 from core.consts import DASHBOARD_USER_ID_PREFIX, LIVE_UPDATES_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ def ingest_github_repository_task(self, app_integration_id, owner, repo, since=N
         ).get(id=app_integration_id)
         logger.info(f"[Task] AppIntegration found: id={app_integration_id}, app={app_integration.application.name}")
 
-        ingestion_service = GitHubDataIngestionService(app_integration, use_graphql=True)
+        ingestion_service = GitHubGraphQLIngestionService(app_integration)
         ingestion_service.ingest_repository(owner, repo, since)
 
         logger.info(f"[Task] ingest_repository completed for {owner}/{repo}")

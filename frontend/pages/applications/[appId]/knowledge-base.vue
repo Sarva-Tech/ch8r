@@ -115,6 +115,8 @@ function getKBIcon(sourceType: string) {
       return LetterText
     case 'github':
       return FolderGit2
+    case 'version_control':
+      return FolderGit2
     default:
       return File
   }
@@ -127,6 +129,8 @@ function getSourceTypeIcon(sourceType: string) {
     case 'text':
       return LetterText
     case 'github':
+      return FolderGit2
+    case 'version_control':
       return FolderGit2
     default:
       return File
@@ -141,13 +145,15 @@ function getSourceTypeLabel(sourceType: string) {
       return 'Text'
     case 'github':
       return 'Version Control'
+    case 'version_control':
+      return 'Version Control'
     default:
       return sourceType
   }
 }
 
 function getKBTitle(kb: KnowledgeBaseItem) {
-  if (kb.source_type === 'github' && kb.path) {
+  if ((kb.source_type === 'github' || kb.source_type === 'version_control') && kb.path) {
     return kb.path
   }
   if (kb.metadata?.file_name) {

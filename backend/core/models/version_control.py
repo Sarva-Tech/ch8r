@@ -6,10 +6,10 @@ import uuid
 
 class VCRepository(BaseModel):
     PROVIDER_CHOICES = [
-        ('github', 'GitHub'),
+        ('github_graphql', 'GitHub GraphQL'),
     ]
 
-    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='github')
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='github_graphql')
     external_id = models.CharField(max_length=255, blank=True, help_text="Provider-specific repository ID")
     name = models.CharField(max_length=255)
     repo_owner = models.CharField(max_length=255)

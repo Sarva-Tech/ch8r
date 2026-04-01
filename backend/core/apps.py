@@ -10,5 +10,5 @@ class ApiConfig(AppConfig):
     def ready(self):
         init_qdrant()
 
-        from core.services.providers.version_control import github, github_graphql
+        from core.services.providers.version_control import github_graphql
 

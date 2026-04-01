@@ -24,7 +24,6 @@ from core.views.forgot_password import ForgotPasswordView
 from core.views.reset_password import ResetPasswordView, ResetPasswordVerifyView
 from core.views.ai_provider import AIProviderViewSet
 from core.views.app_ai_provider import AppAIProviderViewSet
-from core.views.github_ingestion import GitHubIngestionViewSet
 from core.views.vc_ingestion import VCIngestionViewSet
 from core.views.tool_config import ToolConfigView
 
@@ -34,7 +33,6 @@ router.register(r'ai-providers', AIProviderViewSet, basename='ai-provider')
 router.register(r'notification-profiles', NotificationProfileViewSet, basename='notificationprofile')
 router.register(r'models', LLMModelViewSet, basename='model'),
 router.register(r'integrations', IntegrationViewSet, basename='integration')
-router.register(r'github-ingestion', GitHubIngestionViewSet, basename='github-ingestion'),
 router.register(r'vc-ingestion', VCIngestionViewSet, basename='vc-ingestion'),
 
 nested_router = NestedDefaultRouter(router, r'applications', lookup='application')

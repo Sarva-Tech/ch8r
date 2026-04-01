@@ -29,9 +29,9 @@
           <FileUpload @update:files="kbDraft.setFiles" />
         </div>
         <VersionControlInput
-          v-if="isGitHub"
+          v-if="isVersionControl"
           :loading="loading"
-          @update="handleGitHubUpdate"
+          @update="handleVCUpdate"
         />
         <UrlInput v-if="isUrl" />
         <TextInput v-if="isText" />
@@ -70,7 +70,7 @@ import { computed, ref, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import RequiredLabel from '~/components/RequiredLabel.vue'
 import { Plus } from 'lucide-vue-next'
-import type { GitHubIngestionRequest } from '~/types/github'
+import type { VCIngestionRequest } from '~/types/version_control'
 
 const newKBSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 
@@ -80,13 +80,13 @@ const selectedSourceValue = ref('file')
 const isFile = computed(() => selectedSourceValue.value === 'file')
 const isUrl = computed(() => selectedSourceValue.value === 'url')
 const isText = computed(() => selectedSourceValue.value === 'text')
-const isGitHub = computed(() => selectedSourceValue.value === 'github')
+const isVersionControl = computed(() => selectedSourceValue.value === 'github')
 
 const kbDraft = useKBDraftStore()
 const kbStore = useKnowledgeBaseStore()
-const githubStore = useGitHubStore()
+const vcStore = useVersionControlStore()
 
-const githubData = ref<GitHubIngestionRequest | null>(null)
+const vcData = ref<VCIngestionRequest | null>(null)
 
 onMounted(async () => {
 })
@@ -94,12 +94,12 @@ onMounted(async () => {
 async function processKB() {
   loading.value = true
   try {
-    if (isGitHub.value && githubData.value) {
-      await githubStore.ingestRepository(githubData.value)
+    if (isVersionControl.value && vcData.value) {
+      await vcStore.ingestRepository(vcData.value)
       newKBSlideOver.value?.closeSlide()
-      toast.success('GitHub repository ingestion started. The knowledge base will update when complete.')
+      toast.success('Repository ingestion started. The knowledge base will update when complete.')
       kbDraft.clear()
-      githubData.value = null
+      vcData.value = null
       await kbStore.load()
     } else {
       await kbStore.process()
@@ -114,13 +114,13 @@ async function processKB() {
   }
 }
 
-function handleGitHubUpdate(data: GitHubIngestionRequest | null) {
-  githubData.value = data
+function handleVCUpdate(data: VCIngestionRequest | null) {
+  vcData.value = data
 }
 
 const disabled = computed(() => {
-  if (isGitHub.value) {
-    return !githubData.value
+  if (isVersionControl.value) {
+    return !vcData.value
   }
   return !kbDraft.hasDrafts
 })
