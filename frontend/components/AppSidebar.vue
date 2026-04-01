@@ -244,7 +244,7 @@ async function handleDelete() {
       selectedApplication.value?.uuid || '',
       chatroomToDelete.value.uuid
     )
-    toast.success('Chatroom deleted')
+    toast.success('Conversation deleted')
     if (activeMenu.value === chatroomToDelete.value.uuid) {
       navigateTo(`/applications/${selectedApplication.value?.uuid}/messages/new_chat`)
     }
@@ -468,7 +468,9 @@ async function handleDelete() {
     </SidebarHeader>
 
     <div class="flex w-full items-center px-3 py-1">
-      <SidebarGroupLabel class="text-xs font-medium">Conversations</SidebarGroupLabel>
+      <SidebarGroupLabel class="text-xs font-medium">
+        Conversations
+      </SidebarGroupLabel>
     </div>
 
     <ScrollArea class="h-full">
@@ -485,7 +487,7 @@ async function handleDelete() {
                 :class="[
                   'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex items-center gap-2 px-4 py-2 text-sm leading-tight rounded-lg min-w-0',
                   activeMenu === chatroom.uuid ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' : '',
-                  chatroom.has_unread && activeMenu !== chatroom.uuid ? 'bg-primary/10 border border-border' : ''
+                  chatroom.has_unread && activeMenu !== chatroom.uuid ? 'bg-primary/10 border border-border' : '',
                 ]"
                 @click="() => { chatroomStore.markRead(chatroom.uuid); setActiveMenu(chatroom.uuid) }"
               >
@@ -527,9 +529,12 @@ async function handleDelete() {
                             <MoreVertical class="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" class="w-32">
+                        <DropdownMenuContent
+                          align="end"
+                          class="w-32"
+                        >
                           <DropdownMenuItem @click="startRename(chatroom)">
-                            <Pencil class="h-4 w-4 mr-2" />
+                            <Pencil class="h-4 w-4" />
                             Rename
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -537,7 +542,7 @@ async function handleDelete() {
                             class="text-destructive focus:text-destructive"
                             @click="confirmDelete(chatroom)"
                           >
-                            <Trash2 class="h-4 w-4 mr-2" />
+                            <Trash2 class="h-4 w-4 text-destructive" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -548,7 +553,10 @@ async function handleDelete() {
                     {{ chatroom.last_message?.message }}
                   </span>
                 </div>
-                <UnreadBadge v-if="chatroom.has_unread" class="flex-shrink-0" />
+                <UnreadBadge
+                  v-if="chatroom.has_unread"
+                  class="flex-shrink-0"
+                />
               </NuxtLink>
             </div>
           </SidebarGroupContent>
@@ -581,9 +589,7 @@ async function handleDelete() {
   >
     <template #description>
       <div>
-        Are you sure you want to delete:  <span class="font-bold"> {{ chatroomToDelete?.name }} </span>?
-        <br>
-        This action cannot be undone.
+        Are you sure you want to delete <span class="font-bold"> {{ chatroomToDelete?.name }} </span>?
       </div>
     </template>
   </C8Dialog>
