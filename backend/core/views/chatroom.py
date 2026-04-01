@@ -11,7 +11,7 @@ from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.consts import DASHBOARD_USER_ID_PREFIX
 from core.services.unread import mark_read_for_participant, broadcast_unread_update
 from django.db import transaction
-from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer, ChatRoomUpdateSerializer, ChatRoomViewSerializer
+from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer, ChatRoomNameUpdateSerializer, ChatRoomViewSerializer
 
 
 class ChatRoomMessagesView(APIView):
@@ -60,14 +60,14 @@ class ChatRoomDetailView(APIView):
         serializer = ChatRoomDetailSerializer(chatroom)
         return Response(serializer.data)
 
-class ChatRoomUpdateView(APIView):
+class ChatRoomNameUpdateView(APIView):
     permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
 
     def patch(self, request, application_uuid, chatroom_uuid):
         application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
         chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=application)
 
-        serializer = ChatRoomUpdateSerializer(chatroom, data=request.data, partial=True)
+        serializer = ChatRoomNameUpdateSerializer(chatroom, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(ChatRoomViewSerializer(chatroom).data)
@@ -75,6 +75,10 @@ class ChatRoomUpdateView(APIView):
 
     def put(self, request, application_uuid, chatroom_uuid):
         return self.patch(request, application_uuid, chatroom_uuid)
+
+
+class ChatRoomDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
 
     def delete(self, request, application_uuid, chatroom_uuid):
         application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
@@ -88,9 +92,7 @@ class ChatRoomUpdateView(APIView):
                 chatroom.participants.all().delete()
                 chatroom.delete()
             return Response({
-                'detail': 'Chatroom deleted successfully',
-                'deleted_messages': deleted_messages,
-                'deleted_participants': deleted_participants
+                'detail': 'Chatroom deleted',
             }, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({

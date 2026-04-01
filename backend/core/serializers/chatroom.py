@@ -11,7 +11,7 @@ class ChatRoomViewSerializer(serializers.ModelSerializer):
         model = ChatRoom
         fields = ['uuid', 'name', 'ai_provider', 'model']
 
-class ChatRoomUpdateSerializer(serializers.ModelSerializer):
+class ChatRoomNameUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatRoom
         fields = ['name']

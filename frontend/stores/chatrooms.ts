@@ -74,7 +74,7 @@ export const useChatroomStore = defineStore('chatrooms', {
     async deleteChatroom(appUuid: string, chatroomId: string) {
       const { httpDelete } = useHttpClient()
       try {
-        await httpDelete(`/applications/${appUuid}/chatrooms/${chatroomId}/`)
+        await httpDelete(`/applications/${appUuid}/chatrooms/${chatroomId}/delete/`)
         this.chatrooms = this.chatrooms.filter(c => c.uuid !== chatroomId)
       } catch (err: any) {
         console.error('Failed to delete chatroom:', err)
