@@ -10,8 +10,8 @@ from core.models.chatroom_participant import ChatroomParticipant
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.consts import DASHBOARD_USER_ID_PREFIX
 from core.services.unread import mark_read_for_participant, broadcast_unread_update
-
-from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer
+from django.db import transaction
+from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer, ChatRoomUpdateSerializer, ChatRoomViewSerializer
 
 
 class ChatRoomMessagesView(APIView):
@@ -59,3 +59,41 @@ class ChatRoomDetailView(APIView):
 
         serializer = ChatRoomDetailSerializer(chatroom)
         return Response(serializer.data)
+
+class ChatRoomUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
+
+    def patch(self, request, application_uuid, chatroom_uuid):
+        application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=application)
+
+        serializer = ChatRoomUpdateSerializer(chatroom, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(ChatRoomViewSerializer(chatroom).data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, application_uuid, chatroom_uuid):
+        return self.patch(request, application_uuid, chatroom_uuid)
+
+    def delete(self, request, application_uuid, chatroom_uuid):
+        application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        chatroom = get_object_or_404(ChatRoom, uuid=chatroom_uuid, application=application)
+
+        try:
+            with transaction.atomic():
+                deleted_messages = chatroom.messages.all().count()
+                chatroom.messages.all().delete()
+                deleted_participants = chatroom.participants.all().count()
+                chatroom.participants.all().delete()
+                chatroom.delete()
+            return Response({
+                'detail': 'Chatroom deleted successfully',
+                'deleted_messages': deleted_messages,
+                'deleted_participants': deleted_participants
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'detail': 'Failed to delete chatroom',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

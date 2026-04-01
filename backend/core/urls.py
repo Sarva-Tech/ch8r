@@ -5,7 +5,7 @@ from rest_framework_nested.routers import NestedDefaultRouter
 
 from core.views import (
     UserRegisterView, VerifyEmailView, KnowledgeBaseViewSet, ChatRoomMessagesView,
-    MeView, GenerateAPIKeyView,
+    MeView, GenerateAPIKeyView, ChatRoomUpdateView,
     IntegrationViewSet, AppIntegrationViewSet, WidgetView, LoadAvailableConfigurationView, AppNotificationUpdateView
 )
 from core.views.change_password import ChangePasswordView
@@ -56,6 +56,12 @@ urlpatterns = [
         'applications/<uuid:application_uuid>/chatrooms/send-message/',
         SendMessageView.as_view(),
         name='send-message'
+    ),
+
+    path(
+        'applications/<uuid:application_uuid>/chatrooms/<uuid:chatroom_uuid>/',
+        ChatRoomUpdateView.as_view(),
+        name='chatroom-detail-update-delete'
     ),
 
     path(

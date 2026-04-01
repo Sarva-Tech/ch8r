@@ -53,5 +53,33 @@ export const useChatroomStore = defineStore('chatrooms', {
       const chatroom = this.chatrooms.find(c => c.uuid === chatroomId)
       if (chatroom) chatroom.last_message = message
     },
+
+    async renameChatroom(appUuid: string, chatroomId: string, newName: string) {
+      const chatroom = this.chatrooms.find(c => c.uuid === chatroomId)
+      if (!chatroom || chatroom.name === newName) {
+        return
+      }
+      const { httpPatch } = useHttpClient()
+      try {
+        await httpPatch(`/applications/${appUuid}/chatrooms/${chatroomId}/`, {
+          name: newName,
+        })
+        chatroom.name = newName
+      } catch (err: any) {
+        console.error('Failed to rename chatroom:', err)
+        throw err
+      }
+    },
+
+    async deleteChatroom(appUuid: string, chatroomId: string) {
+      const { httpDelete } = useHttpClient()
+      try {
+        await httpDelete(`/applications/${appUuid}/chatrooms/${chatroomId}/`)
+        this.chatrooms = this.chatrooms.filter(c => c.uuid !== chatroomId)
+      } catch (err: any) {
+        console.error('Failed to delete chatroom:', err)
+        throw err
+      }
+    },
   },
 })
