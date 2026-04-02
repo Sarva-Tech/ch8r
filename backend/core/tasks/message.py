@@ -238,14 +238,14 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                     model=model,
                     platform=user_message.platform,
                     ai_mode=True,
-                    is_internal=user_message.is_internal,
+                    is_internal=True,  # always internal — never deliver to widget
                 )
                 logger.info(
                     "[generate_bot_response] Intermediate_Message saved | id=%s",
                     intermediate_message.id,
                 )
-                # Push immediately so dashboard sees the tool-planning step in real time
-                _send_live_update(intermediate_message, user_message)
+                # Push to dashboard only — widget users must not see tool-planning steps
+                _send_live_update_to_dashboard(intermediate_message, user_message)
 
             # Execute tools
             round_records, tool_result_messages = executor.execute_all(str(app.uuid), raw_tool_calls)
@@ -281,8 +281,8 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                 "tool_calls": tool_call_records,
             }
             intermediate_message.save(update_fields=["metadata"])
-            # Push again so the Tools popover gets the full tool call data
-            _send_live_update(intermediate_message, user_message)
+            # Push updated tool call data to dashboard only
+            _send_live_update_to_dashboard(intermediate_message, user_message)
 
     except Exception as e:
         logger.error(

@@ -9,7 +9,7 @@ from django.db import transaction
 from django.db.models import Q
 import logging
 
-from core.consts import LIVE_UPDATES_PREFIX
+from core.consts import DASHBOARD_USER_ID_PREFIX, LIVE_UPDATES_PREFIX
 from core.services.unread import mark_unread_for_participants, broadcast_unread_update
 from core.models.application import Application
 from core.models.chatroom import ChatRoom
