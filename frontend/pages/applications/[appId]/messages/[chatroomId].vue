@@ -181,21 +181,25 @@
               </PopoverContent>
             </Popover>
 
-            <!-- Sentiment / scores — any message with score data -->
-            <Popover v-if="message.metadata?.sentiment_score !== undefined">
+            <!-- Sentiment / scores — non-agent messages with scores in metadata -->
+            <Popover v-if="!isLLMAgent(message.sender_identifier) && message.metadata?.sentiment_score !== undefined">
               <PopoverTrigger as-child>
                 <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
                   <BarChart2 class="w-3 h-3" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent class="w-64 p-3 space-y-3" align="start">
-                <p class="text-xs font-medium text-foreground">Analysis</p>
+              <PopoverContent class="w-72 p-3 space-y-3" align="start">
+                <p class="text-xs font-medium text-foreground">Message analysis</p>
                 <!-- Sentiment -->
                 <div class="space-y-1">
                   <div class="flex items-center justify-between">
                     <div>
                       <p class="text-xs font-medium text-foreground">Sentiment</p>
-                      <p class="text-xs text-muted-foreground">Emotional tone of the user's message</p>
+                      <p class="text-xs text-muted-foreground">
+                        <template v-if="(message.metadata.sentiment_score as number) > 60">User seems positive or satisfied</template>
+                        <template v-else-if="(message.metadata.sentiment_score as number) >= 40">User tone is neutral or mixed</template>
+                        <template v-else>User appears frustrated or upset</template>
+                      </p>
                     </div>
                     <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.sentiment_score }}/100</span>
                   </div>
@@ -212,7 +216,11 @@
                   <div class="flex items-center justify-between">
                     <div>
                       <p class="text-xs font-medium text-foreground">Escalation need</p>
-                      <p class="text-xs text-muted-foreground">Likelihood human intervention is required</p>
+                      <p class="text-xs text-muted-foreground">
+                        <template v-if="(message.metadata.escalation_score as number) >= 70">Needs human agent — escalation triggered</template>
+                        <template v-else-if="(message.metadata.escalation_score as number) >= 40">May need human follow-up soon</template>
+                        <template v-else>AI can handle this without escalation</template>
+                      </p>
                     </div>
                     <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.escalation_score }}/100</span>
                   </div>
@@ -229,7 +237,11 @@
                   <div class="flex items-center justify-between">
                     <div>
                       <p class="text-xs font-medium text-foreground">Criticality</p>
-                      <p class="text-xs text-muted-foreground">Severity of the reported issue</p>
+                      <p class="text-xs text-muted-foreground">
+                        <template v-if="(message.metadata.criticality_score as number) >= 70">Critical issue — blocking or data loss risk</template>
+                        <template v-else-if="(message.metadata.criticality_score as number) >= 40">Moderate issue with a workaround available</template>
+                        <template v-else>Minor issue or general question</template>
+                      </p>
                     </div>
                     <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.criticality_score }}/100</span>
                   </div>
@@ -239,6 +251,36 @@
                       :class="(message.metadata.criticality_score as number) >= 70 ? 'bg-red-500' : (message.metadata.criticality_score as number) >= 40 ? 'bg-yellow-500' : 'bg-green-500'"
                       :style="`width: ${message.metadata.criticality_score}%`"
                     />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <!-- Token usage — AI messages with usage data -->
+            <Popover v-if="message.ai_mode && message.metadata?.usage">
+              <PopoverTrigger as-child>
+                <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
+                  <Cpu class="w-3 h-3" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent class="w-52 p-3 space-y-2" align="start">
+                <p class="text-xs font-medium text-foreground">Token usage</p>
+                <div class="space-y-1.5 text-xs">
+                  <div v-if="(message.metadata.usage as any).prompt_tokens !== undefined" class="flex justify-between">
+                    <span class="text-muted-foreground">Prompt</span>
+                    <span class="tabular-nums font-medium">{{ (message.metadata.usage as any).prompt_tokens.toLocaleString() }}</span>
+                  </div>
+                  <div v-if="(message.metadata.usage as any).completion_tokens !== undefined" class="flex justify-between">
+                    <span class="text-muted-foreground">Completion</span>
+                    <span class="tabular-nums font-medium">{{ (message.metadata.usage as any).completion_tokens.toLocaleString() }}</span>
+                  </div>
+                  <div v-if="(message.metadata.usage as any).cached_tokens !== undefined" class="flex justify-between">
+                    <span class="text-muted-foreground">Cached</span>
+                    <span class="tabular-nums font-medium">{{ (message.metadata.usage as any).cached_tokens.toLocaleString() }}</span>
+                  </div>
+                  <div v-if="(message.metadata.usage as any).total_tokens !== undefined" class="flex justify-between border-t border-border pt-1.5 mt-1">
+                    <span class="text-muted-foreground font-medium">Total</span>
+                    <span class="tabular-nums font-semibold">{{ (message.metadata.usage as any).total_tokens.toLocaleString() }}</span>
                   </div>
                 </div>
               </PopoverContent>
@@ -397,7 +439,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft, BarChart2 } from 'lucide-vue-next'
+import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft, BarChart2, Cpu } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'

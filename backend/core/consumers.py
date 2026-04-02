@@ -41,6 +41,12 @@ class LiveUpdatesConsumer(AsyncJsonWebsocketConsumer):
             "data": event["message"],
         })
 
+    async def send_new_chatroom(self, event):
+        await self.send_json({
+            "type": "new_chatroom",
+            "data": event["chatroom"],
+        })
+
     async def send_kb_updates(self, event):
         await self.send_json({
             "type": "kb_updates",

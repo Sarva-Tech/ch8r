@@ -7,10 +7,10 @@ from google.genai.types import GenerateContentConfig
 from ...contracts.ai_provider_contract import AIProviderContract
 from core.agent_response_schema import SupportAgentResponse
 
+
 class GeminiProvider(AIProviderContract):
     def __init__(self, api_key: str, config: Optional[Dict[str, Any]] = None):
         super().__init__(api_key, config)
-        
         try:
             self.client = genai.Client(api_key=api_key)
         except Exception as e:
@@ -26,9 +26,7 @@ class GeminiProvider(AIProviderContract):
                     response_json_schema=SupportAgentResponse.model_json_schema(),
                 )
             )
-
             return SupportAgentResponse.model_validate_json(response.text)
-
         except Exception as e:
             raise ValueError(f"Gemini API error: {e}")
 
@@ -38,18 +36,20 @@ class GeminiProvider(AIProviderContract):
         messages: list[dict],
         tools: list[dict] | None,
         response_schema: type[BaseModel],
-    ) -> tuple[SupportAgentResponse, list[dict]]:
+    ) -> tuple:
         """
-        Convert messages to Gemini format, call generate_content with schema + tools,
-        and return (SupportAgentResponse, raw_tool_calls).
+        Send a structured conversation to the provider.
 
-        raw_tool_calls is a list of dicts: {"name": str, "args": dict, "id": str}.
-        When tool calls are present, parsed_response may be None.
+        Returns a 3-tuple: (response_or_text, raw_tool_calls, usage_metadata)
+
+        - Tool-calling round:  (model_text: str, raw_tool_calls: list[dict], usage: dict)
+        - Final answer round:  (parsed: BaseModel, [],                       usage: dict)
+
+        usage_metadata keys: prompt_tokens, completion_tokens, total_tokens, cached_tokens
         """
         ROLE_MAP = {"assistant": "model", "system": "system"}
-
-        system_parts = []
-        filtered_contents = []
+        system_parts: list = []
+        filtered_contents: list = []
 
         for msg in messages:
             role = msg.get("role", "")
@@ -58,7 +58,6 @@ class GeminiProvider(AIProviderContract):
             if role == "system":
                 system_parts.append(types.Part.from_text(text=content))
             elif role == "tool":
-                # Tool result message — wrap as function response
                 tool_call_id = msg.get("tool_call_id", "")
                 tool_name = msg.get("name", tool_call_id)
                 filtered_contents.append(
@@ -81,7 +80,7 @@ class GeminiProvider(AIProviderContract):
                     )
                 )
 
-        # Build tool declarations if provided
+        # Build tool declarations
         gemini_tools = None
         if tools:
             function_declarations = []
@@ -94,9 +93,7 @@ class GeminiProvider(AIProviderContract):
                 })
             gemini_tools = types.Tool(function_declarations=function_declarations)
 
-        # Gemini does not support response_mime_type + tools in the same request.
-        # When tools are present: use tool-calling mode (no structured output).
-        # When no tools: use structured JSON output mode.
+        # Gemini does not support response_mime_type + tools simultaneously.
         if gemini_tools:
             config = types.GenerateContentConfig(
                 system_instruction=types.Content(parts=system_parts) if system_parts else None,
@@ -118,7 +115,9 @@ class GeminiProvider(AIProviderContract):
         except Exception as e:
             raise ValueError(f"Gemini API error: {e}")
 
-        # Extract tool calls from the response
+        usage_metadata = self._extract_usage(response)
+
+        # Extract tool calls
         raw_tool_calls: list[dict] = []
         for candidate in response.candidates or []:
             for part in candidate.content.parts or []:
@@ -131,26 +130,63 @@ class GeminiProvider(AIProviderContract):
                     })
 
         if raw_tool_calls:
-            # Tool calls present — return None for the parsed response.
-            # The pipeline will execute tools and call us again without tools,
-            # at which point we'll use structured output to get the final answer.
-            return None, raw_tool_calls
+            # Collect any text the model produced alongside the tool calls
+            text_parts = []
+            for candidate in response.candidates or []:
+                for part in candidate.content.parts or []:
+                    if hasattr(part, "text") and part.text and not part.function_call:
+                        text_parts.append(part.text)
+            model_text = "\n".join(text_parts).strip()
+            return model_text, raw_tool_calls, usage_metadata
 
-        # No tool calls — parse the structured JSON response.
-        # Gemini thinking models (e.g. 2.5 Flash) sometimes wrap the JSON in a
-        # markdown code fence even when structured output is requested. Strip it.
+        # No tool calls — parse structured JSON response.
+        # Thinking models sometimes wrap JSON in a markdown code fence or prepend
+        # explanatory text. Extract the JSON object robustly.
         try:
             raw_text = response.text or ""
             stripped = raw_text.strip()
+
+            # Strip markdown code fence if present
             if stripped.startswith("```"):
                 stripped = stripped.split("\n", 1)[-1]
                 if stripped.rstrip().endswith("```"):
                     stripped = stripped.rstrip()[:-3].rstrip()
+
+            # If there's still non-JSON text before the object, find the first '{'
+            brace_idx = stripped.find("{")
+            if brace_idx > 0:
+                stripped = stripped[brace_idx:]
+
+            # Trim any trailing text after the closing '}'
+            last_brace = stripped.rfind("}")
+            if last_brace != -1 and last_brace < len(stripped) - 1:
+                stripped = stripped[:last_brace + 1]
+
             parsed = response_schema.model_validate_json(stripped)
         except Exception as e:
             raise ValueError(f"Failed to parse Gemini response as {response_schema.__name__}: {e}")
 
-        return parsed, []
+        return parsed, [], usage_metadata
+
+    def _extract_usage(self, response) -> dict:
+        """Extract token usage from a Gemini response object."""
+        usage: dict = {}
+        try:
+            meta = getattr(response, "usage_metadata", None)
+            if meta:
+                mapping = {
+                    "prompt_tokens": "prompt_token_count",
+                    "completion_tokens": "candidates_token_count",
+                    "total_tokens": "total_token_count",
+                    "cached_tokens": "cached_content_token_count",
+                }
+                for key, attr in mapping.items():
+                    val = getattr(meta, attr, None)
+                    if val is not None:
+                        usage[key] = val
+        except Exception:
+            pass
+        return usage
 
     def generate_with_tools(self, model: str, contents: list, tool_schemas: List[dict]) -> types.GenerateContentResponse:
         ROLE_MAP = {"assistant": "model", "system": "system"}
@@ -185,7 +221,6 @@ class GeminiProvider(AIProviderContract):
             tools=[gemini_tools],
             system_instruction=types.Content(parts=system_parts) if system_parts else None,
         )
-
         return self.client.models.generate_content(
             model=model,
             contents=filtered_contents,

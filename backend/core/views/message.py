@@ -170,7 +170,8 @@ class SendMessageView(APIView):
 
         if platform == 'widget':
             if ai_mode:
-                broadcast_to(get_widget_participants() + get_dashboard_participants())
+                # Widget already has the message optimistically; send to dashboard only
+                broadcast_to(get_dashboard_participants())
                 generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
             else:
                 broadcast_to(get_dashboard_participants())
@@ -178,12 +179,33 @@ class SendMessageView(APIView):
         else:
             if is_internal:
                 if ai_mode:
+                    # Dashboard sent this — participants query already excludes sender
                     broadcast_to(get_dashboard_participants())
                     generate_bot_response.delay(message.id, app.uuid, ai_provider_id, model)
                 else:
                     pass
             else:
                 broadcast_to(get_widget_participants())
+
+        # If a new chatroom was just created, notify dashboard participants so their
+        # chatroom list updates live without a page refresh.
+        if chatroom_uuid == 'new_chat':
+            try:
+                from core.serializers.chatroom import ChatRoomPreviewSerializer
+                chatroom_data = ChatRoomPreviewSerializer(
+                    chatroom, context={'user_identifier': sender_id}
+                ).data
+                dashboard_id = f"{DASHBOARD_USER_ID_PREFIX}_{app.owner.id}"
+                group_name = f"{LIVE_UPDATES_PREFIX}_{dashboard_id}"
+                try:
+                    async_to_sync(channel_layer.group_send)(
+                        group_name,
+                        {"type": "send.new.chatroom", "chatroom": chatroom_data},
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send new_chatroom to {group_name}: {e}")
+            except Exception as e:
+                logger.warning(f"Failed to broadcast new chatroom: {e}")
 
         response_data = ViewMessageSerializer(message).data
         response_data['message_status'] = 'message_sent'

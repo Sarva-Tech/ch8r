@@ -103,6 +103,12 @@ const unsubscribeUnread = liveUpdateStore.subscribe((msg) => {
       chatroomStore.updateLastMessage(data.chatroom_identifier, data)
     }
   }
+  if (msg.type === 'new_chatroom') {
+    const data = (msg as any).data
+    if (data) {
+      chatroomStore.addChatroom(data)
+    }
+  }
 })
 onBeforeUnmount(() => unsubscribeUnread())
 

@@ -54,6 +54,13 @@ export const useChatroomStore = defineStore('chatrooms', {
       if (chatroom) chatroom.last_message = message
     },
 
+    addChatroom(chatroom: ChatroomPreview) {
+      const exists = this.chatrooms.some(c => c.uuid === chatroom.uuid)
+      if (!exists) {
+        this.chatrooms.unshift(chatroom)
+      }
+    },
+
     async renameChatroom(appUuid: string, chatroomId: string, newName: string) {
       const chatroom = this.chatrooms.find(c => c.uuid === chatroomId)
       if (!chatroom || chatroom.name === newName) {
