@@ -163,11 +163,86 @@
               class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded px-1 py-0.5 whitespace-nowrap"
             >internal</span>
             <!-- Escalation indicator — only on AI-generated messages -->
-            <span
-              v-if="message.ai_mode && message.metadata?.escalation"
-              class="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded px-1 py-0.5 whitespace-nowrap"
-              :title="(message.metadata.reason_for_escalation as string) || 'Escalated'"
-            >escalated</span>
+            <Popover v-if="message.ai_mode && message.metadata?.escalation">
+              <PopoverTrigger as-child>
+                <button class="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded px-1 py-0.5 whitespace-nowrap hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
+                  escalated
+                </button>
+              </PopoverTrigger>
+              <PopoverContent class="w-72 p-3 space-y-1.5" align="start">
+                <p class="text-xs font-medium text-foreground">Escalation reason</p>
+                <p class="text-xs text-muted-foreground leading-relaxed">
+                  {{ (message.metadata.reason_for_escalation as string) || 'No reason provided.' }}
+                </p>
+                <template v-if="(message.metadata.notified_profiles as string[])?.length > 0">
+                  <p class="text-xs font-medium text-foreground pt-1">Notified</p>
+                  <p class="text-xs text-muted-foreground">{{ (message.metadata.notified_profiles as string[]).join(', ') }}</p>
+                </template>
+              </PopoverContent>
+            </Popover>
+
+            <!-- Sentiment / scores — any message with score data -->
+            <Popover v-if="message.metadata?.sentiment_score !== undefined">
+              <PopoverTrigger as-child>
+                <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
+                  <BarChart2 class="w-3 h-3" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent class="w-64 p-3 space-y-3" align="start">
+                <p class="text-xs font-medium text-foreground">Analysis</p>
+                <!-- Sentiment -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs font-medium text-foreground">Sentiment</p>
+                      <p class="text-xs text-muted-foreground">Emotional tone of the user's message</p>
+                    </div>
+                    <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.sentiment_score }}/100</span>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :class="(message.metadata.sentiment_score as number) > 60 ? 'bg-green-500' : (message.metadata.sentiment_score as number) >= 40 ? 'bg-yellow-500' : 'bg-red-500'"
+                      :style="`width: ${message.metadata.sentiment_score}%`"
+                    />
+                  </div>
+                </div>
+                <!-- Escalation score -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs font-medium text-foreground">Escalation need</p>
+                      <p class="text-xs text-muted-foreground">Likelihood human intervention is required</p>
+                    </div>
+                    <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.escalation_score }}/100</span>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :class="(message.metadata.escalation_score as number) >= 70 ? 'bg-red-500' : (message.metadata.escalation_score as number) >= 40 ? 'bg-yellow-500' : 'bg-green-500'"
+                      :style="`width: ${message.metadata.escalation_score}%`"
+                    />
+                  </div>
+                </div>
+                <!-- Criticality -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs font-medium text-foreground">Criticality</p>
+                      <p class="text-xs text-muted-foreground">Severity of the reported issue</p>
+                    </div>
+                    <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.criticality_score }}/100</span>
+                  </div>
+                  <div class="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all"
+                      :class="(message.metadata.criticality_score as number) >= 70 ? 'bg-red-500' : (message.metadata.criticality_score as number) >= 40 ? 'bg-yellow-500' : 'bg-green-500'"
+                      :style="`width: ${message.metadata.criticality_score}%`"
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>
@@ -322,7 +397,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft } from 'lucide-vue-next'
+import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft, BarChart2 } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'

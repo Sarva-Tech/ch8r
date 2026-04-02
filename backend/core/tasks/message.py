@@ -190,19 +190,27 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
             # Save Intermediate_Message on the first round with tool calls
             if intermediate_message is None:
+                # Use the model's own text if available, otherwise a readable summary
+                tool_names = [tc.get("name", "") for tc in raw_tool_calls]
+                intermediate_text = agent_response if isinstance(agent_response, str) and agent_response else (
+                    "Calling tool{}: {}".format(
+                        "s" if len(tool_names) > 1 else "",
+                        ", ".join(tool_names),
+                    )
+                )
                 intermediate_message = Message.objects.create(
                     chatroom=chatroom,
                     sender_identifier=AGENT_IDENTIFIER,
-                    message=str(raw_tool_calls),
+                    message=intermediate_text,
                     metadata={
-                        "tool_intent": [tc.get("name") for tc in raw_tool_calls],
+                        "tool_intent": tool_names,
                         "tool_calls": [],
                     },
                     ai_provider_id=ai_provider_id,
                     model=model,
                     platform=user_message.platform,
                     ai_mode=True,
-                    is_internal=True,
+                    is_internal=user_message.is_internal,
                 )
                 logger.info(
                     "[generate_bot_response] Intermediate_Message saved | id=%s",
@@ -217,11 +225,28 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
             conversation.extend(tool_result_messages)
 
         else:
-            # MAX_TOOL_ROUNDS exhausted
+            # MAX_TOOL_ROUNDS exhausted — do one final structured call without tools
+            # to get a proper SupportAgentResponse with scores.
             logger.warning(
-                "[generate_bot_response] MAX_TOOL_ROUNDS (%d) exhausted — using last response",
+                "[generate_bot_response] MAX_TOOL_ROUNDS (%d) exhausted — making final structured call",
                 MAX_TOOL_ROUNDS,
             )
+            try:
+                agent_response, _ = provider.generate_with_conversation(
+                    model, conversation, None, SupportAgentResponse
+                )
+            except Exception:
+                # If that also fails, build a minimal fallback response
+                from core.agent_response_schema import ResponseStatus
+                agent_response = SupportAgentResponse(
+                    answer=agent_response if isinstance(agent_response, str) else "Unable to complete the request.",
+                    status=ResponseStatus.INSUFFICIENT_INFORMATION,
+                    escalation=False,
+                    reason_for_escalation="",
+                    sentiment_score=50,
+                    escalation_score=0,
+                    criticality_score=0,
+                )
 
         # Update Intermediate_Message with accumulated tool_call_records
         if intermediate_message is not None:
