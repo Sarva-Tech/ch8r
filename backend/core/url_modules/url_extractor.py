@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
+from urllib.robotparser import RobotFileParser
 import re
 from typing import Optional, Dict, Any
 import logging
@@ -16,8 +17,33 @@ class URLExtractor:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
 
+    def _check_robots_txt(self, url: str) -> bool:
+        try:
+            parsed_url = urlparse(url)
+            robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+
+            rp = RobotFileParser()
+            rp.set_url(robots_url)
+
+            response = self.session.get(robots_url, timeout=10)
+            if response.status_code == 200:
+                rp.parse(response.text)
+
+                path = parsed_url.path or '/'
+                return rp.can_fetch(self.session.headers['User-Agent'], path)
+
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to check robots.txt for {url}: {str(e)}")
+            return True
+
     def extract_content(self, url: str) -> Optional[Dict[str, Any]]:
         try:
+            if not self._check_robots_txt(url):
+                logger.warning(f"URL {url} is disallowed by robots.txt")
+                return None
+
             response = self.session.get(url, timeout=30)
             response.raise_for_status()
 

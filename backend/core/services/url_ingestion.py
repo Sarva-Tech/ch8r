@@ -89,7 +89,7 @@ class URLIngestionService:
             if extracted_data is None:
                 return {
                     'valid': False,
-                    'error': 'URL is not accessible or content extraction failed'
+                    'error': 'URL is not accessible, disallowed by robots.txt, or content extraction failed'
                 }
 
             return {
