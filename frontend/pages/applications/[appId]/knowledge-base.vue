@@ -3,7 +3,7 @@
     <div class="w-full space-y-2">
       <div class="flex gap-2 items-center py-4">
         <div class="ml-auto">
-          <NewKnowledgeBase />
+          <NewKnowledgeBase :application="{ uuid: $route.params.appId }" />
         </div>
       </div>
 
@@ -45,6 +45,13 @@
 
         <template #dropdown>
           <DropdownMenuItem
+            @click="openDetailsDialog(kb)"
+          >
+            <Eye class="h-4 w-4 mr-2" />
+            View Details
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
             class="text-destructive"
             @click="openDeleteDialog(kb)"
           >
@@ -81,6 +88,83 @@
           </div>
         </template>
       </C8Dialog>
+
+      <C8Dialog
+        v-model:open="isDetailsDialogOpen"
+        :title="'Knowledge Base Details'"
+        :confirm-text="'Close'"
+      >
+        <template #description>
+          <div v-if="selectedKB" class="space-y-4">
+            <div>
+              <Label class="text-sm font-medium">Type</Label>
+              <p class="text-sm capitalize">{{ selectedKB.source_type }}</p>
+            </div>
+
+            <div>
+              <Label class="text-sm font-medium">Path/URL</Label>
+              <p v-if="selectedKB.source_type === 'url'" class="text-sm">
+                <a
+                  :href="selectedKB.path"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-600 hover:text-blue-800 break-all"
+                >
+                  {{ selectedKB.path }}
+                </a>
+              </p>
+              <p v-else class="text-sm text-muted-foreground">{{ selectedKB.path }}</p>
+            </div>
+
+            <div v-if="selectedKB.metadata?.title">
+              <Label class="text-sm font-medium">Title</Label>
+              <p class="text-sm">{{ selectedKB.metadata.title }}</p>
+            </div>
+
+            <div v-if="selectedKB.metadata?.description">
+              <Label class="text-sm font-medium">Description</Label>
+              <p class="text-sm">{{ selectedKB.metadata.description }}</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <Label class="text-sm font-medium">Status</Label>
+                <StatusBadge :status="selectedKB.status" />
+              </div>
+              <div>
+                <Label class="text-sm font-medium">Content Type</Label>
+                <p class="text-sm">{{ selectedKB.metadata?.content_type || 'Unknown' }}</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <Label class="text-sm font-medium">Content Length</Label>
+                <p class="text-sm">{{ selectedKB.metadata?.content_length?.toLocaleString() || 0 }} characters</p>
+              </div>
+              <div v-if="selectedKB.source_type === 'url'">
+                <Label class="text-sm font-medium">Links Found</Label>
+                <p class="text-sm">{{ selectedKB.metadata?.links_count || 0 }} links</p>
+              </div>
+            </div>
+
+            <div>
+              <Label class="text-sm font-medium">Created</Label>
+              <p class="text-sm">{{ formatDate(selectedKB.created_at) }}</p>
+            </div>
+
+            <div v-if="selectedKB.metadata?.extraction_timestamp">
+              <Label class="text-sm font-medium">Last Extracted</Label>
+              <p class="text-sm">{{ formatDate(selectedKB.metadata.extraction_timestamp) }}</p>
+            </div>
+
+            <div v-if="selectedKB.metadata?.extraction_error">
+              <Label class="text-sm font-medium text-destructive">Error</Label>
+              <p class="text-sm text-destructive">{{ selectedKB.metadata.extraction_error }}</p>
+            </div>
+          </div>
+        </template>
+      </C8Dialog>
     </div>
   </div>
 </template>
@@ -88,13 +172,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import NewKnowledgeBase from '~/components/KnowledgeBase/NewKnowledgeBase.vue'
+import StatusBadge from '~/components/KnowledgeBase/StatusBadge.vue'
 import C8Dialog from '~/components/C8Dialog.vue'
 import { toast } from 'vue-sonner'
 import C8Item from '~/components/C8Item.vue'
 import { ItemDescription } from '~/components/ui/item'
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
-import { File, FileText, FolderGit2, LetterText, Trash } from 'lucide-vue-next'
+import { File, FileText, FolderGit2, LetterText, Trash, Globe, Eye } from 'lucide-vue-next'
 import { KB_UPDATE, STATUS_LABELS } from '~/lib/consts'
 import type { StatusType } from '~/lib/consts'
 
@@ -103,7 +188,9 @@ const liveUpdateStore = useLiveUpdateStore()
 
 const isLoading = ref(false)
 const isDeleteDialogOpen = ref(false)
+const isDetailsDialogOpen = ref(false)
 const kbToDelete = ref<KnowledgeBaseItem | null>(null)
+const selectedKB = ref<KnowledgeBaseItem | null>(null)
 
 const kbs = computed(() => kbStore.kbs)
 
@@ -113,6 +200,8 @@ function getKBIcon(sourceType: string) {
       return File
     case 'text':
       return LetterText
+    case 'url':
+      return Globe
     case 'github':
       return FolderGit2
     case 'version_control':
@@ -128,6 +217,8 @@ function getSourceTypeIcon(sourceType: string) {
       return File
     case 'text':
       return LetterText
+    case 'url':
+      return Globe
     case 'github':
       return FolderGit2
     case 'version_control':
@@ -143,6 +234,8 @@ function getSourceTypeLabel(sourceType: string) {
       return 'File'
     case 'text':
       return 'Text'
+    case 'url':
+      return 'URL'
     case 'github':
       return 'Version Control'
     case 'version_control':
@@ -155,6 +248,9 @@ function getSourceTypeLabel(sourceType: string) {
 function getKBTitle(kb: KnowledgeBaseItem) {
   if ((kb.source_type === 'github' || kb.source_type === 'version_control') && kb.path) {
     return kb.path
+  }
+  if (kb.source_type === 'url') {
+    return kb.metadata?.title || kb.path
   }
   if (kb.metadata?.file_name) {
     return kb.metadata.file_name
@@ -229,5 +325,24 @@ function deleteKB(kb: KnowledgeBaseItem) {
   }).catch(() => {
     toast.error('Failed to delete knowledge base item')
   })
+}
+
+function openDetailsDialog(kb: KnowledgeBaseItem) {
+  selectedKB.value = kb
+  isDetailsDialogOpen.value = true
+}
+
+function formatDate(dateString: string | null) {
+  if (!dateString) return 'N/A'
+  
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) {
+      return 'Invalid date'
+    }
+    return date.toLocaleString()
+  } catch {
+    return 'Invalid date'
+  }
 }
 </script>

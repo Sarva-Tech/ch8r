@@ -33,7 +33,7 @@
           :loading="loading"
           @update="handleVCUpdate"
         />
-        <UrlInput v-if="isUrl" />
+        <UrlInput v-if="isUrl" :application-uuid="application.uuid" />
         <TextInput v-if="isText" />
       </div>
       <div class="space-y-2">
@@ -71,6 +71,12 @@ import { toast } from 'vue-sonner'
 import RequiredLabel from '~/components/RequiredLabel.vue'
 import { Plus } from 'lucide-vue-next'
 import type { VCIngestionRequest } from '~/types/version_control'
+
+const props = defineProps<{
+  application: {
+    uuid: string
+  }
+}>()
 
 const newKBSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 

@@ -8,6 +8,7 @@ export interface KnowledgeBaseItem {
   uuid: string
   application_id: number
   path: string
+  created_at: string
   metadata: {
     content: string
     filename: string

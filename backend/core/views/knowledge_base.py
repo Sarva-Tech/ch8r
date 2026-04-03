@@ -1,5 +1,6 @@
 from django.core.files.storage import default_storage
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -10,6 +11,7 @@ from core.permissions import HasAPIKeyPermission
 from core.services.ingestion import delete_vectors_from_qdrant
 from core.services.kb_utils import create_kb_records, parse_kb_from_request, format_text_uri
 from core.services.ai_client_service import AIClientService
+from core.services.url_ingestion import URLIngestionService
 
 from core.tasks import process_kb
 import logging
@@ -129,3 +131,57 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
         kb.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'])
+    def validate_url(self, request, application_uuid=None):
+        url = request.data.get('url')
+        if not url:
+            return Response(
+                {'error': 'URL is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        simple_validation = request.data.get('simple_validation', False)
+
+        application = get_object_or_404(
+            Application,
+            uuid=application_uuid,
+            owner=request.user
+        )
+
+        url_service = URLIngestionService()
+        validation_result = url_service.validate_url_before_ingestion(url, simple_validation)
+
+        if validation_result['valid']:
+            return Response(validation_result, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                validation_result,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=True, methods=['get'])
+    def extraction_details(self, request, application_uuid=None, uuid=None):
+        kb = self.get_object()
+
+        metadata = kb.metadata or {}
+
+        extraction_info = {
+            'source_type': kb.source_type,
+            'path': kb.path,
+            'title': metadata.get('title'),
+            'description': metadata.get('description'),
+            'content_length': len(metadata.get('content', '')),
+            'content_type': metadata.get('content_type'),
+            'extraction_status': metadata.get('extraction_status'),
+            'extraction_timestamp': metadata.get('extraction_timestamp'),
+            'extraction_error': metadata.get('extraction_error')
+        }
+
+        if kb.source_type == 'url':
+            extraction_info.update({
+                'url': kb.path,
+                'links_count': len(metadata.get('links', []))
+            })
+
+        return Response(extraction_info, status=status.HTTP_200_OK)

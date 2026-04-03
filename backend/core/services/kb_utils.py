@@ -43,8 +43,10 @@ def create_kb_records(application, items):
                 path=url_value,
                 status="pending",
                 metadata={
+                    'url': url_value,
                     'filename': url_value,
-                    'content': ''
+                    'content': '',
+                    'extraction_status': 'pending'
                 }
             ))
 
