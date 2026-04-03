@@ -10,6 +10,7 @@ from core.models import AppIntegration
 from core.services.github_graphql_client import GitHubGraphQLClient
 from core.services.github_client import GitHubAPIClient
 from core.services.ingestion import chunk_text, embed_text, embed_sparse
+from core.services.content_quality_filter import ContentQualityFilter
 from core.models import IngestedChunk
 from core.qdrant import qdrant, COLLECTION_NAME
 from qdrant_client.http.models import PointStruct
@@ -31,6 +32,7 @@ class GitHubGraphQLIngestionService:
         self.graphql_client = None
         self.rest_client = None
         self.repository = None
+        self.quality_filter = ContentQualityFilter()
 
     def _get_graphql_client(self) -> GitHubGraphQLClient:
         if not self.graphql_client:
@@ -169,12 +171,19 @@ class GitHubGraphQLIngestionService:
 
     def _ingest_issue_comment_from_graphql(self, issue: VCIssue, comment_data: Dict[str, Any]):
         author = comment_data.get('author', {}).get('login', '') if comment_data.get('author') else ''
+        body = comment_data['body']
+
+        if not self.quality_filter.should_ingest(body, 'github_issue_comment', author):
+            logger.info(f"[QualityFilter] Skipping emoji-only issue comment from {author}: {body[:50]}...")
+            return
+
+        cleaned_body = self.quality_filter.remove_emojis(body)
 
         VCIssueComment.objects.update_or_create(
             issue=issue,
             external_id=str(_extract_numeric_id_from_global_id(comment_data['id'])),
             defaults={
-                'body': comment_data['body'],
+                'body': cleaned_body,
                 'author': author,
                 'author_association': comment_data.get('authorAssociation', ''),
                 'created_at': self._parse_datetime(comment_data['createdAt']),
@@ -312,12 +321,19 @@ class GitHubGraphQLIngestionService:
 
     def _ingest_pr_comment_from_graphql(self, pull_request: VCPullRequest, comment_data: Dict[str, Any]):
         author = comment_data.get('author', {}).get('login', '') if comment_data.get('author') else ''
+        body = comment_data['body']
+
+        if not self.quality_filter.should_ingest(body, 'github_pr_comment', author):
+            logger.info(f"[QualityFilter] Skipping emoji-only PR comment from {author}: {body[:50]}...")
+            return
+
+        cleaned_body = self.quality_filter.remove_emojis(body)
 
         VCPRComment.objects.update_or_create(
             pull_request=pull_request,
             external_id=str(_extract_numeric_id_from_global_id(comment_data['id'])),
             defaults={
-                'body': comment_data['body'],
+                'body': cleaned_body,
                 'author': author,
                 'author_association': comment_data.get('authorAssociation', ''),
                 'created_at': self._parse_datetime(comment_data['createdAt']),

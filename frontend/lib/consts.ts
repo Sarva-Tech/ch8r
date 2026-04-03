@@ -55,6 +55,7 @@ export type StatusType =
   | 'reprocessing'
   | 'failed'
   | 'completed'
+  | 'duplicate'
 
 export const STATUS_LABELS: Record<StatusType, string> = {
   pending: 'Pending',
@@ -65,6 +66,7 @@ export const STATUS_LABELS: Record<StatusType, string> = {
   reprocessing: 'Reprocessing',
   failed: 'Failed',
   completed: 'Completed',
+  duplicate: 'Duplicate',
 }
 
 export const TEXT_MODEL = { label: 'Text Generation', value: 'text' }
