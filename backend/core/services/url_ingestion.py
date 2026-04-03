@@ -51,6 +51,9 @@ class URLIngestionService:
                 'extraction_timestamp': kb.updated_at.isoformat()
             })
 
+            if 'sitemap' in extracted_data:
+                kb.metadata['sitemap'] = extracted_data['sitemap']
+
             kb.status = 'processing'
             kb.save(update_fields=['status', 'metadata'])
 

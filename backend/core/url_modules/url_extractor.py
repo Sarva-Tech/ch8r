@@ -17,6 +17,65 @@ class URLExtractor:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         })
 
+    def _discover_sitemap(self, base_url: str) -> Optional[str]:
+        try:
+            parsed_url = urlparse(base_url)
+            sitemap_urls = [
+                f"{parsed_url.scheme}://{parsed_url.netloc}/sitemap.xml",
+                f"{parsed_url.scheme}://{parsed_url.netloc}/sitemap_index.xml",
+                f"{parsed_url.scheme}://{parsed_url.netloc}/sitemaps.xml"
+                f"{parsed_url.scheme}://{parsed_url.netloc}/sitemap",
+            ]
+
+            for sitemap_url in sitemap_urls:
+                response = self.session.get(sitemap_url, timeout=10)
+                if response.status_code == 200 and 'xml' in response.headers.get('content-type', ''):
+                    return sitemap_url
+
+            robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+            robots_response = self.session.get(robots_url, timeout=10)
+            if robots_response.status_code == 200:
+                for line in robots_response.text.split('\n'):
+                    if line.strip().startswith('Sitemap:'):
+                        sitemap_from_robots = line.split(':', 1)[1].strip()
+                        return sitemap_from_robots
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"Failed to discover sitemap for {base_url}: {str(e)}")
+            return None
+
+    def _parse_sitemap(self, sitemap_url: str) -> list:
+        try:
+            response = self.session.get(sitemap_url, timeout=10)
+            if response.status_code != 200:
+                return []
+
+            from xml.etree import ElementTree as ET
+            root = ET.fromstring(response.content)
+
+            namespaces = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+            urls = []
+
+            if root.tag.endswith('sitemapindex'):
+                for sitemap in root.findall('ns:sitemap', namespaces):
+                    loc = sitemap.find('ns:loc', namespaces)
+                    if loc is not None:
+                        urls.extend(self._parse_sitemap(loc.text))
+
+            elif root.tag.endswith('urlset'):
+                for url in root.findall('ns:url', namespaces):
+                    loc = url.find('ns:loc', namespaces)
+                    if loc is not None:
+                        urls.append(loc.text)
+
+            return urls[:50]
+
+        except Exception as e:
+            logger.debug(f"Failed to parse sitemap {sitemap_url}: {str(e)}")
+            return []
+
     def _check_robots_txt(self, url: str) -> bool:
         try:
             parsed_url = urlparse(url)
@@ -56,7 +115,21 @@ class URLExtractor:
 
             links = self._extract_links(soup, url)
 
-            return {
+            sitemap_info = None
+            try:
+                base_url = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+                sitemap_url = self._discover_sitemap(base_url)
+                if sitemap_url:
+                    sitemap_urls = self._parse_sitemap(sitemap_url)
+                    sitemap_info = {
+                        'sitemap_url': sitemap_url,
+                        'sitemap_urls_count': len(sitemap_urls),
+                        'sitemap_urls': sitemap_urls[:50]
+                    }
+            except Exception as e:
+                logger.debug(f"Sitemap discovery failed for {url}: {str(e)}")
+
+            result = {
                 'url': url,
                 'title': title,
                 'description': description,
@@ -65,6 +138,11 @@ class URLExtractor:
                 'content_type': response.headers.get('content-type', ''),
                 'status_code': response.status_code
             }
+
+            if sitemap_info:
+                result['sitemap'] = sitemap_info
+
+            return result
 
         except requests.RequestException as e:
             logger.error(f"Failed to fetch URL {url}: {str(e)}")

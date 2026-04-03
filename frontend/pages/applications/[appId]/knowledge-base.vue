@@ -93,6 +93,7 @@
         v-model:open="isDetailsDialogOpen"
         :title="'Knowledge Base Details'"
         :confirm-text="'Close'"
+        :show-cancel="false"
       >
         <template #description>
           <div v-if="selectedKB" class="space-y-4">
@@ -334,7 +335,7 @@ function openDetailsDialog(kb: KnowledgeBaseItem) {
 
 function formatDate(dateString: string | null) {
   if (!dateString) return 'N/A'
-  
+
   try {
     const date = new Date(dateString)
     if (isNaN(date.getTime())) {
