@@ -2,10 +2,17 @@ import { defineStore } from 'pinia'
 
 export type DraftSourceType = 'file' | 'text' | 'url'
 
+export interface CrawlingConfig {
+  enable_crawling: boolean
+  max_depth: number
+  max_pages: number
+}
+
 export interface DraftItem {
   id: string
   type: DraftSourceType
   value: File | string
+  crawling_config?: CrawlingConfig
 }
 
 export const useKBDraftStore = defineStore('kbDraft', {
@@ -38,8 +45,13 @@ export const useKBDraftStore = defineStore('kbDraft', {
     addText(text: string) {
       this.items.push({ id: crypto.randomUUID(), type: 'text', value: text })
     },
-    addUrl(url: string) {
-      this.items.push({ id: crypto.randomUUID(), type: 'url', value: url })
+    addUrl(url: string, crawling_config?: CrawlingConfig) {
+      this.items.push({ 
+        id: crypto.randomUUID(), 
+        type: 'url', 
+        value: url,
+        crawling_config
+      })
     },
     remove(id: string) {
       this.items = this.items.filter((item) => item.id !== id)

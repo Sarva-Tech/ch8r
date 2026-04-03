@@ -50,6 +50,12 @@ export const useKnowledgeBaseStore = defineStore('kb', {
         } else {
           formData.append(`items[${index}].value`, item.value)
         }
+
+        if (item.type === 'url' && item.crawling_config) {
+          formData.append(`items[${index}].crawling_config.enable_crawling`, item.crawling_config.enable_crawling.toString())
+          formData.append(`items[${index}].crawling_config.max_depth`, '1')
+          formData.append(`items[${index}].crawling_config.max_pages`, '50')
+        }
       })
 
       const { httpPostForm } = useHttpClient()

@@ -12,6 +12,25 @@ class URLIngestionService:
     def __init__(self):
         self.extractor = URLExtractor()
 
+    def create_url_kb(self, application, url, user, crawling_config=None):
+        from core.models import KnowledgeBase
+
+        kb = KnowledgeBase.objects.create(
+            application=application,
+            path=url,
+            source_type='url',
+            status='pending',
+            owner=user,
+            metadata={
+                'extraction_status': 'pending',
+                'crawling_enabled': crawling_config.get('enable_crawling', False) if crawling_config else False,
+                'crawling_config': crawling_config if crawling_config else {}
+            }
+        )
+
+        logger.info(f"Created URL KB {kb.uuid} for {url} with crawling_enabled={kb.metadata.get('crawling_enabled', False)}")
+        return kb
+
     def extract_url_content(self, kb: KnowledgeBase) -> bool:
         if kb.source_type != 'url':
             logger.error(f"KB {kb.uuid} is not a URL source type")
@@ -68,6 +87,34 @@ class URLIngestionService:
             kb.metadata['extraction_error'] = str(e)
             kb.save(update_fields=['status', 'metadata'])
             return False
+
+    def enable_crawling_for_kb(self, kb: KnowledgeBase, max_depth: int = 2, max_pages: int = 25):
+        if kb.source_type != 'url':
+            raise ValueError("Crawling can only be enabled for URL knowledge base items")
+
+        kb.metadata = kb.metadata or {}
+        kb.metadata.update({
+            'crawling_enabled': True,
+            'crawling_config': {
+                'max_depth': max_depth,
+                'max_pages': max_pages,
+                'enabled_at': kb.updated_at.isoformat()
+            }
+        })
+        kb.save(update_fields=['metadata'])
+        logger.info(f"Enabled crawling for KB {kb.uuid} with max_depth={max_depth}, max_pages={max_pages}")
+
+    def disable_crawling_for_kb(self, kb: KnowledgeBase):
+        if kb.source_type != 'url':
+            return
+
+        kb.metadata = kb.metadata or {}
+        kb.metadata['crawling_enabled'] = False
+        kb.metadata['crawling_config'] = kb.metadata.get('crawling_config', {})
+        kb.metadata['crawling_config']['disabled_at'] = kb.updated_at.isoformat()
+        kb.save(update_fields=['metadata'])
+
+        logger.info(f"Disabled crawling for URL KB {kb.uuid}")
 
     def validate_url_before_ingestion(self, url: str, simple_validation: bool = False) -> Dict[str, Any]:
         if not self.extractor.is_valid_url(url):

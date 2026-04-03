@@ -5,15 +5,18 @@ from rest_framework.exceptions import MethodNotAllowed, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from core.models import KnowledgeBase, Application, IngestedChunk
-from core.serializers import KnowledgeBaseCreateSerializer, KnowledgeBaseViewSerializer, ApplicationViewSerializer
+from core.models import KnowledgeBase, Application, IngestedChunk, ContentHash
+from core.serializers.knowledge_base import (
+    KnowledgeBaseViewSerializer, KnowledgeBaseItemSerializer, KnowledgeBaseCreateSerializer,
+    CrawlingEnableSerializer, CrawlingDataSerializer, CrawlingStatsSerializer
+)
+from core.serializers import ApplicationViewSerializer
 from core.permissions import HasAPIKeyPermission
 from core.services.ingestion import delete_vectors_from_qdrant
 from core.services.kb_utils import create_kb_records, parse_kb_from_request, format_text_uri
 from core.services.ai_client_service import AIClientService
 from core.services.url_ingestion import URLIngestionService
-
-from core.tasks import process_kb
+from core.tasks.kb import process_kb_item, process_kb
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,35 +57,40 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
 
         parsed_items = parse_kb_from_request(request)
+        logger.info(f"Parsed items for KB creation: {parsed_items}")
 
-        serializer = self.get_serializer(data={"items": parsed_items}, context={"request": request})
-        if serializer.is_valid():
-            items = serializer.validated_data['items']
+        serializer = self.get_serializer_class()(data={"items": parsed_items}, context={"request": request})
 
-            created_kbs = create_kb_records(application, items)
+        if not serializer.is_valid():
+            logger.error(f"Serializer errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            ai_client_service = AIClientService()
-            _, embedding_model = ai_client_service.get_client_and_model(
-                app=application, context='response', capability='embedding'
-            )
-            _, text_model = ai_client_service.get_client_and_model(
-                app=application, context='response', capability='text'
-            )
+        items = serializer.validated_data['items']
+        logger.info(f"Validated items: {items}")
 
-            errors = {}
-            if not text_model:
-                errors["text_model"] = f"Text model not found for application {application.name}. Please configure a TEXT model."
-            if not embedding_model:
-                errors["embedding_model"] = f"Embedding model not found for application {application.name}. Please configure an EMBEDDING model."
+        created_kbs = create_kb_records(application, items)
 
-            if errors:
-                return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+        ai_client_service = AIClientService()
+        _, embedding_model = ai_client_service.get_client_and_model(
+            app=application, context='response', capability='embedding'
+        )
+        _, text_model = ai_client_service.get_client_and_model(
+            app=application, context='response', capability='text'
+        )
 
-            process_kb.delay([kb.id for kb in created_kbs])
-            serialized_kbs = KnowledgeBaseViewSerializer(created_kbs, many=True)
-            return Response({"kbs": serialized_kbs.data}, status=status.HTTP_201_CREATED)
+        errors = {}
+        if not text_model:
+            errors["text_model"] = f"Text model not found for application {application.name}. Please configure a TEXT model."
+        if not embedding_model:
+            errors["embedding_model"] = f"Embedding model not found for application {application.name}. Please configure an EMBEDDING model."
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if errors:
+            return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        process_kb.delay([kb.id for kb in created_kbs])
+
+        serialized_kbs = KnowledgeBaseViewSerializer(created_kbs, many=True)
+        return Response({"kbs": serialized_kbs.data}, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         raise MethodNotAllowed("PUT")
@@ -122,6 +130,13 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         chunks.delete()
 
         delete_vectors_from_qdrant(qdrant_ids)
+
+        other_kbs_count = KnowledgeBase.objects.filter(application=application).exclude(uuid=kb.uuid).count()
+        if other_kbs_count == 0:
+            ContentHash.objects.filter(app=application).delete()
+            logger.info(f"Cleaned up all content hashes for application {application.uuid}")
+        else:
+            logger.info(f"Keeping content hashes for application {application.uuid} (other KBs exist)")
 
         if kb.source_type == 'file' and kb.path:
             try:
@@ -181,7 +196,136 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         if kb.source_type == 'url':
             extraction_info.update({
                 'url': kb.path,
-                'links_count': len(metadata.get('links', []))
+                'links_count': len(metadata.get('links', [])),
+                'crawling_enabled': metadata.get('crawling_enabled', False),
+                'crawling_status': metadata.get('crawling_status'),
+                'crawled_pages': metadata.get('crawled_data', {}).get('total_pages', 0)
             })
 
         return Response(extraction_info, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def enable_crawling(self, request, application_uuid=None, uuid=None):
+        kb = self.get_object()
+
+        if kb.source_type != 'url':
+            return Response(
+                {'error': 'Crawling is only available for URL knowledge base items'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = CrawlingEnableSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        url_service = URLIngestionService()
+        max_depth = serializer.validated_data['max_depth']
+        max_pages = serializer.validated_data['max_pages']
+
+        try:
+            url_service.enable_crawling_for_kb(kb, max_depth, max_pages)
+
+            process_kb_item(kb)
+
+            return Response({
+                'message': 'Crawling enabled successfully',
+                'crawling_config': {
+                    'max_depth': max_depth,
+                    'max_pages': max_pages
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to enable crawling: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
+    def disable_crawling(self, request, application_uuid=None, uuid=None):
+        kb = self.get_object()
+
+        if kb.source_type != 'url':
+            return Response(
+                {'error': 'Crawling is only available for URL knowledge base items'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            url_service = URLIngestionService()
+            url_service.disable_crawling_for_kb(kb)
+
+            return Response({
+                'message': 'Crawling disabled successfully'
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': f'Failed to disable crawling: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'])
+    def crawling_data(self, request, application_uuid=None, uuid=None):
+        """Get detailed crawling data for a URL knowledge base."""
+        kb = self.get_object()
+
+        if kb.source_type != 'url':
+            return Response(
+                {'error': 'Crawling data is only available for URL knowledge base items'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        metadata = kb.metadata or {}
+        crawled_data = metadata.get('crawled_data', {})
+
+        if not crawled_data:
+            return Response({
+                'message': 'No crawling data available',
+                'crawling_enabled': metadata.get('crawling_enabled', False),
+                'crawling_status': metadata.get('crawling_status', 'not_started')
+            }, status=status.HTTP_200_OK)
+
+        serializer = CrawlingDataSerializer(crawled_data)
+
+        return Response({
+            'crawling_enabled': metadata.get('crawling_enabled', False),
+            'crawling_status': metadata.get('crawling_status'),
+            'crawling_timestamp': metadata.get('crawling_timestamp'),
+            'crawling_config': metadata.get('crawling_config', {}),
+            'crawled_pages': metadata.get('crawled_data', {}).get('total_pages', 0),
+            'total_pages': metadata.get('crawl_stats', {}).get('total_pages', 0),
+            'crawl_stats': metadata.get('crawl_stats', {}),
+            'crawled_data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'])
+    def crawling_stats(self, request, application_uuid=None, uuid=None):
+        """Get crawling statistics for a URL knowledge base."""
+        kb = self.get_object()
+
+        if kb.source_type != 'url':
+            return Response(
+                {'error': 'Crawling stats are only available for URL knowledge base items'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        metadata = kb.metadata or {}
+        crawled_data = metadata.get('crawled_data', {})
+        crawl_stats = crawled_data.get('crawl_stats', {})
+
+        if not crawl_stats:
+            return Response({
+                'message': 'No crawling statistics available',
+                'crawling_enabled': metadata.get('crawling_enabled', False),
+                'crawling_status': metadata.get('crawling_status', 'not_started')
+            }, status=status.HTTP_200_OK)
+
+        serializer = CrawlingStatsSerializer(crawl_stats)
+
+        return Response({
+            'crawling_enabled': metadata.get('crawling_enabled', False),
+            'crawling_status': metadata.get('crawling_status'),
+            'crawling_timestamp': metadata.get('crawling_timestamp'),
+            'crawl_stats': serializer.data
+        }, status=status.HTTP_200_OK)
