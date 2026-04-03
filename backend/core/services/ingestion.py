@@ -66,11 +66,11 @@ def chunk_text(text: str, chunk_size=300, overlap=50) -> list[str]:
         start += chunk_size - overlap
     return chunks
 
-def get_chunks(query_text, app, top_k=5):
+def get_chunks(query_text, app, top_k=5) -> list[dict]:
     dense_embeddings = embed_text(text_chunks=[query_text], app=app)
     if not dense_embeddings or not dense_embeddings[0]:
-        print("[get_chunks] Warning: dense embedding empty, returning no context")
-        return "No context available."
+        logger.warning("[get_chunks] Dense embedding empty, returning no context")
+        return []
 
     dense_query = dense_embeddings[0]
 
@@ -81,7 +81,7 @@ def get_chunks(query_text, app, top_k=5):
             values=sparse_embeddings.values.tolist()
         )
     except Exception as e:
-        print(f"[get_chunks] Sparse embedding failed: {e}")
+        logger.warning(f"[get_chunks] Sparse embedding failed: {e}")
         sparse_query = None
 
     try:
@@ -116,17 +116,23 @@ def get_chunks(query_text, app, top_k=5):
             with_payload=True
         )
     except UnexpectedResponse as e:
-        print("[get_chunks] Qdrant query failed:", e)
-        return "No context available."
+        logger.error("[get_chunks] Qdrant query failed: %s", e)
+        return []
 
     chunk_uuids = [point.id for point in search_result.points if point.score >= 0.3]
 
     if not chunk_uuids:
-        return "No context available."
+        return []
 
     chunks = IngestedChunk.objects.filter(uuid__in=chunk_uuids).order_by('chunk_index')
-    context = "\n".join([chunk.content for chunk in chunks])
-    return context
+    return [
+        {
+            "content": chunk.content,
+            "chunk_index": chunk.chunk_index,
+            "kb_id": str(chunk.knowledge_base_id),
+        }
+        for chunk in chunks
+    ]
 
 def ingest_kb(kb, app):
     content = kb.metadata.get('content', '')

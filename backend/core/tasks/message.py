@@ -118,7 +118,8 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     ).exists()
 
     messages_qs = Message.objects.filter(chatroom=chatroom).order_by("created_at")
-    kb_data = get_chunks(question, app, top_k=5) if has_chunks else "NO_CONTEXT"
+    kb_data = get_chunks(question, app, top_k=5) if has_chunks else []
+    kb_context = "\n".join(c["content"] for c in kb_data) if kb_data else "NO_CONTEXT"
 
     from core.models import AppIntegration
     integration_context_lines = []
@@ -139,7 +140,7 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
     conversation = messages_to_llm_conversation(messages_qs, platform=user_message.platform)
     conversation = add_instructions_to_convo(conversation, system_instruction)
-    conversation = add_kb_to_convo(conversation, kb_data)
+    conversation = add_kb_to_convo(conversation, kb_context)
 
     logger.info(
         "[generate_bot_response] Context ready | messages=%d kb=%s tools=%d",
@@ -334,6 +335,9 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         "notified_profiles": escalation_metadata.get("notified_profiles", []),
         "usage": final_usage,
     }
+
+    if kb_data:
+        final_metadata["kb_citations"] = kb_data
 
     bot_message = Message.objects.create(
         chatroom=chatroom,

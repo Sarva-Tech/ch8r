@@ -360,6 +360,38 @@
                 </div>
               </PopoverContent>
             </Popover>
+
+            <Popover v-if="message.ai_mode && (message.metadata?.kb_citations as any[])?.length > 0">
+              <PopoverTrigger as-child>
+                <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
+                  <BookOpen class="w-3 h-3" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                class="w-[420px] max-h-[480px] overflow-y-auto p-0"
+                align="start"
+              >
+                <div class="px-4 py-3 border-b border-border flex items-center gap-2">
+                  <BookOpen class="w-4 h-4 text-muted-foreground" />
+                  <span class="text-sm font-medium">Knowledge sources</span>
+                  <span class="text-xs text-muted-foreground ml-auto">
+                    {{ (message.metadata.kb_citations as any[]).length }} source{{ (message.metadata.kb_citations as any[]).length > 1 ? 's' : '' }}
+                  </span>
+                </div>
+                <div class="divide-y divide-border">
+                  <div
+                    v-for="(citation, cIdx) in (message.metadata.kb_citations as any[])"
+                    :key="cIdx"
+                    class="px-3 space-y-2"
+                  >
+                    <div class="flex items-center gap-2" />
+                    <p class="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {{ citation.content }}
+                    </p>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>
@@ -514,7 +546,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft, BarChart2, Cpu } from 'lucide-vue-next'
+import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft, BarChart2, Cpu, BookOpen } from 'lucide-vue-next'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import C8Select from '~/components/C8Select.vue'
