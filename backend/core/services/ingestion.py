@@ -11,11 +11,13 @@ from qdrant_client.models import Filter as ModelsFilter, FieldCondition as Model
     MatchValue as ModelsMatchValue
 from qdrant_client.models import Prefetch, SparseVector
 from core.services.ai_client_service import AIClientService
+from core.services.content_quality_filter import ContentQualityFilter
 import uuid
 
 logger = logging.getLogger(__name__)
 
 _sparse_model = None
+_quality_filter = ContentQualityFilter()
 
 def _get_sparse_model():
     global _sparse_model
@@ -132,10 +134,26 @@ def ingest_kb(kb, app):
         logger.warning(f"[ingest_kb] No content found for kb={kb.uuid}, skipping")
         return
 
+    if not _quality_filter.should_ingest(content, kb.source_type):
+        logger.info(f"[ingest_kb] Skipping emoji-only content for kb={kb.uuid}")
+        kb.status = 'completed'
+        kb.save(update_fields=['status'])
+        return
+
+    cleaned_content = _quality_filter.remove_emojis(content)
+
+    if not cleaned_content.strip():
+        logger.info(f"[ingest_kb] Content became empty after emoji removal for kb={kb.uuid}")
+        kb.status = 'completed'
+        kb.save(update_fields=['status'])
+        return
+
+    logger.info(f"[ingest_kb] Cleaned content: {len(content)} -> {len(cleaned_content)} chars for kb={kb.uuid}")
+
     kb.status = 'processing'
     kb.save(update_fields=['status'])
 
-    chunks = chunk_text(content)
+    chunks = chunk_text(cleaned_content)
     logger.info(f"[ingest_kb] Created {len(chunks)} chunks for kb={kb.uuid}")
 
     dense_embeddings = embed_text(text_chunks=chunks, app=app)

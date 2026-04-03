@@ -10,6 +10,7 @@ from core.models.version_control import (
 )
 from core.models import AppIntegration
 from core.services.providers.version_control import VCProviderRegistry
+from core.services.content_quality_filter import ContentQualityFilter
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class VCIngestionService:
         self.provider_name = provider_name or self._detect_provider()
         self.provider = self._get_provider()
         self.repository: Optional[VCRepository] = None
+        self.quality_filter = ContentQualityFilter()
 
     def _detect_provider(self) -> str:
         metadata = self.app_integration.metadata or {}
@@ -81,13 +83,16 @@ class VCIngestionService:
 
     def _ingest_single_issue(self, issue_data: Dict[str, Any]):
         with transaction.atomic():
+            raw_body = issue_data.get('body', '') or ''
+            cleaned_body = self.quality_filter.remove_emojis(raw_body)
+
             issue, created = VCIssue.objects.update_or_create(
                 repository=self.repository,
                 external_id=issue_data['id'],
                 defaults={
                     'number': issue_data['number'],
                     'title': issue_data['title'],
-                    'body': issue_data.get('body', '') or '',
+                    'body': cleaned_body,
                     'state': issue_data['state'],
                     'author': issue_data.get('author', ''),
                     'author_association': issue_data.get('author_association', ''),
@@ -108,11 +113,14 @@ class VCIngestionService:
                 comments = self.provider.get_issue_comments(owner, repo, issue_data['number'])
                 for comment_data in comments:
                     try:
+                        raw_comment_body = comment_data['body']
+                        cleaned_comment_body = self.quality_filter.remove_emojis(raw_comment_body)
+
                         VCIssueComment.objects.update_or_create(
                             issue=issue,
                             external_id=comment_data['id'],
                             defaults={
-                                'body': comment_data['body'],
+                                'body': cleaned_comment_body,
                                 'author': comment_data.get('author', ''),
                                 'author_association': comment_data.get('author_association', ''),
                                 'created_at': self.provider._parse_datetime(comment_data['created_at']),
@@ -156,13 +164,17 @@ class VCIngestionService:
 
         try:
             with transaction.atomic():
+                # Clean PR body
+                raw_body = pr_data.get('body', '') or ''
+                cleaned_body = self.quality_filter.remove_emojis(raw_body)
+
                 pr, created = VCPullRequest.objects.update_or_create(
                     repository=self.repository,
                     external_id=pr_data['id'],
                     defaults={
                         'number': pr_data['number'],
                         'title': pr_data['title'],
-                        'body': pr_data.get('body', '') or '',
+                        'body': cleaned_body,
                         'state': pr_data['state'],
                         'author': pr_data.get('author', ''),
                         'author_association': pr_data.get('author_association', ''),
@@ -190,11 +202,14 @@ class VCIngestionService:
                 try:
                     comments = self.provider.get_pull_request_comments(owner, repo, pr_data['number'])
                     for comment_data in comments:
+                        raw_comment_body = comment_data['body']
+                        cleaned_comment_body = self.quality_filter.remove_emojis(raw_comment_body)
+
                         VCPRComment.objects.update_or_create(
                             pull_request=pr,
                             external_id=comment_data['id'],
                             defaults={
-                                'body': comment_data['body'],
+                                'body': cleaned_comment_body,
                                 'author': comment_data.get('author', ''),
                                 'author_association': comment_data.get('author_association', ''),
                                 'created_at': self.provider._parse_datetime(comment_data['created_at']),
