@@ -5,6 +5,7 @@ from .chatroom_participant import ChatroomParticipant
 from .knowledge_base import KnowledgeBase
 from .message import Message
 from .ingestion import IngestedChunk
+from .content_hash import ContentHash
 from .application_widget_token import ApplicationWidgetToken
 from .application_api_key import ApplicationAPIKey
 from .integration import Integration
