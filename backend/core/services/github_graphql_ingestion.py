@@ -173,7 +173,7 @@ class GitHubGraphQLIngestionService:
         author = comment_data.get('author', {}).get('login', '') if comment_data.get('author') else ''
         body = comment_data['body']
 
-        if not self.quality_filter.should_ingest(body, 'github_issue_comment'):
+        if not self.quality_filter.should_ingest(body, 'github_issue_comment', author):
             logger.info(f"[QualityFilter] Skipping emoji-only issue comment from {author}: {body[:50]}...")
             return
 
@@ -323,7 +323,7 @@ class GitHubGraphQLIngestionService:
         author = comment_data.get('author', {}).get('login', '') if comment_data.get('author') else ''
         body = comment_data['body']
 
-        if not self.quality_filter.should_ingest(body, 'github_pr_comment'):
+        if not self.quality_filter.should_ingest(body, 'github_pr_comment', author):
             logger.info(f"[QualityFilter] Skipping emoji-only PR comment from {author}: {body[:50]}...")
             return
 
