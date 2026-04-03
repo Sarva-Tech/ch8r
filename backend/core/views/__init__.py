@@ -17,3 +17,4 @@ from .reset_password import ResetPasswordView, ResetPasswordVerifyView
 from .forgot_password import ForgotPasswordView
 from .ai_provider import AIProviderViewSet
 from .tool_config import ToolConfigView, get_app_integration
+from .prompt_config import PromptConfigView

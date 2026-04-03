@@ -10,6 +10,7 @@
       />
     </template>
     <div class="space-y-4">
+      <C8APIAlert :api-error="apiError" />
       <SourceSelector
         v-model="selectedSourceValue"
         :sources="sources"
@@ -71,6 +72,8 @@ import { toast } from 'vue-sonner'
 import RequiredLabel from '~/components/RequiredLabel.vue'
 import { Plus } from 'lucide-vue-next'
 import type { VCIngestionRequest } from '~/types/version_control'
+import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
+import C8APIAlert from '~/components/C8APIAlert.vue'
 
 const newKBSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 
@@ -88,11 +91,14 @@ const vcStore = useVersionControlStore()
 
 const vcData = ref<VCIngestionRequest | null>(null)
 
+const { apiError, handleError, clearError } = useApiErrorHandling()
+
 onMounted(async () => {
 })
 
 async function processKB() {
   loading.value = true
+  clearError()
   try {
     if (isVersionControl.value && vcData.value) {
       await vcStore.ingestRepository(vcData.value)
@@ -108,7 +114,7 @@ async function processKB() {
       kbDraft.clear()
     }
   } catch (e: unknown) {
-    toast.error('Failed to process knowledge base')
+    handleError(e)
   } finally {
     loading.value = false
   }

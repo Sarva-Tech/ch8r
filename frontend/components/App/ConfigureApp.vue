@@ -13,7 +13,7 @@
       default-value="models"
       class="w-full"
     >
-      <TabsList class="grid w-full grid-cols-3">
+      <TabsList class="grid w-full grid-cols-4">
         <TabsTrigger
           v-for="tab in tabs"
           :key="tab.value"
@@ -40,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import AppAIModelsConfiguration from '~/components/App/AppAIModelsConfiguration.vue'
 import AppIntegrationsConfiguration from '~/components/App/AppIntegrationsConfiguration.vue'
 import AppNotificationConfiguration from '~/components/App/AppNotificationConfiguration.vue'
+import AppPromptConfiguration from '~/components/App/AppPromptConfiguration.vue'
 
 const getTabComponent = (tab: string) => {
   switch (tab) {
@@ -49,6 +50,8 @@ const getTabComponent = (tab: string) => {
       return AppIntegrationsConfiguration
     case 'notifications':
       return AppNotificationConfiguration
+    case 'prompt':
+      return AppPromptConfiguration
     default:
       return null
   }
@@ -57,7 +60,8 @@ const getTabComponent = (tab: string) => {
 const tabs = [
   { label: 'AI Models', value: 'models' },
   { label: 'Integrations', value: 'integrations' },
-  { label: 'Notifications', value: 'notifications' }
+  { label: 'Agent Configuration', value: 'prompt' },
+  { label: 'Notifications', value: 'notifications' },
 ]
 
 const appConfigStore = useAppConfigurationStore()

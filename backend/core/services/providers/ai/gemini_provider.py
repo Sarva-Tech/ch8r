@@ -142,6 +142,20 @@ class GeminiProvider(AIProviderContract):
             if last_brace != -1 and last_brace < len(stripped) - 1:
                 stripped = stripped[:last_brace + 1]
 
+            # If no JSON object found, wrap plain text in schema
+            if not stripped.startswith("{"):
+                import json
+                wrapped = {
+                    "answer": stripped,
+                    "status": "ANSWERED",
+                    "escalation": False,
+                    "reason_for_escalation": "",
+                    "sentiment_score": 50,
+                    "escalation_score": 0,
+                    "criticality_score": 0,
+                }
+                stripped = json.dumps(wrapped)
+
             parsed = response_schema.model_validate_json(stripped)
         except Exception as e:
             raise ValueError(f"Failed to parse Gemini response as {response_schema.__name__}: {e}")

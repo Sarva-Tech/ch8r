@@ -31,11 +31,15 @@ def add_instructions_to_convo(
 def add_kb_to_convo(
     conversation,
     kb_data,
-    role = AI_ROLE_SYSTEM
+    role=AI_ROLE_SYSTEM
 ):
-    if kb_data and kb_data != "NO_CONTEXT":
+    if kb_data:
         conversation.insert(1, {
             "role": role,
-            "content": f"Use the following context to answer the user’s question. Only use this information; do not add outside knowledge.\n {kb_data}"
+            "content": (
+                "Use the following knowledge base context to answer the user's question. "
+                "Prefer this information over tool calls.\n\n"
+                f"{kb_data}"
+            )
         })
     return conversation

@@ -69,28 +69,78 @@
 
           <template v-if="existingAppIntegration">
             <div class="border rounded-md p-3 space-y-3">
-              <p class="text-sm font-medium">Tools</p>
-              <div v-if="toolsLoading" class="text-xs text-muted-foreground">Loading tools...</div>
+              <p class="text-sm font-medium">
+                Tools
+              </p>
+              <div
+                v-if="toolsLoading"
+                class="text-xs text-muted-foreground"
+              >
+                Loading tools...
+              </div>
               <template v-else>
-                <div v-for="tool in builtInTools" :key="tool.tool_id" class="flex items-start justify-between gap-3">
+                <div
+                  v-for="tool in builtInTools"
+                  :key="tool.tool_id"
+                  class="flex items-start justify-between gap-3"
+                >
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm">{{ tool.title }}</p>
-                    <p class="text-xs text-muted-foreground">{{ tool.description }}</p>
+                    <p class="text-sm">
+                      {{ tool.title }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                      {{ tool.description }}
+                    </p>
                   </div>
-                  <Switch :model-value="tool.is_enabled" @click="setToolEnabled(tool.tool_id, !tool.is_enabled)" />
+                  <Switch
+                    :model-value="tool.is_enabled"
+                    @click="setToolEnabled(tool.tool_id, !tool.is_enabled)"
+                  />
                 </div>
-                <div v-for="ct in customTools" :key="ct.uuid" class="flex items-start justify-between gap-3">
+                <div
+                  v-for="ct in customTools"
+                  :key="ct.uuid"
+                  class="flex items-start justify-between gap-3"
+                >
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm">{{ ct.title }}</p>
-                    <p class="text-xs text-muted-foreground">{{ ct.description }}</p>
+                    <p class="text-sm">
+                      {{ ct.title }}
+                    </p>
+                    <p class="text-xs text-muted-foreground">
+                      {{ ct.description }}
+                    </p>
                   </div>
                   <div class="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" class="h-6 w-6" @click="openEdit(ct)"><Pencil class="h-3 w-3" /></Button>
-                    <Button variant="ghost" size="icon" class="h-6 w-6 text-destructive hover:text-destructive" @click="openDeleteConfirm(ct)"><Trash2 class="h-3 w-3" /></Button>
-                    <Switch :model-value="ct.is_enabled" @click="setCustomToolEnabled(ct.uuid!, !ct.is_enabled)" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      class="h-6 w-6"
+                      @click="openEdit(ct)"
+                    >
+                      <Pencil class="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      class="h-6 w-6 text-destructive hover:text-destructive"
+                      @click="openDeleteConfirm(ct)"
+                    >
+                      <Trash2 class="h-3 w-3" />
+                    </Button>
+                    <Switch
+                      :model-value="ct.is_enabled"
+                      @click="setCustomToolEnabled(ct.uuid!, !ct.is_enabled)"
+                    />
                   </div>
                 </div>
-                <Button variant="outline" size="sm" type="button" @click="openAdd">Add Custom Tool</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  @click="openAdd"
+                >
+                  Add Custom Tool
+                </Button>
               </template>
             </div>
           </template>
@@ -105,12 +155,9 @@
           </div>
         </template>
       </form>
-
-      <!-- removed outer tools block -->
     </CardContent>
   </Card>
 
-  <!-- Custom Tool SlideOver -->
   <SlideOver
     :title="customToolForm.editingUuid ? 'Edit Custom Tool' : 'Add Custom Tool'"
     :open="slideOverOpen"

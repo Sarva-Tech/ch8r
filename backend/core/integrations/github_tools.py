@@ -56,7 +56,7 @@ def list_releases(app_integration, **kwargs):
              "prerelease": r["prerelease"], "published_at": r["published_at"]}
             for r in resp.json()]
 
-def list_repository_issues(app_integration, **kwargs):
+def list_tickets(app_integration, **kwargs):
     token, repo = _creds(app_integration)
     params = {k: v for k, v in kwargs.items() if v is not None and k in
               ("state", "labels", "assignee", "sort", "direction", "since", "per_page", "page")}
@@ -67,7 +67,7 @@ def list_repository_issues(app_integration, **kwargs):
             for i in resp.json() if "pull_request" not in i]
 
 
-def create_issue(app_integration, **kwargs):
+def create_ticket(app_integration, **kwargs):
     token, repo = _creds(app_integration)
     payload = {"title": kwargs["title"]}
     for field in ("body", "assignees", "milestone", "labels"):
@@ -78,7 +78,7 @@ def create_issue(app_integration, **kwargs):
     return {"number": d["number"], "title": d["title"], "state": d["state"]}
 
 
-def get_issue(app_integration, **kwargs):
+def get_ticket(app_integration, **kwargs):
     token, repo = _creds(app_integration)
     issue_number = kwargs["issue_number"]
     resp = _gh_request("get", f"{GITHUB_API}/repos/{repo}/issues/{issue_number}", headers=_headers(token))
@@ -88,7 +88,7 @@ def get_issue(app_integration, **kwargs):
             "assignees": [a["login"] for a in d["assignees"]]}
 
 
-def update_issue(app_integration, **kwargs):
+def update_ticket(app_integration, **kwargs):
     token, repo = _creds(app_integration)
     issue_number = kwargs.pop("issue_number")
     payload = {k: v for k, v in kwargs.items() if v is not None and k in
@@ -98,7 +98,7 @@ def update_issue(app_integration, **kwargs):
     return {"number": d["number"], "title": d["title"], "state": d["state"]}
 
 
-def lock_issue(app_integration, **kwargs):
+def lock_ticket(app_integration, **kwargs):
     token, repo = _creds(app_integration)
     issue_number = kwargs["issue_number"]
     payload = {}
@@ -108,20 +108,23 @@ def lock_issue(app_integration, **kwargs):
     return {"locked": True, "issue_number": issue_number}
 
 
-def unlock_issue(app_integration, **kwargs):
+def unlock_ticket(app_integration, **kwargs):
     token, repo = _creds(app_integration)
     issue_number = kwargs["issue_number"]
     _gh_request("delete", f"{GITHUB_API}/repos/{repo}/issues/{issue_number}/lock", headers=_headers(token))
     return {"locked": False, "issue_number": issue_number}
 
-GITHUB_HANDLERS = {
+GITHUB_VC_HANDLERS = {
     "list_commits": list_commits,
     "list_pull_requests": list_pull_requests,
     "list_releases": list_releases,
-    "list_repository_issues": list_repository_issues,
-    "create_issue": create_issue,
-    "get_issue": get_issue,
-    "update_issue": update_issue,
-    "lock_issue": lock_issue,
-    "unlock_issue": unlock_issue,
+}
+
+GITHUB_PM_HANDLERS = {
+    "list_tickets": list_tickets,
+    "create_ticket": create_ticket,
+    "get_ticket": get_ticket,
+    "update_ticket": update_ticket,
+    "lock_ticket": lock_ticket,
+    "unlock_ticket": unlock_ticket,
 }

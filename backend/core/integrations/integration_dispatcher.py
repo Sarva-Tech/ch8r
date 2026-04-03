@@ -1,24 +1,10 @@
 import logging
 
 from core.models import AppIntegration, ToolConfig
-from core.integrations.registry import INTEGRATION_TOOLS, TOOL_HANDLERS, INTEGRATION_HANDLERS
+from core.integrations.registry import INTEGRATION_TOOLS, INTEGRATION_HANDLERS
 from core.integrations.custom_tool_parser import parse_url_schema
 
 logger = logging.getLogger(__name__)
-
-
-def get_app_integrations(application_id):
-    app_integrations = AppIntegration.objects.filter(
-        application__uuid=application_id, is_active=True
-    ).select_related('integration')
-
-    tools = {}
-    for app_integration in app_integrations:
-        key = f"{app_integration.integration.provider}_{app_integration.integration_type}"
-        if key in INTEGRATION_TOOLS:
-            tools.update(INTEGRATION_TOOLS[key])
-
-    return list(tools.values())
 
 
 def get_enabled_tools_for_app(application_id: str) -> list[dict]:

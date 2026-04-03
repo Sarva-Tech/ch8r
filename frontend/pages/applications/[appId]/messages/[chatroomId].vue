@@ -174,10 +174,15 @@
               v-if="message.ai_mode && message.is_internal"
               class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded px-1 py-0.5 whitespace-nowrap"
             >internal</span>
-            <Popover v-if="!isLLMAgent(message.sender_identifier) && message.metadata?.escalation">
+            <Popover v-if="!isLLMAgent(message.sender_identifier) && message.metadata?.status">
               <PopoverTrigger as-child>
-                <button class="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded px-1 py-0.5 whitespace-nowrap hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
-                  escalated
+                <button
+                  :class="cn(
+                    'text-xs rounded px-1.5 py-0.5 whitespace-nowrap transition-colors font-medium',
+                    getStatusColorClasses(message.metadata.status as string)
+                  )"
+                >
+                  {{ getStatusDisplayName(message.metadata.status as string) }}
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -185,11 +190,19 @@
                 align="start"
               >
                 <p class="text-xs font-medium text-foreground">
-                  Escalation reason
+                  Response status
                 </p>
                 <p class="text-xs text-muted-foreground leading-relaxed">
-                  {{ (message.metadata.reason_for_escalation as string) || 'No reason provided.' }}
+                  {{ getStatusDescription(message.metadata.status as string) }}
                 </p>
+                <template v-if="(message.metadata.reason_for_escalation as string)?.length > 0">
+                  <p class="text-xs font-medium text-foreground pt-1">
+                    Reason
+                  </p>
+                  <p class="text-xs text-muted-foreground leading-relaxed">
+                    {{ message.metadata.reason_for_escalation }}
+                  </p>
+                </template>
                 <template v-if="(message.metadata.notified_profiles as any[])?.length > 0">
                   <p class="text-xs font-medium text-foreground pt-1">
                     Notifications sent to
@@ -727,6 +740,49 @@ const isRegisteredUser = (sender: string) => sender.startsWith('dashboard_')
 const getMessageProvider = (ai_provider_id: number | null) => {
   if (!ai_provider_id) return null
   return AIProviderStore.AIProviders.find(p => p.id === ai_provider_id) ?? null
+}
+
+const normalizeStatus = (status: string): string => {
+  return status.replace(/^ResponseStatus\./, '')
+}
+
+const getStatusDisplayName = (status: string): string => {
+  const normalized = normalizeStatus(status)
+  const statusMap: Record<string, string> = {
+    'ANSWERED': 'Answered',
+    'CLARIFICATION_NEEDED': 'Needs Clarification',
+    'INSUFFICIENT_INFORMATION': 'Insufficient Info',
+    'ESCALATED': 'Escalated',
+    'USER_REQUESTED_ESCALATION': 'User Escalated',
+    'POTENTIALLY_IRRELEVANT': 'Potentially Irrelevant',
+  }
+  return statusMap[normalized] || normalized.toLowerCase()
+}
+
+const getStatusDescription = (status: string): string => {
+  const normalized = normalizeStatus(status)
+  const descriptionMap: Record<string, string> = {
+    'ANSWERED': 'The query was successfully answered by the AI.',
+    'CLARIFICATION_NEEDED': 'The AI needs more information from the user to provide a complete answer.',
+    'INSUFFICIENT_INFORMATION': 'The AI does not have enough information to answer this query.',
+    'ESCALATED': 'This query has been escalated to a human agent for assistance.',
+    'USER_REQUESTED_ESCALATION': 'The user requested escalation to a human agent.',
+    'POTENTIALLY_IRRELEVANT': 'The query may not be relevant to the product or service.',
+  }
+  return descriptionMap[normalized] || 'Response status: ' + normalized
+}
+
+const getStatusColorClasses = (status: string): string => {
+  const normalized = normalizeStatus(status)
+  const colorMap: Record<string, string> = {
+    'ANSWERED': 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800',
+    'CLARIFICATION_NEEDED': 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800',
+    'INSUFFICIENT_INFORMATION': 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-800',
+    'ESCALATED': 'bg-destructive/10 dark:bg-destructive/20 text-destructive dark:text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/30',
+    'USER_REQUESTED_ESCALATION': 'bg-destructive/10 dark:bg-destructive/20 text-destructive dark:text-destructive hover:bg-destructive/20 dark:hover:bg-destructive/30',
+    'POTENTIALLY_IRRELEVANT': 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800',
+  }
+  return colorMap[normalized] || 'bg-muted text-muted-foreground'
 }
 
 const configuredAIProviderOptions = computed(() =>

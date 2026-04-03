@@ -20,6 +20,14 @@ export interface AppConfig {
   notification_profiles: NotificationProfile[]
 }
 
+export interface PromptConfig {
+  tone: 'professional' | 'friendly' | 'formal' | 'casual'
+  response_style: 'balanced' | 'concise' | 'detailed' | 'step_by_step'
+  custom_instructions: string
+  role: string
+  behavior: string
+}
+
 export const useAppConfigurationStore = defineStore('appConfiguration', {
   state: () => ({
     textModels: [] as LLMModel[] | [],
@@ -34,6 +42,13 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
     supportedIntegrations: {} as SupportedIntegrationsResponse,
 
     notifications: [] as NotificationProfile[] | [],
+    promptConfig: {
+      tone: 'professional',
+      response_style: 'balanced',
+      custom_instructions: '',
+      role: 'customer service assistant',
+      behavior: 'answer user questions politely and competently',
+    } as PromptConfig,
   }),
 
   actions: {
@@ -79,6 +94,8 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
       }
 
       this.notifications = appConfig.notification_profiles
+
+      await this.loadPromptConfig()
     },
 
     async saveModels() {
@@ -102,6 +119,26 @@ export const useAppConfigurationStore = defineStore('appConfiguration', {
           ],
         },
       )
+    },
+
+    async loadPromptConfig(): Promise<void> {
+      const appStore = useApplicationsStore()
+      const app = appStore.selectedApplication
+      if (!app) return
+      const { httpGet } = useHttpClient()
+      const config = await httpGet<PromptConfig>(`applications/${app.uuid}/prompt-config/`)
+      this.promptConfig = config
+    },
+
+    async savePromptConfig(config: PromptConfig): Promise<void> {
+      const appStore = useApplicationsStore()
+      const app = appStore.selectedApplication
+      if (!app) return
+      const { httpPatch } = useHttpClient()
+      const updated = await httpPatch<PromptConfig>(`applications/${app.uuid}/prompt-config/`, config)
+      if (updated) {
+        this.promptConfig = updated
+      }
     },
 
     async saveNotifications(profiles: SelectOption[]) {

@@ -119,11 +119,17 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
 
     messages_qs = Message.objects.filter(chatroom=chatroom).order_by("created_at")
     kb_data = get_chunks(question, app, top_k=5) if has_chunks else []
-    kb_context = "\n".join(c["content"] for c in kb_data) if kb_data else "NO_CONTEXT"
+    kb_context = "\n".join(c["content"] for c in kb_data) if kb_data else ""
 
-    from core.models import AppIntegration
+    from core.models import AppIntegration, ToolConfig
+    active_integration_ids = ToolConfig.objects.filter(
+        app_integration__application=app,
+        app_integration__is_active=True,
+        is_enabled=True,
+    ).values_list('app_integration_id', flat=True).distinct()
+
     integration_context_lines = []
-    for ai in AppIntegration.objects.filter(application=app, is_active=True).select_related('integration'):
+    for ai in AppIntegration.objects.filter(id__in=active_integration_ids).select_related('integration'):
         repo = (ai.metadata or {}).get("repo", "")
         if repo:
             integration_context_lines.append(
@@ -131,9 +137,14 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
             )
     integration_context = "\n".join(integration_context_lines)
 
+    config = app.get_prompt_config()
     prompt_context = {
         "product_name": app.name,
-        "tone": "professional",
+        "tone": config["tone"],
+        "response_style": config["response_style"],
+        "custom_instructions": config["custom_instructions"],
+        "role": config["role"],
+        "behavior": config["behavior"],
         "integration_context": integration_context,
     }
     system_instruction = TemplateLoader.render_template('prompts/default.j2', prompt_context)
@@ -177,6 +188,7 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                 try:
                     user_message.metadata = {
                         **(user_message.metadata or {}),
+                        "status": str(agent_response.status),
                         "sentiment_score": agent_response.sentiment_score,
                         "escalation_score": agent_response.escalation_score,
                         "criticality_score": agent_response.criticality_score,

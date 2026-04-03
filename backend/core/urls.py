@@ -26,6 +26,7 @@ from core.views.ai_provider import AIProviderViewSet
 from core.views.app_ai_provider import AppAIProviderViewSet
 from core.views.vc_ingestion import VCIngestionViewSet
 from core.views.tool_config import ToolConfigView
+from core.views.prompt_config import PromptConfigView
 
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet, basename='applications')
@@ -122,6 +123,8 @@ urlpatterns = [
         ToolConfigView.as_view(),
         name='tool-config-detail',
     ),
+
+    path('applications/<uuid:app_uuid>/prompt-config/', PromptConfigView.as_view(), name='prompt-config'),
 
     path('', include(router.urls)),
     path('', include(nested_router.urls)),

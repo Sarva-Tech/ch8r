@@ -1,9 +1,4 @@
-from core.integrations.pms_github import (
-    list_github_issues,
-    create_github_issue,
-    PMS_GITHUB_HANDLERS,
-)
-from core.integrations.github_tools import GITHUB_HANDLERS
+from core.integrations.github_tools import GITHUB_VC_HANDLERS, GITHUB_PM_HANDLERS
 
 INTEGRATION_TOOLS = {
     "github_version_control": {
@@ -27,7 +22,7 @@ INTEGRATION_TOOLS = {
                         "properties": {
                             "sha": {"type": "string", "description": "SHA or branch to start listing commits from."},
                             "path": {"type": "string", "description": "Only commits containing this file path will be returned."},
-                            "author": {"type": "string", "description": "GitHub login or email address by which to filter by commit author."},
+                            "author": {"type": "string", "description": "Filter by commit author using username or email address."},
                             "since": {"type": "string", "description": "Only show results updated after this time (ISO 8601)."},
                             "until": {"type": "string", "description": "Only commits before this date will be returned (ISO 8601)."},
                             "per_page": {"type": "integer", "description": "The number of results per page (max 100)."},
@@ -74,7 +69,7 @@ INTEGRATION_TOOLS = {
             "title": "List Releases",
             "description": (
                 "Retrieve published releases for a repository. "
-                "Draft releases are only visible to users with push access."
+                "Draft releases may have visibility restrictions based on provider."
             ),
             "schema": {
                 "type": "function",
@@ -82,7 +77,7 @@ INTEGRATION_TOOLS = {
                     "name": "list_releases",
                     "description": (
                         "Retrieve published releases for a repository. "
-                        "Draft releases are only visible to users with push access."
+                        "Draft releases may have visibility restrictions based on provider."
                     ),
                     "parameters": {
                         "type": "object",
@@ -97,20 +92,22 @@ INTEGRATION_TOOLS = {
         },
     },
     "github_project_management": {
-        "list_repository_issues": {
-            "id": "list_repository_issues",
-            "title": "List Repository Issues",
+        "list_tickets": {
+            "id": "list_tickets",
+            "title": "List Tickets",
             "description": (
-                "Retrieve issues for a repository. Note: GitHub's API returns pull requests as issues; "
-                "filter by absence of pull_request key to get issues only."
+                "Retrieve tickets, issues, or feedback items from a project management system. "
+                "Filter by status, labels, assignee, or date range. Can be used when users ask to "
+                'see tickets, list issues, view feedback, show problems, or check bug reports.'
             ),
             "schema": {
                 "type": "function",
                 "function": {
-                    "name": "list_repository_issues",
+                    "name": "list_tickets",
                     "description": (
-                        "Retrieve issues for a repository. Note: GitHub's API returns pull requests as issues; "
-                        "filter by absence of pull_request key to get issues only."
+                        "Retrieve tickets, issues, or feedback items from a project management system. "
+                        "Filter by status, labels, assignee, or date range. Can be used when users ask to "
+                        'see tickets, list issues, view feedback, show problems, or check bug reports.'
                     ),
                     "parameters": {
                         "type": "object",
@@ -129,15 +126,23 @@ INTEGRATION_TOOLS = {
                 },
             },
         },
-        "create_issue": {
-            "id": "create_issue",
-            "title": "Create an Issue",
-            "description": "Create a new issue in a repository with a title, optional body, assignees, labels, and milestone.",
+        "create_ticket": {
+            "id": "create_ticket",
+            "title": "Create Ticket",
+            "description": (
+                "Create a new ticket, issue, or feedback entry with a title and optional details. "
+                "Can be used when users ask to create a ticket, submit feedback, file an issue, "
+                'report a bug, submit a problem, or log a concern.'
+            ),
             "schema": {
                 "type": "function",
                 "function": {
-                    "name": "create_issue",
-                    "description": "Create a new issue in a repository with a title, optional body, assignees, labels, and milestone.",
+                    "name": "create_ticket",
+                    "description": (
+                        "Create a new ticket, issue, or feedback entry with a title and optional details. "
+                        "Can be used when users ask to create a ticket, submit feedback, file an issue, "
+                        'report a bug, submit a problem, or log a concern.'
+                    ),
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -152,15 +157,15 @@ INTEGRATION_TOOLS = {
                 },
             },
         },
-        "get_issue": {
-            "id": "get_issue",
-            "title": "Get an Issue",
-            "description": "Retrieve a single issue by its number, including its state, labels, assignees, and body.",
+        "get_ticket": {
+            "id": "get_ticket",
+            "title": "Get Ticket",
+            "description": "Retrieve details of a specific ticket or issue by its identifier.",
             "schema": {
                 "type": "function",
                 "function": {
-                    "name": "get_issue",
-                    "description": "Retrieve a single issue by its number, including its state, labels, assignees, and body.",
+                    "name": "get_ticket",
+                    "description": "Retrieve details of a specific ticket or issue by its identifier.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -171,15 +176,15 @@ INTEGRATION_TOOLS = {
                 },
             },
         },
-        "update_issue": {
-            "id": "update_issue",
-            "title": "Update an Issue",
-            "description": "Update an existing issue's title, body, state (open/closed), assignees, labels, or milestone.",
+        "update_ticket": {
+            "id": "update_ticket",
+            "title": "Update Ticket",
+            "description": "Update an existing ticket's title, description, status, assignees, or labels.",
             "schema": {
                 "type": "function",
                 "function": {
-                    "name": "update_issue",
-                    "description": "Update an existing issue's title, body, state (open/closed), assignees, labels, or milestone.",
+                    "name": "update_ticket",
+                    "description": "Update an existing ticket's title, description, status, assignees, or labels.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -195,15 +200,15 @@ INTEGRATION_TOOLS = {
                 },
             },
         },
-        "lock_issue": {
-            "id": "lock_issue",
-            "title": "Lock an Issue",
-            "description": "Lock an issue to prevent further comments. Optionally specify a lock reason: off-topic, too heated, resolved, or spam.",
+        "lock_ticket": {
+            "id": "lock_ticket",
+            "title": "Lock Ticket",
+            "description": "Prevent further comments on a ticket by locking it. Optionally specify a reason.",
             "schema": {
                 "type": "function",
                 "function": {
-                    "name": "lock_issue",
-                    "description": "Lock an issue to prevent further comments. Optionally specify a lock reason: off-topic, too heated, resolved, or spam.",
+                    "name": "lock_ticket",
+                    "description": "Prevent further comments on a ticket by locking it. Optionally specify a reason.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -214,15 +219,15 @@ INTEGRATION_TOOLS = {
                 },
             },
         },
-        "unlock_issue": {
-            "id": "unlock_issue",
-            "title": "Unlock an Issue",
-            "description": "Remove the lock on an issue to allow new comments.",
+        "unlock_ticket": {
+            "id": "unlock_ticket",
+            "title": "Unlock Ticket",
+            "description": "Remove the lock on a ticket to allow new comments.",
             "schema": {
                 "type": "function",
                 "function": {
-                    "name": "unlock_issue",
-                    "description": "Remove the lock on an issue to allow new comments.",
+                    "name": "unlock_ticket",
+                    "description": "Remove the lock on a ticket to allow new comments.",
                     "parameters": {"type": "object", "properties": {}, "required": []},
                 },
             },
@@ -230,11 +235,7 @@ INTEGRATION_TOOLS = {
     },
 }
 
-TOOL_HANDLERS = {
-    **PMS_GITHUB_HANDLERS,
-}
-
 INTEGRATION_HANDLERS = {
-    "github_version_control": GITHUB_HANDLERS,
-    "github_project_management": GITHUB_HANDLERS,
+    "github_version_control": GITHUB_VC_HANDLERS,
+    "github_project_management": GITHUB_PM_HANDLERS,
 }
