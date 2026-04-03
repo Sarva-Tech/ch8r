@@ -546,8 +546,6 @@ const { chatroomId } = route.params
 
 const messagesContainer = ref<HTMLElement>()
 
-const openToolCalls = ref<Set<string>>(new Set())
-
 const highlightJson = (value: unknown): string => {
   const json = JSON.stringify(value, null, 2)
   return hljs.highlight(json, { language: 'json' }).value

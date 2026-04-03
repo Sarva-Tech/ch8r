@@ -23,13 +23,6 @@ class AIProviderContract(ABC):
         tools: list[dict] | None,
         response_schema: "type[BaseModel]",
     ) -> "tuple[SupportAgentResponse, list[dict]]":
-        """
-        Send a structured conversation to the provider and return a parsed response.
-
-        Returns (parsed_response, raw_tool_calls).
-        raw_tool_calls is an empty list when no tool calls were requested.
-        Each raw_tool_call dict has at minimum: {"name": str, "args": dict, "id": str}.
-        """
         pass
 
     @abstractmethod

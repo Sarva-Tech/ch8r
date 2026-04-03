@@ -129,10 +129,8 @@ export const useChatroomMessagesStore = defineStore('chatroom', {
     addMessage(newMessage: Message) {
       const idx = this.messages.findIndex(m => m.uuid === newMessage.uuid)
       if (idx !== -1) {
-        // Message exists — update it (e.g., scores written back to user message)
         this.messages[idx] = { ...this.messages[idx], ...newMessage }
       } else {
-        // New message — append
         this.messages.push(newMessage)
       }
     },

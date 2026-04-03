@@ -1,5 +1,3 @@
-import json
-import requests
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 from ...contracts.ai_provider_contract import AIProviderContract
@@ -21,7 +19,6 @@ class CustomProvider(AIProviderContract):
         tools: list[dict] | None,
         response_schema: type[BaseModel],
     ):
-        # Stub: delegate to generate_text with the last user message, no tool calls
         user_messages = [m for m in messages if m.get("role") == "user"]
         contents = user_messages[-1]["content"] if user_messages else ""
         parsed = self.generate_text(model, contents)

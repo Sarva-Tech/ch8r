@@ -1,8 +1,3 @@
-"""
-EscalationService — smart escalation with cooldown logic.
-
-Requirements: 5.1, 5.2, 5.3, 5.5, 5.6, 5.7
-"""
 import logging
 from datetime import datetime, timezone
 
@@ -13,39 +8,20 @@ logger = logging.getLogger(__name__)
 
 
 class EscalationService:
-    """
-    Encapsulates all escalation logic including cooldown checks and
-    notification dispatch.
-    """
-
     def should_escalate(
         self,
         chatroom,
         agent_response,
         escalation_threshold: int,
     ) -> bool:
-        """
-        Determine whether the current pipeline run should trigger escalation.
-
-        Rules (in priority order):
-        1. If status == USER_REQUESTED_ESCALATION → always True (bypasses cooldown).
-        2. If escalation_score >= escalation_threshold:
-           a. If chatroom.is_escalated and still within cooldown window → False (suppressed).
-           b. Otherwise → True.
-        3. Otherwise → False.
-
-        Requirements: 5.1, 5.5, 5.6, 5.7
-        """
         from core.agent_response_schema import ResponseStatus
 
-        # Rule 1: user explicitly requested escalation — bypass everything.
         if agent_response.status == ResponseStatus.USER_REQUESTED_ESCALATION:
             return True
 
-        # Rule 2: score-based escalation.
         if agent_response.escalation_score >= escalation_threshold:
             if chatroom.is_escalated and self._within_cooldown(chatroom):
-                return False  # suppressed by cooldown
+                return False
             return True
 
         return False

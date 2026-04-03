@@ -26,7 +26,6 @@ MAX_TOOL_ROUNDS = 5
 
 
 def _send_live_update(bot_message: Message, user_message: Message):
-    """Broadcast a message to all chatroom participants except the AI agent role."""
     channel_layer = get_channel_layer()
 
     participants = list(
@@ -53,7 +52,6 @@ def _send_live_update(bot_message: Message, user_message: Message):
 
 
 def _send_live_update_to_dashboard(message: Message, user_message: Message):
-    """Send a live update to dashboard participants only — never back to widget."""
     channel_layer = get_channel_layer()
     participants = list(
         user_message.chatroom.participants.filter(
@@ -72,7 +70,6 @@ def _send_live_update_to_dashboard(message: Message, user_message: Message):
 
 
 def _build_usage_meta(usage: dict) -> dict:
-    """Return a clean usage dict, omitting empty values."""
     return {k: v for k, v in usage.items() if v is not None} if usage else {}
 
 
@@ -88,9 +85,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     chatroom = user_message.chatroom
     question = user_message.message
 
-    # ------------------------------------------------------------------ #
-    # Provider resolution                                                  #
-    # ------------------------------------------------------------------ #
     ai_client_service = AIClientService()
     provider, model = ai_client_service.get_client_and_model(
         app=app,
@@ -118,9 +112,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         _send_live_update(bot_message, user_message)
         return
 
-    # ------------------------------------------------------------------ #
-    # Context retrieval (Step 1 — Context Retrieval)                      #
-    # ------------------------------------------------------------------ #
     tools = get_enabled_tools_for_app(str(app.uuid))
     has_chunks = IngestedChunk.objects.filter(
         knowledge_base__application__uuid=app_uuid
@@ -161,21 +152,14 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     tool_call_records: list[dict] = []
     intermediate_message = None
     escalation_metadata: dict = {}
-    final_usage: dict = {}  # captured from the last generate_with_conversation call
+    final_usage: dict = {}
 
-    # ------------------------------------------------------------------ #
-    # Step 1: Intent + Tool Planning (first shot with tools)              #
-    # Step 2: Tool Executor                                               #
-    # Step 3: Response Generator (final structured call)                  #
-    # ------------------------------------------------------------------ #
     try:
         executor = ToolCallExecutor()
 
         for round_num in range(MAX_TOOL_ROUNDS):
             logger.info("[generate_bot_response] Pipeline round %d/%d", round_num + 1, MAX_TOOL_ROUNDS)
 
-            # Round 0: pass tools (intent + tool planning).
-            # Round 1+: no tools — model synthesises final answer from tool results.
             tools_for_round = tools if round_num == 0 else None
 
             response_or_text, raw_tool_calls, usage = provider.generate_with_conversation(
@@ -184,14 +168,11 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
             final_usage = _build_usage_meta(usage)
 
             if not raw_tool_calls:
-                # Final structured answer received.
                 agent_response = response_or_text
                 logger.info(
                     "[generate_bot_response] Final answer | round=%d status=%s",
                     round_num + 1, agent_response.status,
                 )
-                # Write scores back to the user's message so they're associated
-                # with the message that triggered the analysis, not the response.
                 try:
                     user_message.metadata = {
                         **(user_message.metadata or {}),
@@ -200,22 +181,18 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                         "criticality_score": agent_response.criticality_score,
                     }
                     user_message.save(update_fields=["metadata"])
-                    # Push the updated user message to dashboard only (not back to widget sender)
                     _send_live_update_to_dashboard(user_message, user_message)
                 except Exception as score_err:
                     logger.warning("[generate_bot_response] Could not write scores to user message: %s", score_err)
                 break
 
-            # Tool calls present — Step 2: Tool Executor
             logger.info(
                 "[generate_bot_response] Tool calls | round=%d calls=%s",
                 round_num + 1, [tc.get("name") for tc in raw_tool_calls],
             )
 
-            # Save Intermediate_Message on the first tool-calling round.
             if intermediate_message is None:
                 tool_names_list = [tc.get("name", "") for tc in raw_tool_calls]
-                # Use the model's own text if it produced any; otherwise a readable summary.
                 intermediate_text = (
                     response_or_text
                     if isinstance(response_or_text, str) and response_or_text.strip()
@@ -238,22 +215,19 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                     model=model,
                     platform=user_message.platform,
                     ai_mode=True,
-                    is_internal=True,  # always internal — never deliver to widget
+                    is_internal=True,
                 )
                 logger.info(
                     "[generate_bot_response] Intermediate_Message saved | id=%s",
                     intermediate_message.id,
                 )
-                # Push to dashboard only — widget users must not see tool-planning steps
                 _send_live_update_to_dashboard(intermediate_message, user_message)
 
-            # Execute tools
             round_records, tool_result_messages = executor.execute_all(str(app.uuid), raw_tool_calls)
             tool_call_records.extend(round_records)
             conversation.extend(tool_result_messages)
 
         else:
-            # MAX_TOOL_ROUNDS exhausted — make one final structured call without tools.
             logger.warning(
                 "[generate_bot_response] MAX_TOOL_ROUNDS (%d) exhausted — final structured call",
                 MAX_TOOL_ROUNDS,
@@ -274,14 +248,12 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                     criticality_score=0,
                 )
 
-        # Update Intermediate_Message with accumulated tool_call_records
         if intermediate_message is not None:
             intermediate_message.metadata = {
                 **intermediate_message.metadata,
                 "tool_calls": tool_call_records,
             }
             intermediate_message.save(update_fields=["metadata"])
-            # Push updated tool call data to dashboard only
             _send_live_update_to_dashboard(intermediate_message, user_message)
 
     except Exception as e:
@@ -307,9 +279,6 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         _send_live_update(bot_message, user_message)
         return
 
-    # ------------------------------------------------------------------ #
-    # Escalation check (non-internal only)                                #
-    # ------------------------------------------------------------------ #
     escalation_service = EscalationService()
     if not user_message.is_internal and escalation_service.should_escalate(
         chatroom, agent_response, escalation_threshold=70

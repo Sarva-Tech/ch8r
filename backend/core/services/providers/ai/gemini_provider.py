@@ -37,16 +37,6 @@ class GeminiProvider(AIProviderContract):
         tools: list[dict] | None,
         response_schema: type[BaseModel],
     ) -> tuple:
-        """
-        Send a structured conversation to the provider.
-
-        Returns a 3-tuple: (response_or_text, raw_tool_calls, usage_metadata)
-
-        - Tool-calling round:  (model_text: str, raw_tool_calls: list[dict], usage: dict)
-        - Final answer round:  (parsed: BaseModel, [],                       usage: dict)
-
-        usage_metadata keys: prompt_tokens, completion_tokens, total_tokens, cached_tokens
-        """
         ROLE_MAP = {"assistant": "model", "system": "system"}
         system_parts: list = []
         filtered_contents: list = []
@@ -80,7 +70,6 @@ class GeminiProvider(AIProviderContract):
                     )
                 )
 
-        # Build tool declarations
         gemini_tools = None
         if tools:
             function_declarations = []
@@ -93,7 +82,6 @@ class GeminiProvider(AIProviderContract):
                 })
             gemini_tools = types.Tool(function_declarations=function_declarations)
 
-        # Gemini does not support response_mime_type + tools simultaneously.
         if gemini_tools:
             config = types.GenerateContentConfig(
                 system_instruction=types.Content(parts=system_parts) if system_parts else None,
@@ -117,7 +105,6 @@ class GeminiProvider(AIProviderContract):
 
         usage_metadata = self._extract_usage(response)
 
-        # Extract tool calls
         raw_tool_calls: list[dict] = []
         for candidate in response.candidates or []:
             for part in candidate.content.parts or []:
@@ -130,7 +117,6 @@ class GeminiProvider(AIProviderContract):
                     })
 
         if raw_tool_calls:
-            # Collect any text the model produced alongside the tool calls
             text_parts = []
             for candidate in response.candidates or []:
                 for part in candidate.content.parts or []:
@@ -139,25 +125,19 @@ class GeminiProvider(AIProviderContract):
             model_text = "\n".join(text_parts).strip()
             return model_text, raw_tool_calls, usage_metadata
 
-        # No tool calls — parse structured JSON response.
-        # Thinking models sometimes wrap JSON in a markdown code fence or prepend
-        # explanatory text. Extract the JSON object robustly.
         try:
             raw_text = response.text or ""
             stripped = raw_text.strip()
 
-            # Strip markdown code fence if present
             if stripped.startswith("```"):
                 stripped = stripped.split("\n", 1)[-1]
                 if stripped.rstrip().endswith("```"):
                     stripped = stripped.rstrip()[:-3].rstrip()
 
-            # If there's still non-JSON text before the object, find the first '{'
             brace_idx = stripped.find("{")
             if brace_idx > 0:
                 stripped = stripped[brace_idx:]
 
-            # Trim any trailing text after the closing '}'
             last_brace = stripped.rfind("}")
             if last_brace != -1 and last_brace < len(stripped) - 1:
                 stripped = stripped[:last_brace + 1]
@@ -169,7 +149,6 @@ class GeminiProvider(AIProviderContract):
         return parsed, [], usage_metadata
 
     def _extract_usage(self, response) -> dict:
-        """Extract token usage from a Gemini response object."""
         usage: dict = {}
         try:
             meta = getattr(response, "usage_metadata", None)

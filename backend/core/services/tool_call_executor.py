@@ -1,11 +1,3 @@
-"""
-ToolCallExecutor service.
-
-Encapsulates tool execution and Tool_Call_Record construction for the
-intelligent chat pipeline.
-
-Requirements: 4.1, 4.2, 4.3, 6.4
-"""
 import logging
 import re
 import traceback
@@ -15,13 +7,10 @@ from core.integrations.integration_dispatcher import execute_tool_call
 
 logger = logging.getLogger(__name__)
 
-# Regex to extract the URL from a curl-style url_schema string.
-# Matches the first http(s) URL that appears before any flags like -H, -d, --data.
 _URL_PATTERN = re.compile(r"https?://[^\s'\"]+")
 
 
 def _extract_url_from_schema(url_schema: str) -> str:
-    """Return the first URL found in a curl url_schema string, or empty string."""
     if not url_schema:
         return ""
     match = _URL_PATTERN.search(url_schema)
@@ -29,13 +18,6 @@ def _extract_url_from_schema(url_schema: str) -> str:
 
 
 def _get_tool_url(app_uuid: str, tool_name: str) -> str:
-    """
-    Best-effort URL extraction for a tool.
-
-    For custom (non-builtin) tools the URL is stored in ToolConfig.url_schema.
-    For built-in integration tools the URL is constructed dynamically inside the
-    handler, so we return an empty string rather than guessing.
-    """
     try:
         from core.models import AppIntegration, ToolConfig  # local import to avoid circular deps
 
@@ -58,30 +40,11 @@ def _get_tool_url(app_uuid: str, tool_name: str) -> str:
 
 
 class ToolCallExecutor:
-    """
-    Executes a batch of tool calls and returns structured records plus
-    role=tool messages ready to append to the LLM conversation.
-    """
-
     def execute_all(
         self,
         app_uuid: str,
         tool_calls: list[dict],
     ) -> tuple[list[dict], list[dict]]:
-        """
-        Execute every tool call in *tool_calls* and return:
-
-        - ``tool_call_records``: list of Tool_Call_Record dicts for metadata storage.
-        - ``tool_result_messages``: list of ``{"role": "tool", ...}`` dicts to append
-          to the LLM conversation.
-
-        Each element of *tool_calls* must have the shape::
-
-            {"name": str, "args": dict, "id": str}
-
-        Processing continues even when an individual tool call raises an exception;
-        the error is captured in the record and the loop moves on (Requirement 6.4).
-        """
         tool_call_records: list[dict] = []
         tool_result_messages: list[dict] = []
 
@@ -147,17 +110,11 @@ class ToolCallExecutor:
         return tool_call_records, tool_result_messages
 
 
-# ---------------------------------------------------------------------------
-# Timing helpers
-# ---------------------------------------------------------------------------
-
 def _monotonic_ns() -> int:
-    """Return current monotonic time in nanoseconds."""
     import time
     return time.monotonic_ns()
 
 
 def _elapsed_ms(start_ns: int) -> int:
-    """Return elapsed milliseconds since *start_ns*."""
     import time
     return int((time.monotonic_ns() - start_ns) / 1_000_000)
