@@ -154,7 +154,54 @@ class ContentTypeHandler:
         if self.boilerplate_detector.is_boilerplate_content(content):
             logger.info(f"[QualityFilter] Skipping boilerplate file content: {content[:50]}...")
             return False
+        
+        if self._is_header_or_footer(content):
+            logger.info(f"[QualityFilter] Skipping file header/footer: {content[:50]}...")
+            return False
+        
         return True
+
+    def _is_header_or_footer(self, content: str) -> bool:
+        if not content or not content.strip():
+            return False
+
+        content_lower = content.lower().strip()
+        
+        standalone_comment_blocks = r'^/\*\*.*\*/\s*$'
+        multiple_python_comments = r'^#.*\n#.*\n#.*$'
+        multiple_cpp_comments = r'^//.*\n//.*\n//.*$'
+        standalone_html_comments = r'^<!--.*-->\s*$'
+        python_docstrings = r'^"""[\s\S]*"""\s*$'
+        python_docstrings_single = r'^\'\'\'[\s\S]*\'\'\'\s*$'
+        generated_file_markers = r'^\s*#.*generated.*$'
+        do_not_edit_warnings = r'^\s*#.*do not edit.*$'
+        auto_generated_notices = r'^\s*#.*this file.*auto.*$'
+        single_line_comment_blocks = r'^\s*/\*.*\*/\s*$'
+        coding_declarations = r'^\s*#.*coding.*$'
+        encoding_declarations = r'^\s*#.*encoding.*$'
+
+        header_footer_patterns = [
+            standalone_comment_blocks,
+            multiple_python_comments,
+            multiple_cpp_comments,
+            standalone_html_comments,
+            python_docstrings,
+            python_docstrings_single,
+            generated_file_markers,
+            do_not_edit_warnings,
+            auto_generated_notices,
+            single_line_comment_blocks,
+            coding_declarations,
+            encoding_declarations,
+        ]
+
+        lines = content.strip().split('\n')
+        if len(lines) <= 3:
+            for pattern in header_footer_patterns:
+                if re.search(pattern, content_lower, re.IGNORECASE | re.MULTILINE):
+                    return True
+
+        return False
 
     def _should_ingest_github_issue(self, content: str, author: str = None) -> bool:
         return True
