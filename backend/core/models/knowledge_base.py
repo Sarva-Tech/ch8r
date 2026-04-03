@@ -10,6 +10,7 @@ class KBStatus(models.TextChoices):
     REPROCESSING = 'reprocessing', 'Reprocessing'
     FAILED = 'failed', 'Failed'
     COMPLETED = 'completed', 'Completed'
+    DUPLICATE = 'duplicate', 'Duplicate'
 
 class KnowledgeBase(models.Model):
     SOURCE_CHOICES = [
@@ -35,6 +36,30 @@ class KnowledgeBase(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def delete(self, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+
+        try:
+            chunk_uuids = [str(chunk.uuid) for chunk in self.chunks.all()]
+            if chunk_uuids:
+                from core.services.ingestion import delete_vectors_from_qdrant
+                delete_vectors_from_qdrant(chunk_uuids)
+                logger.info(f"[KnowledgeBase] Deleted {len(chunk_uuids)} Qdrant vectors for KB {self.uuid}")
+
+            content = self.metadata.get('content', '')
+            if content:
+                from core.services.duplicate_detector import DuplicateDetector
+
+                detector = DuplicateDetector()
+                detector.remove_content_hash(content, self.application)
+                logger.info(f"[KnowledgeBase] Deleted ContentHash for KB {self.uuid}")
+
+        except Exception as e:
+            logger.error(f"[KnowledgeBase] Error during cleanup for KB {self.uuid}: {e}")
+
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return f"KnowledgeBase {self.uuid} for Application {self.application_id}"
