@@ -10,13 +10,12 @@
         :key="message.id"
         :class="cn('flex gap-3 items-start', isCurrentUser(message.sender_identifier) ? 'flex-row-reverse' : 'flex-row')"
       >
-        <!-- Avatar -->
         <div class="flex-shrink-0 mt-1">
           <div
             v-if="isLLMAgent(message.sender_identifier)"
-            class="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center"
+            class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"
           >
-            <Bot class="w-4 h-4 text-violet-600 dark:text-violet-300" />
+            <Bot class="w-4 h-4 text-secondary-foreground" />
           </div>
           <div
             v-else-if="isRegisteredUser(message.sender_identifier)"
@@ -32,22 +31,19 @@
           </div>
         </div>
 
-        <!-- Bubble column -->
         <div
           class="flex flex-col gap-1 max-w-[70%] lg:max-w-[60%] xl:max-w-[50%]"
           :class="isCurrentUser(message.sender_identifier) ? 'items-end' : 'items-start'"
         >
-            <!-- Sender label -->
           <span class="text-xs text-muted-foreground px-1">{{ message.sender_identifier }}</span>
 
-          <!-- Message bubble -->
           <div
             :class="cn(
               'rounded-lg px-3 py-2 text-sm overflow-hidden',
               isCurrentUser(message.sender_identifier)
                 ? 'bg-primary text-primary-foreground'
                 : isLLMAgent(message.sender_identifier)
-                  ? 'bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800'
+                  ? 'bg-secondary text-secondary-foreground border border-border'
                   : 'bg-muted',
             )"
           >
@@ -57,7 +53,6 @@
             />
           </div>
 
-          <!-- Tool calls — single Toolbox button → Popover with full details -->
           <div
             v-if="(message.metadata?.tool_calls as ToolCall[])?.length > 0"
             class="px-1 mt-1"
@@ -70,7 +65,10 @@
                   <span class="opacity-50">({{ (message.metadata.tool_calls as ToolCall[]).length }})</span>
                 </button>
               </PopoverTrigger>
-              <PopoverContent class="w-[480px] max-h-[480px] overflow-y-auto p-0" align="start">
+              <PopoverContent
+                class="w-[480px] max-h-[480px] overflow-y-auto p-0"
+                align="start"
+              >
                 <div class="px-4 py-3 border-b border-border flex items-center gap-2">
                   <Hammer class="w-4 h-4 text-muted-foreground" />
                   <span class="text-sm font-medium">Tool Calls</span>
@@ -82,16 +80,13 @@
                     :key="tIdx"
                     class="px-4 py-3 space-y-3"
                   >
-                    <!-- Tool header row -->
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-sm font-medium text-foreground">{{ tool.name }}</span>
                       <div class="ml-auto flex items-center gap-2 shrink-0">
-                        <!-- Duration -->
                         <span class="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <Timer class="w-3 h-3" />
                           {{ tool.duration_ms }}ms
                         </span>
-                        <!-- Status -->
                         <span
                           v-if="!tool.error"
                           class="inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400 font-medium"
@@ -109,32 +104,50 @@
                       </div>
                     </div>
 
-                    <!-- URL -->
-                    <div v-if="tool.url" class="space-y-1">
-                      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide">URL</p>
-                      <p class="font-mono text-xs break-all text-foreground bg-muted rounded px-2 py-1.5">{{ tool.url }}</p>
+                    <div
+                      v-if="tool.url"
+                      class="space-y-1"
+                    >
+                      <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+                        URL
+                      </p>
+                      <p class="font-mono text-xs break-all text-foreground bg-muted rounded px-2 py-1.5">
+                        {{ tool.url }}
+                      </p>
                     </div>
 
-                    <!-- Input -->
-                    <div v-if="tool.input_parameters && Object.keys(tool.input_parameters).length" class="space-y-1">
+                    <div
+                      v-if="tool.input_parameters && Object.keys(tool.input_parameters).length"
+                      class="space-y-1"
+                    >
                       <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide flex items-center gap-1">
                         <ArrowRight class="w-3 h-3" />
                         Input
                       </p>
-                      <pre class="text-xs rounded overflow-x-auto p-2 bg-muted leading-relaxed" v-html="highlightJson(tool.input_parameters)" />
+                      <pre
+                        class="text-xs rounded overflow-x-auto p-2 bg-muted leading-relaxed"
+                        v-html="highlightJson(tool.input_parameters)"
+                      />
                     </div>
 
-                    <!-- Result -->
-                    <div v-if="!tool.error && tool.raw_result" class="space-y-1">
+                    <div
+                      v-if="!tool.error && tool.raw_result"
+                      class="space-y-1"
+                    >
                       <p class="text-xs text-muted-foreground font-medium uppercase tracking-wide flex items-center gap-1">
                         <ArrowLeft class="w-3 h-3" />
                         Result
                       </p>
-                      <pre class="text-xs rounded overflow-x-auto p-2 bg-muted leading-relaxed" v-html="highlightJson(tool.raw_result)" />
+                      <pre
+                        class="text-xs rounded overflow-x-auto p-2 bg-muted leading-relaxed"
+                        v-html="highlightJson(tool.raw_result)"
+                      />
                     </div>
 
-                    <!-- Error -->
-                    <div v-if="tool.error" class="space-y-1">
+                    <div
+                      v-if="tool.error"
+                      class="space-y-1"
+                    >
                       <p class="text-xs text-red-500 font-medium uppercase tracking-wide flex items-center gap-1">
                         <XCircle class="w-3 h-3" />
                         Error
@@ -147,7 +160,6 @@
             </Popover>
           </div>
 
-          <!-- Footer: provider / model / time / escalation / internal -->
           <div class="flex items-center gap-1.5 px-1 flex-wrap">
             <template v-if="message.ai_provider_id && message.model">
               <component
@@ -162,43 +174,76 @@
               v-if="message.ai_mode && message.is_internal"
               class="text-xs bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 rounded px-1 py-0.5 whitespace-nowrap"
             >internal</span>
-            <!-- Escalation indicator — only on AI-generated messages -->
-            <Popover v-if="message.ai_mode && message.metadata?.escalation">
+            <Popover v-if="!isLLMAgent(message.sender_identifier) && message.metadata?.escalation">
               <PopoverTrigger as-child>
                 <button class="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded px-1 py-0.5 whitespace-nowrap hover:bg-red-200 dark:hover:bg-red-800 transition-colors">
                   escalated
                 </button>
               </PopoverTrigger>
-              <PopoverContent class="w-72 p-3 space-y-1.5" align="start">
-                <p class="text-xs font-medium text-foreground">Escalation reason</p>
+              <PopoverContent
+                class="w-72 p-3 space-y-2"
+                align="start"
+              >
+                <p class="text-xs font-medium text-foreground">
+                  Escalation reason
+                </p>
                 <p class="text-xs text-muted-foreground leading-relaxed">
                   {{ (message.metadata.reason_for_escalation as string) || 'No reason provided.' }}
                 </p>
-                <template v-if="(message.metadata.notified_profiles as string[])?.length > 0">
-                  <p class="text-xs font-medium text-foreground pt-1">Notified</p>
-                  <p class="text-xs text-muted-foreground">{{ (message.metadata.notified_profiles as string[]).join(', ') }}</p>
+                <template v-if="(message.metadata.notified_profiles as any[])?.length > 0">
+                  <p class="text-xs font-medium text-foreground pt-1">
+                    Notifications sent to
+                  </p>
+                  <div class="space-y-1">
+                    <div
+                      v-for="profile in (message.metadata.notified_profiles as any[])"
+                      :key="typeof profile === 'string' ? profile : profile.name"
+                      class="flex items-center gap-1.5 text-xs text-muted-foreground"
+                    >
+                      <component
+                        :is="useNotificationProviderIcon(typeof profile === 'string' ? profile : profile.type).value"
+                        class="w-3 h-3 shrink-0"
+                      />
+                      <span>{{ typeof profile === 'string' ? profile : profile.name }}</span>
+                      <span
+                        v-if="typeof profile !== 'string'"
+                        class="capitalize opacity-60"
+                      >({{ profile.type }})</span>
+                    </div>
+                  </div>
                 </template>
               </PopoverContent>
             </Popover>
 
-            <!-- Sentiment / scores — non-agent messages with scores in metadata -->
             <Popover v-if="!isLLMAgent(message.sender_identifier) && message.metadata?.sentiment_score !== undefined">
               <PopoverTrigger as-child>
                 <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
                   <BarChart2 class="w-3 h-3" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent class="w-72 p-3 space-y-3" align="start">
-                <p class="text-xs font-medium text-foreground">Message analysis</p>
-                <!-- Sentiment -->
+              <PopoverContent
+                class="w-72 p-3 space-y-3"
+                align="start"
+              >
+                <p class="text-xs font-medium text-foreground">
+                  Message analysis
+                </p>
                 <div class="space-y-1">
                   <div class="flex items-center justify-between">
                     <div>
-                      <p class="text-xs font-medium text-foreground">Sentiment</p>
+                      <p class="text-xs font-medium text-foreground">
+                        Sentiment
+                      </p>
                       <p class="text-xs text-muted-foreground">
-                        <template v-if="(message.metadata.sentiment_score as number) > 60">User seems positive or satisfied</template>
-                        <template v-else-if="(message.metadata.sentiment_score as number) >= 40">User tone is neutral or mixed</template>
-                        <template v-else>User appears frustrated or upset</template>
+                        <template v-if="(message.metadata.sentiment_score as number) > 60">
+                          User seems positive or satisfied
+                        </template>
+                        <template v-else-if="(message.metadata.sentiment_score as number) >= 40">
+                          User tone is neutral or mixed
+                        </template>
+                        <template v-else>
+                          User appears frustrated or upset
+                        </template>
                       </p>
                     </div>
                     <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.sentiment_score }}/100</span>
@@ -211,15 +256,22 @@
                     />
                   </div>
                 </div>
-                <!-- Escalation score -->
                 <div class="space-y-1">
                   <div class="flex items-center justify-between">
                     <div>
-                      <p class="text-xs font-medium text-foreground">Escalation need</p>
+                      <p class="text-xs font-medium text-foreground">
+                        Escalation need
+                      </p>
                       <p class="text-xs text-muted-foreground">
-                        <template v-if="(message.metadata.escalation_score as number) >= 70">Needs human agent — escalation triggered</template>
-                        <template v-else-if="(message.metadata.escalation_score as number) >= 40">May need human follow-up soon</template>
-                        <template v-else>AI can handle this without escalation</template>
+                        <template v-if="(message.metadata.escalation_score as number) >= 70">
+                          Needs human agent — escalation triggered
+                        </template>
+                        <template v-else-if="(message.metadata.escalation_score as number) >= 40">
+                          May need human follow-up soon
+                        </template>
+                        <template v-else>
+                          AI can handle this without escalation
+                        </template>
                       </p>
                     </div>
                     <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.escalation_score }}/100</span>
@@ -232,15 +284,22 @@
                     />
                   </div>
                 </div>
-                <!-- Criticality -->
                 <div class="space-y-1">
                   <div class="flex items-center justify-between">
                     <div>
-                      <p class="text-xs font-medium text-foreground">Criticality</p>
+                      <p class="text-xs font-medium text-foreground">
+                        Criticality
+                      </p>
                       <p class="text-xs text-muted-foreground">
-                        <template v-if="(message.metadata.criticality_score as number) >= 70">Critical issue — blocking or data loss risk</template>
-                        <template v-else-if="(message.metadata.criticality_score as number) >= 40">Moderate issue with a workaround available</template>
-                        <template v-else>Minor issue or general question</template>
+                        <template v-if="(message.metadata.criticality_score as number) >= 70">
+                          Critical issue — blocking or data loss risk
+                        </template>
+                        <template v-else-if="(message.metadata.criticality_score as number) >= 40">
+                          Moderate issue with a workaround available
+                        </template>
+                        <template v-else>
+                          Minor issue or general question
+                        </template>
                       </p>
                     </div>
                     <span class="text-xs font-medium tabular-nums ml-3 shrink-0">{{ message.metadata.criticality_score }}/100</span>
@@ -256,29 +315,45 @@
               </PopoverContent>
             </Popover>
 
-            <!-- Token usage — AI messages with usage data -->
             <Popover v-if="message.ai_mode && message.metadata?.usage">
               <PopoverTrigger as-child>
                 <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
                   <Cpu class="w-3 h-3" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent class="w-52 p-3 space-y-2" align="start">
-                <p class="text-xs font-medium text-foreground">Token usage</p>
+              <PopoverContent
+                class="w-52 p-3 space-y-2"
+                align="start"
+              >
+                <p class="text-xs font-medium text-foreground">
+                  Token usage
+                </p>
                 <div class="space-y-1.5 text-xs">
-                  <div v-if="(message.metadata.usage as any).prompt_tokens !== undefined" class="flex justify-between">
+                  <div
+                    v-if="(message.metadata.usage as any).prompt_tokens !== undefined"
+                    class="flex justify-between"
+                  >
                     <span class="text-muted-foreground">Prompt</span>
                     <span class="tabular-nums font-medium">{{ (message.metadata.usage as any).prompt_tokens.toLocaleString() }}</span>
                   </div>
-                  <div v-if="(message.metadata.usage as any).completion_tokens !== undefined" class="flex justify-between">
+                  <div
+                    v-if="(message.metadata.usage as any).completion_tokens !== undefined"
+                    class="flex justify-between"
+                  >
                     <span class="text-muted-foreground">Completion</span>
                     <span class="tabular-nums font-medium">{{ (message.metadata.usage as any).completion_tokens.toLocaleString() }}</span>
                   </div>
-                  <div v-if="(message.metadata.usage as any).cached_tokens !== undefined" class="flex justify-between">
+                  <div
+                    v-if="(message.metadata.usage as any).cached_tokens !== undefined"
+                    class="flex justify-between"
+                  >
                     <span class="text-muted-foreground">Cached</span>
                     <span class="tabular-nums font-medium">{{ (message.metadata.usage as any).cached_tokens.toLocaleString() }}</span>
                   </div>
-                  <div v-if="(message.metadata.usage as any).total_tokens !== undefined" class="flex justify-between border-t border-border pt-1.5 mt-1">
+                  <div
+                    v-if="(message.metadata.usage as any).total_tokens !== undefined"
+                    class="flex justify-between border-t border-border pt-1.5 mt-1"
+                  >
                     <span class="text-muted-foreground font-medium">Total</span>
                     <span class="tabular-nums font-semibold">{{ (message.metadata.usage as any).total_tokens.toLocaleString() }}</span>
                   </div>
@@ -449,6 +524,7 @@ import { Label } from '@/components/ui/label'
 import C8Combobox from '~/components/C8Combobox.vue'
 import C8Button from '~/components/C8Button.vue'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
+import { useNotificationProviderIcon } from '~/composables/useNotificationProviderIcon'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
@@ -470,21 +546,8 @@ const { chatroomId } = route.params
 
 const messagesContainer = ref<HTMLElement>()
 
-// Track which individual tool call detail panels are expanded
 const openToolCalls = ref<Set<string>>(new Set())
 
-const toggleToolCall = (messageUuid: string, idx: number) => {
-  const key = `${messageUuid}-${idx}`
-  const next = new Set(openToolCalls.value)
-  if (next.has(key)) {
-    next.delete(key)
-  } else {
-    next.add(key)
-  }
-  openToolCalls.value = next
-}
-
-// Syntax-highlight a JSON value using hljs
 const highlightJson = (value: unknown): string => {
   const json = JSON.stringify(value, null, 2)
   return hljs.highlight(json, { language: 'json' }).value

@@ -30,16 +30,24 @@ def send_notification_task(self, channel_data, message):
         if notification_type == NotificationType.DISCORD:
             webhook_url = config.get("webhook_url") or config.get("webhookUrl")
             username = config.get('username', 'Ch8r Bot')
-            if webhook_url:
-                payload = {"content": message, "username": username}
-                requests.post(webhook_url, json=payload)
+            if not webhook_url:
+                print(f"Discord webhook URL not configured. Config keys: {list(config.keys()) if config else 'None'}")
+                return
+            payload = {"content": message, "username": username}
+            resp = requests.post(webhook_url, json=payload, timeout=10)
+            if not resp.ok:
+                raise Exception(f"Discord webhook returned {resp.status_code}: {resp.text}")
 
         elif notification_type == NotificationType.SLACK:
             webhook_url = config.get("webhook_url") or config.get("webhookUrl")
             username = config.get("username", "Ch8r Bot")
-            if webhook_url:
-                payload = {"text": message, "username": username}
-                requests.post(webhook_url, json=payload)
+            if not webhook_url:
+                print(f"Slack webhook URL not configured. Config keys: {list(config.keys()) if config else 'None'}")
+                return
+            payload = {"text": message, "username": username}
+            resp = requests.post(webhook_url, json=payload, timeout=10)
+            if not resp.ok:
+                raise Exception(f"Slack webhook returned {resp.status_code}: {resp.text}")
 
         elif notification_type == NotificationType.EMAIL:
             recipient = config.get("email")

@@ -29,15 +29,12 @@ class NotificationProfileSerializer(serializers.ModelSerializer):
             current_config = getattr(instance, 'config', {}) or {}
             new_config = current_config.copy()
 
-            # Only update email if provided
             if 'email' in config and config['email']:
                 new_config['email'] = config['email']
 
-            # Only update webhookUrl if provided and not empty/whitespace
-            if 'webhookUrl' in config:
-                webhook_url = config['webhookUrl']
-                if webhook_url and isinstance(webhook_url, str) and webhook_url.strip():
-                    new_config['webhookUrl'] = webhook_url
+            webhook_url = config.get('webhookUrl') or config.get('webhook_url')
+            if webhook_url and isinstance(webhook_url, str) and webhook_url.strip():
+                new_config['webhookUrl'] = webhook_url.strip()
 
             instance.config = new_config
 
@@ -46,11 +43,14 @@ class NotificationProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-
-        config = getattr(instance, 'config', {})
-        filtered_config = {}
-        if isinstance(config, dict) and 'email' in config:
-            filtered_config['email'] = config['email']
-
-        representation['config'] = filtered_config
+        config = getattr(instance, 'config', {}) or {}
+        safe_config = {}
+        if isinstance(config, dict):
+            if 'email' in config:
+                safe_config['email'] = config['email']
+            if 'webhookUrl' in config:
+                safe_config['webhookUrl'] = config['webhookUrl']
+            if 'webhook_url' in config:
+                safe_config['webhookUrl'] = config['webhook_url']
+        representation['config'] = safe_config
         return representation

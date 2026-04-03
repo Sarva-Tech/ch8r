@@ -55,32 +55,40 @@ class EscalationService:
         chatroom,
         application,
         agent_response,
+        user_message=None,
     ) -> dict:
-        """
-        Perform escalation:
-        - Mark chatroom as escalated.
-        - Dispatch notifications to all NotificationProfiles for the application.
-        - Return metadata dict with ``escalation_reason`` and ``notified_profiles``.
+        from datetime import datetime, timezone as tz
 
-        Notification errors are logged per channel and never re-raised.
-
-        Requirements: 5.1, 5.2, 5.3
-        """
-        # Update chatroom state.
         chatroom.is_escalated = True
-        chatroom.escalated_at = datetime.now(tz=timezone.utc)
+        chatroom.escalated_at = datetime.now(tz=tz.utc)
         chatroom.save(update_fields=["is_escalated", "escalated_at"])
 
         escalation_reason = agent_response.reason_for_escalation or str(agent_response.status)
+        timestamp = chatroom.escalated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
 
-        # Fetch all notification profiles for this application.
+        user_msg_text = user_message.message if user_message else "N/A"
+        platform = user_message.platform if user_message else "unknown"
+        agent_answer = agent_response.answer if hasattr(agent_response, "answer") else "N/A"
+
+        notification_body = (
+            f"New Escalation Alert for {application.name}\n"
+            f"{'─' * 40}\n"
+            f"👤 User message:  {user_msg_text}\n"
+            f"📱 Platform:      {platform}\n"
+            f"⚠️  Reason:        {escalation_reason}\n"
+            f"🤖 Agent reply:   {agent_answer[:300]}{'...' if len(agent_answer) > 300 else ''}\n"
+            f"🕐 Timestamp:     {timestamp}\n"
+            f"{'─' * 40}\n"
+            f"Chatroom: {chatroom.name}"
+        )
+
         app_profiles = (
             AppNotificationProfile.objects
             .select_related("notification_profile")
             .filter(application=application)
         )
 
-        notified_profiles: list[str] = []
+        notified_profiles: list[dict] = []
 
         for app_profile in app_profiles:
             profile = app_profile.notification_profile
@@ -89,12 +97,11 @@ class EscalationService:
                     "type": profile.type,
                     "config": profile.config,
                 }
-                message = (
-                    f"Escalation alert for chatroom '{chatroom.name}'.\n"
-                    f"Reason: {escalation_reason}"
-                )
-                send_notification_task.delay(channel_data, message)
-                notified_profiles.append(profile.name)
+                send_notification_task.delay(channel_data, notification_body)
+                notified_profiles.append({
+                    "name": profile.name,
+                    "type": profile.type,
+                })
                 logger.info(
                     "[EscalationService] Notification dispatched | profile=%s type=%s",
                     profile.name, profile.type,
@@ -110,19 +117,13 @@ class EscalationService:
             "notified_profiles": notified_profiles,
         }
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
     def _within_cooldown(self, chatroom) -> bool:
-        """Return True if the chatroom is still within its escalation cooldown window."""
         if chatroom.escalated_at is None:
             return False
 
         now = datetime.now(tz=timezone.utc)
         escalated_at = chatroom.escalated_at
 
-        # Ensure escalated_at is timezone-aware.
         if escalated_at.tzinfo is None:
             escalated_at = escalated_at.replace(tzinfo=timezone.utc)
 

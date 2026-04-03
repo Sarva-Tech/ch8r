@@ -318,17 +318,41 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
             "[generate_bot_response] Escalation triggered | score=%s status=%s",
             agent_response.escalation_score, agent_response.status,
         )
-        escalation_metadata = escalation_service.escalate(chatroom, app, agent_response)
+        escalation_metadata = escalation_service.escalate(chatroom, app, agent_response, user_message=user_message)
+
+        try:
+            user_message.metadata = {
+                **(user_message.metadata or {}),
+                "escalation": True,
+                "reason_for_escalation": escalation_metadata.get("escalation_reason", ""),
+                "notified_profiles": escalation_metadata.get("notified_profiles", []),
+            }
+            user_message.save(update_fields=["metadata"])
+            _send_live_update_to_dashboard(user_message, user_message)
+        except Exception as esc_err:
+            logger.warning("[generate_bot_response] Could not write escalation to user message: %s", esc_err)
+
+        if not escalation_metadata.get("notified_profiles"):
+            warning_message = Message.objects.create(
+                chatroom=chatroom,
+                sender_identifier=AGENT_IDENTIFIER,
+                message=(
+                    "Escalation triggered but no notification profiles are configured for this application. "
+                    "Please configure a notification profile to receive alerts."
+                ),
+                metadata={"stage": "escalation_warning"},
+                ai_provider_id=ai_provider_id,
+                model=model,
+                platform=user_message.platform,
+                ai_mode=True,
+                is_internal=True,
+            )
+            _send_live_update_to_dashboard(warning_message, user_message)
     else:
         escalation_metadata = {}
 
-    # ------------------------------------------------------------------ #
-    # Final message                                                        #
-    # tool_calls live on Intermediate_Message when one exists             #
-    # ------------------------------------------------------------------ #
     final_tool_calls = [] if intermediate_message is not None else tool_call_records
 
-    # Capture usage from the final response round (set during pipeline execution)
     final_metadata = {
         "status": str(agent_response.status),
         "escalation": agent_response.escalation,
