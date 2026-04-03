@@ -65,9 +65,15 @@ def process_kb_item(kb):
 
         ingest_kb(kb, app)
 
-        kb.status = KBStatus.PROCESSED
-        kb.save()
-        send_kb_update(kb, kb.status)
+        kb.refresh_from_db()
+        if kb.status != KBStatus.DUPLICATE:
+            kb.status = KBStatus.PROCESSED
+            kb.save()
+            send_kb_update(kb, kb.status)
+
+            kb.status = KBStatus.COMPLETED
+            kb.save()
+            send_kb_update(kb, kb.status)
 
 @shared_task
 def process_kb(kb_ids):
@@ -76,12 +82,10 @@ def process_kb(kb_ids):
     for kb in kb_items:
         try:
             process_kb_item(kb)
-            kb.status = KBStatus.COMPLETED
         except Exception as e:
             metadata = kb.metadata or {}
             metadata['error'] = str(e)
             kb.metadata = metadata
             kb.status = KBStatus.FAILED
-        finally:
             kb.save()
             send_kb_update(kb, kb.status)

@@ -1,6 +1,7 @@
 import re
 import logging
 import emoji
+from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
@@ -154,11 +155,11 @@ class ContentTypeHandler:
         if self.boilerplate_detector.is_boilerplate_content(content):
             logger.info(f"[QualityFilter] Skipping boilerplate file content: {content[:50]}...")
             return False
-        
+
         if self._is_header_or_footer(content):
             logger.info(f"[QualityFilter] Skipping file header/footer: {content[:50]}...")
             return False
-        
+
         return True
 
     def _is_header_or_footer(self, content: str) -> bool:
@@ -166,7 +167,7 @@ class ContentTypeHandler:
             return False
 
         content_lower = content.lower().strip()
-        
+
         standalone_comment_blocks = r'^/\*\*.*\*/\s*$'
         multiple_python_comments = r'^#.*\n#.*\n#.*$'
         multiple_cpp_comments = r'^//.*\n//.*\n//.*$'
@@ -221,6 +222,28 @@ class ContentQualityFilter:
         self.bot_detector = BotCommentDetector()
         self.boilerplate_detector = BoilerplateDetector()
         self.content_type_handler = ContentTypeHandler(self.boilerplate_detector)
+
+    def calculate_quality_score(self, content: str, content_type: str = 'text') -> float:
+        if not content or not content.strip():
+            return 0.0
+
+        score = 0.0
+
+        if len(content.strip()) > 10:
+            score += 0.4
+
+        filler_words = ['thanks', 'thank you', 'lgmt', 'ack', 'nice', 'good', 'great', 'awesome', 'cool', '+1', 'agree']
+        words = content.lower().split()
+        filler_ratio = sum(1 for word in words if word in filler_words) / max(len(words), 1)
+        if filler_ratio < 0.5:
+            score += 0.3
+
+        meaningful_words = ['function', 'class', 'error', 'fix', 'update', 'api', 'code', 'method', 'implement']
+        if any(word in content.lower() for word in meaningful_words):
+            score += 0.3
+
+        logger.debug(f"[ContentQualityFilter] Simple quality score: {score:.3f}")
+        return min(1.0, score)
 
     def should_ingest(self, content: str, content_type: str = 'text', author: str = None) -> bool:
         if self.emoji_detector.is_emoji_only(content):

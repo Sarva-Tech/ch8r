@@ -152,8 +152,20 @@ def ingest_kb(kb, app):
 
     if _duplicate_detector.is_duplicate(cleaned_content, app, kb.source_type):
         logger.info(f"[ingest_kb] Skipping duplicate content for kb={kb.uuid}")
-        kb.status = 'completed'
+        _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
+        kb.status = 'duplicate'
         kb.save(update_fields=['status'])
+        return
+
+    should_process = _duplicate_detector.handle_semantic_duplicate(cleaned_content, app, str(kb.uuid), kb.source_type)
+    if not should_process:
+        if _duplicate_detector._was_replacement_triggered():
+            logger.info(f"[ingest_kb] KB {kb.uuid} was replaced, deleting duplicate")
+            kb.delete()
+        else:
+            logger.info(f"[ingest_kb] KB {kb.uuid} is duplicate of higher-quality content")
+            kb.status = 'duplicate'
+            kb.save(update_fields=['status'])
         return
 
     logger.info(f"[ingest_kb] Cleaned content: {len(content)} -> {len(cleaned_content)} chars for kb={kb.uuid}")
@@ -223,6 +235,9 @@ def ingest_kb(kb, app):
     if upserted > 0:
         _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
         logger.info(f"[ingest_kb] Stored content hash for kb={kb.uuid}")
+    else:
+        _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
+        logger.info(f"[ingest_kb] Stored content hash for kb={kb.uuid} (no chunks upserted)")
 
     logger.info(f"[ingest_kb] Upserted {upserted}/{len(chunks)} chunks to Qdrant for kb={kb.uuid}")
     kb.status = 'completed'

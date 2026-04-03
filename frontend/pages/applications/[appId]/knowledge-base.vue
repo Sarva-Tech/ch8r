@@ -176,6 +176,8 @@ function getStatusVariant(status: string) {
       return 'default'
     case 'failed':
       return 'destructive'
+    case 'duplicate':
+      return 'destructive_text'
     case 'pending':
     case 'uploading':
     case 'extracting':
