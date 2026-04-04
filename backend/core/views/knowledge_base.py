@@ -37,7 +37,7 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         return KnowledgeBase.objects.filter(
             application__uuid=application_uuid,
             application__owner=self.request.user
-        )
+        ).exclude(source_type='crawled_url')
 
     def list(self, request, *args, **kwargs):
         application_uuid = kwargs.get('application_uuid')
@@ -47,7 +47,8 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         )
 
         app_data = ApplicationViewSerializer(application).data
-        kb_data = KnowledgeBaseViewSerializer(application.knowledge_bases.all(), many=True).data
+        kb_queryset = application.knowledge_bases.exclude(source_type='crawled_url')
+        kb_data = KnowledgeBaseViewSerializer(kb_queryset, many=True).data
         app_data['knowledge_base'] = kb_data
 
         return Response({'application': app_data})
@@ -122,30 +123,131 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         application_uuid = kwargs.get('application_uuid')
         kb_uuid = kwargs.get('uuid')
 
-        application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
+        application = get_object_or_404(Application, uuid=application_uuid)
         kb = get_object_or_404(KnowledgeBase, uuid=kb_uuid, application=application)
 
+        self._delete_crawled_knowledge_bases(application, kb_uuid)
+        self._delete_knowledge_base_data(kb, application)
+        self._delete_content_hash(kb, application)
+        self._cleanup_application_if_last_kb(application, kb_uuid)
+        self._delete_file_if_applicable(kb)
+        kb.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def _delete_crawled_knowledge_bases(self, application: Application, kb_uuid: str) -> None:
+        crawled_kbs = KnowledgeBase.objects.filter(
+            application=application,
+            source_type='crawled_url',
+            metadata__original_kb_uuid=str(kb_uuid)
+        )
+
+        crawled_kbs_count = crawled_kbs.count()
+        if crawled_kbs_count > 0:
+            logger.info(f"Deleting {crawled_kbs_count} related crawled KB items for original KB {kb_uuid}")
+
+            for crawled_kb in crawled_kbs:
+                self._delete_crawled_kb_data(crawled_kb, application)
+
+            crawled_kbs.delete()
+            logger.info(f"Deleted {crawled_kbs_count} crawled KB items for original KB {kb_uuid}")
+
+    def _delete_crawled_kb_data(self, crawled_kb: KnowledgeBase, application: Application) -> None:
+        try:
+            crawled_chunks = IngestedChunk.objects.filter(knowledge_base=crawled_kb)
+            crawled_qdrant_ids = [str(chunk.uuid) for chunk in crawled_chunks]
+
+            if crawled_qdrant_ids:
+                crawled_chunks.delete()
+                delete_vectors_from_qdrant(crawled_qdrant_ids)
+                logger.info(f"Deleted {len(crawled_qdrant_ids)} vectors for crawled KB {crawled_kb.uuid}")
+
+            self._delete_crawled_kb_content_hash(crawled_kb, application)
+
+        except Exception as e:
+            logger.error(f"Failed to clean up crawled KB {crawled_kb.uuid}: {e}")
+
+    def _delete_crawled_kb_content_hash(self, crawled_kb: KnowledgeBase, application: Application) -> None:
+        try:
+            from core.services.duplicate_detector import DuplicateDetector
+            detector = DuplicateDetector()
+
+            crawled_content = crawled_kb.metadata.get('content', '') if crawled_kb.metadata else ''
+            if crawled_content and crawled_content.strip():
+                detector.remove_content_hash(crawled_content, application)
+                logger.info(f"Deleted content hash for crawled KB {crawled_kb.uuid}")
+        except Exception as e:
+            logger.error(f"Failed to delete content hash for crawled KB {crawled_kb.uuid}: {e}")
+
+    def _delete_knowledge_base_data(self, kb: KnowledgeBase, application: Application) -> None:
         chunks = IngestedChunk.objects.filter(knowledge_base=kb)
         qdrant_ids = [str(chunk.uuid) for chunk in chunks]
         chunks.delete()
-
         delete_vectors_from_qdrant(qdrant_ids)
 
-        other_kbs_count = KnowledgeBase.objects.filter(application=application).exclude(uuid=kb.uuid).count()
-        if other_kbs_count == 0:
-            ContentHash.objects.filter(app=application).delete()
-            logger.info(f"Cleaned up all content hashes for application {application.uuid}")
-        else:
-            logger.info(f"Keeping content hashes for application {application.uuid} (other KBs exist)")
+    def _delete_content_hash(self, kb: KnowledgeBase, application: Application) -> None:
+        try:
+            from core.services.duplicate_detector import DuplicateDetector
+            detector = DuplicateDetector()
 
+            content = self._extract_content_for_hash_deletion(kb)
+            content_length = len(content) if content else 0
+
+            logger.info(f"[KB Delete] Processing content hash deletion for KB {kb.uuid} (source_type: {kb.source_type}, content_length: {content_length})")
+
+            if content and content.strip():
+                self._remove_content_hash_with_logging(content, application, kb)
+            else:
+                logger.debug(f"[KB Delete] No content found for KB {kb.uuid} (source_type: {kb.source_type}, content_length: {content_length}) to delete content hash")
+
+        except Exception as e:
+            logger.error(f"[KB Delete] Failed to delete content hash for KB {kb.uuid}: {e}")
+            import traceback
+            logger.error(f"[KB Delete] Traceback: {traceback.format_exc()}")
+
+    def _extract_content_for_hash_deletion(self, kb: KnowledgeBase) -> str:
+        if not kb.metadata:
+            return ''
+
+        return kb.metadata.get('content', '')
+
+    def _remove_content_hash_with_logging(self, content: str, application: Application, kb: KnowledgeBase) -> None:
+        content_hash = ContentHash.generate_content_hash(content)
+        logger.info(f"[KB Delete] Generated content hash: {content_hash[:8]}... for KB {kb.uuid}")
+
+        existing_hashes = ContentHash.objects.filter(app=application, content_hash=content_hash)
+        hash_count = existing_hashes.count()
+        logger.info(f"[KB Delete] Found {hash_count} existing content hashes for KB {kb.uuid}")
+
+        if hash_count > 0:
+            for hash_obj in existing_hashes:
+                logger.info(f"[KB Delete] Deleting hash: {hash_obj.content_hash[:8]}... (id: {hash_obj.id}, content_type: {hash_obj.content_type})")
+
+        from core.services.duplicate_detector import DuplicateDetector
+        detector = DuplicateDetector()
+        success = detector.remove_content_hash(content, application)
+
+        if success:
+            logger.info(f"[KB Delete] Successfully deleted ContentHash for KB {kb.uuid} (source_type: {kb.source_type})")
+        else:
+            logger.warning(f"[KB Delete] ContentHash not found for KB {kb.uuid} (source_type: {kb.source_type})")
+
+    def _cleanup_application_if_last_kb(self, application: Application, kb_uuid: str) -> None:
+        other_kbs_count = KnowledgeBase.objects.filter(application=application).exclude(uuid=kb_uuid).exclude(source_type='crawled_url').count()
+
+        if other_kbs_count == 0:
+            remaining_hashes = ContentHash.objects.filter(app=application).count()
+            if remaining_hashes > 0:
+                ContentHash.objects.filter(app=application).delete()
+                logger.info(f"Cleaned up all remaining content hashes for application {application.uuid}")
+        else:
+            logger.info(f"Keeping other content hashes for application {application.uuid} (other KBs exist)")
+
+    def _delete_file_if_applicable(self, kb: KnowledgeBase) -> None:
         if kb.source_type == 'file' and kb.path:
             try:
                 default_storage.delete(kb.path)
             except Exception as e:
                 logger.warning(f"Failed to delete file for KB {kb.uuid}: {e}")
-
-        kb.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['post'])
     def validate_url(self, request, application_uuid=None):
@@ -267,7 +369,6 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def crawling_data(self, request, application_uuid=None, uuid=None):
-        """Get detailed crawling data for a URL knowledge base."""
         kb = self.get_object()
 
         if kb.source_type != 'url':
@@ -301,7 +402,6 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def crawling_stats(self, request, application_uuid=None, uuid=None):
-        """Get crawling statistics for a URL knowledge base."""
         kb = self.get_object()
 
         if kb.source_type != 'url':

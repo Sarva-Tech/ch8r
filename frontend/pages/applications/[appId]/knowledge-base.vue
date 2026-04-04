@@ -45,21 +45,6 @@
               <div v-else-if="kb.metadata?.content" class="text-sm text-muted-foreground line-clamp-2 w-full pr-12">
                 {{ kb.metadata.content.substring(0, 300) }}{{ kb.metadata.content.length > 300 ? '...' : '' }}
               </div>
-
-              <div v-if="kb.metadata?.crawling_enabled" class="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                <span class="flex items-center gap-1">
-                  <FileText class="w-3 h-3" />
-                  {{ kb.metadata?.crawled_pages || 0 }} pages
-                </span>
-                <span v-if="kb.metadata?.crawling_status === 'completed'" class="flex items-center gap-1">
-                  <CheckCircle class="w-3 h-3 text-green-500" />
-                  {{ formatPercentage(kb.metadata?.crawl_stats?.success_rate || 0) }} success
-                </span>
-                <span v-if="kb.metadata?.crawl_stats?.max_depth_reached" class="flex items-center gap-1">
-                  <Layers class="w-3 h-3" />
-                  Depth {{ kb.metadata.crawl_stats.max_depth_reached }}
-                </span>
-              </div>
             </div>
 
             <div
