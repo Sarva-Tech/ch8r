@@ -194,23 +194,28 @@ def ingest_kb(kb, app):
         kb.save(update_fields=['status'])
         return
 
-    if _duplicate_detector.is_duplicate(cleaned_content, app, kb.source_type):
-        logger.info(f"[ingest_kb] Skipping duplicate content for kb={kb.uuid}")
-        _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
-        kb.status = 'duplicate'
-        kb.save(update_fields=['status'])
-        return
+    if kb.source_type not in ['url', 'crawled_url']:
+        logger.info(f"[ingest_kb] Checking duplicates for non-URL content (source_type: {kb.source_type})")
 
-    should_process = _duplicate_detector.handle_semantic_duplicate(cleaned_content, app, str(kb.uuid), kb.source_type)
-    if not should_process:
-        if _duplicate_detector._was_replacement_triggered():
-            logger.info(f"[ingest_kb] KB {kb.uuid} was replaced, deleting duplicate")
-            kb.delete()
-        else:
-            logger.info(f"[ingest_kb] KB {kb.uuid} is duplicate of higher-quality content")
+        if _duplicate_detector.is_duplicate(cleaned_content, app, kb.source_type):
+            logger.info(f"[ingest_kb] Skipping duplicate content for kb={kb.uuid}")
+            _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
             kb.status = 'duplicate'
             kb.save(update_fields=['status'])
-        return
+            return
+
+        should_process = _duplicate_detector.handle_semantic_duplicate(cleaned_content, app, str(kb.uuid), kb.source_type)
+        if not should_process:
+            if _duplicate_detector._was_replacement_triggered():
+                logger.info(f"[ingest_kb] KB {kb.uuid} was replaced, deleting duplicate")
+                kb.delete()
+            else:
+                logger.info(f"[ingest_kb] KB {kb.uuid} is duplicate of higher-quality content")
+                kb.status = 'duplicate'
+                kb.save(update_fields=['status'])
+            return
+    else:
+        logger.info(f"[ingest_kb] Skipping duplicate checks for {kb.source_type} content (kb={kb.uuid}) - URL deduplication handled at crawling level")
 
     logger.info(f"[ingest_kb] Cleaned content: {len(content)} -> {len(cleaned_content)} chars for kb={kb.uuid}")
 
