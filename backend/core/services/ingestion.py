@@ -31,6 +31,43 @@ def _get_sparse_model():
 
 
 def embed_text(text_chunks: list[str], app) -> list[list[float]]:
+    from core.models.content_hash import ContentHash
+
+    cached_embeddings = []
+
+    for chunk in text_chunks:
+        chunk_hash = ContentHash.generate_content_hash(chunk)
+
+        try:
+            cached_hash = ContentHash.objects.get(
+                app=app,
+                content_hash=chunk_hash
+            )
+            if cached_hash.embedding:
+                cached_embeddings.append(cached_hash.embedding)
+                logger.debug(f"[embed_text] Using cached embedding for chunk {chunk_hash[:8]}...")
+                continue
+        except ContentHash.DoesNotExist:
+            pass
+
+        embedding = _generate_single_embedding(chunk, app)
+
+        if embedding:
+            ContentHash.objects.update_or_create(
+                app=app,
+                content_hash=chunk_hash,
+                defaults={
+                    'embedding': embedding,
+                    'content_type': 'chunk'
+                }
+            )
+            logger.debug(f"[embed_text] Cached new embedding for chunk {chunk_hash[:8]}...")
+
+        cached_embeddings.append(embedding if embedding else [])
+
+    return cached_embeddings
+
+def _generate_single_embedding(text: str, app) -> list[float]:
     ai_client_service = AIClientService()
     provider, model = ai_client_service.get_client_and_model(
         app=app,
@@ -39,14 +76,15 @@ def embed_text(text_chunks: list[str], app) -> list[list[float]]:
     )
 
     if not provider or not model:
-        logger.error("[embed_text] No embedding provider available")
-        return [[] for _ in text_chunks]
+        logger.error("[_generate_single_embedding] No embedding provider available")
+        return []
 
     try:
-        return provider.embed(model, text_chunks)
+        embeddings = provider.embed(model, [text])
+        return embeddings[0] if embeddings and embeddings[0] else []
     except Exception as e:
-        logger.error(f"[embed_text] Embedding failed: {e}")
-        return [[] for _ in text_chunks]
+        logger.error(f"[_generate_single_embedding] Embedding failed: {e}")
+        return []
 
 def embed_sparse(text_chunks: list[str]) -> list:
     sparse_embeddings = list(_get_sparse_model().embed(text_chunks))

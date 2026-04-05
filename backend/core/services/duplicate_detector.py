@@ -23,6 +23,35 @@ class DuplicateDetector:
         return ContentHash.generate_content_hash(content)
 
     def _get_embedding(self, content: str, app: Application) -> Optional[List[float]]:
+        content_hash = ContentHash.generate_content_hash(content)
+
+        try:
+            cached_hash = ContentHash.objects.get(
+                app=app,
+                content_hash=content_hash
+            )
+            if cached_hash.embedding:
+                logger.info(f"[DuplicateDetector] Using cached embedding for {content_hash[:8]}...")
+                return cached_hash.embedding
+        except ContentHash.DoesNotExist:
+            pass
+
+        embedding = self._generate_new_embedding(content, app)
+
+        if embedding:
+            ContentHash.objects.update_or_create(
+                app=app,
+                content_hash=content_hash,
+                defaults={
+                    'embedding': embedding,
+                    'content_type': 'text'
+                }
+            )
+            logger.info(f"[DuplicateDetector] Cached new embedding for {content_hash[:8]}...")
+
+        return embedding
+
+    def _generate_new_embedding(self, content: str, app: Application) -> Optional[List[float]]:
         try:
             provider, model = self._ai_client_service.get_client_and_model(
                 app=app,
