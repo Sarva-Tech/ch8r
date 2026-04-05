@@ -80,7 +80,7 @@ Before writing any frontend code, read and match the patterns in:
 - Always use semantic Tailwind color tokens (same convention as frontend)
 - Where the widget mirrors a frontend UI element, keep the UX and visual design consistent with the frontend equivalent
 - Prioritize maintainability and consistency over novelty
-- No comments unless extremely necessary. Prefer good and readable naming instead of comments.
+- No comments. Prefer good and readable naming instead of comments.
 
 ---
 

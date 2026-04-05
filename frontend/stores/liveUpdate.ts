@@ -60,9 +60,20 @@ export const useLiveUpdateStore = defineStore('liveUpdate', () => {
     return () => listeners.delete(callback)
   }
 
+  function leave() {
+    if (socket.value) {
+      socket.value.close()
+      socket.value = null
+    }
+    isConnected.value = false
+    clientId.value = null
+    listeners.clear()
+  }
+
   return {
     connect,
     subscribe,
+    leave,
     isConnected,
   }
 })
