@@ -1,8 +1,10 @@
 from fastembed import SparseTextEmbedding
 from qdrant_client.http.exceptions import UnexpectedResponse
 import logging
+from typing import Optional, List
+import uuid
 
-from core.models import IngestedChunk
+from core.models import IngestedChunk, KnowledgeBase
 from core.models.llm_model import LLMModel
 from core.llm_client import LLMClient
 from core.qdrant import qdrant, COLLECTION_NAME
@@ -173,46 +175,18 @@ def get_chunks(query_text, app, top_k=5) -> list[dict]:
     ]
 
 def ingest_kb(kb, app):
-    content = kb.metadata.get('content', '')
-    logger.info(f"[ingest_kb] Starting for kb={kb.uuid}, source_type={kb.source_type}, content_length={len(content)}")
+    logger.info(f"[ingest_kb] Starting for kb={kb.uuid}, source_type={kb.source_type}")
 
-    if not content:
-        logger.warning(f"[ingest_kb] No content found for kb={kb.uuid}, skipping")
+    content = _extract_content(kb)
+    if content is None:
         return
 
-    if not _quality_filter.should_ingest(content, kb.source_type):
-        logger.info(f"[ingest_kb] Skipping emoji-only content for kb={kb.uuid}")
-        kb.status = 'completed'
-        kb.save(update_fields=['status'])
+    cleaned_content = _clean_content(content, kb)
+    if cleaned_content is None:
         return
 
-    cleaned_content = _quality_filter.remove_emojis(content)
-
-    if not cleaned_content.strip():
-        logger.info(f"[ingest_kb] Content became empty after cleaning for kb={kb.uuid}")
-        kb.status = 'completed'
-        kb.save(update_fields=['status'])
+    if not _handle_duplicate_checks(cleaned_content, kb, app):
         return
-
-    if _duplicate_detector.is_duplicate(cleaned_content, app, kb.source_type):
-        logger.info(f"[ingest_kb] Skipping duplicate content for kb={kb.uuid}")
-        _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
-        kb.status = 'duplicate'
-        kb.save(update_fields=['status'])
-        return
-
-    should_process = _duplicate_detector.handle_semantic_duplicate(cleaned_content, app, str(kb.uuid), kb.source_type)
-    if not should_process:
-        if _duplicate_detector._was_replacement_triggered():
-            logger.info(f"[ingest_kb] KB {kb.uuid} was replaced, deleting duplicate")
-            kb.delete()
-        else:
-            logger.info(f"[ingest_kb] KB {kb.uuid} is duplicate of higher-quality content")
-            kb.status = 'duplicate'
-            kb.save(update_fields=['status'])
-        return
-
-    logger.info(f"[ingest_kb] Cleaned content: {len(content)} -> {len(cleaned_content)} chars for kb={kb.uuid}")
 
     kb.status = 'processing'
     kb.save(update_fields=['status'])
@@ -220,16 +194,88 @@ def ingest_kb(kb, app):
     chunks = chunk_text(cleaned_content)
     logger.info(f"[ingest_kb] Created {len(chunks)} chunks for kb={kb.uuid}")
 
+    embeddings = _generate_embeddings(chunks, app, kb)
+    if not embeddings:
+        logger.warning(f"[ingest_kb] No valid embeddings generated for kb={kb.uuid}")
+        kb.status = 'completed'
+        kb.save(update_fields=['status'])
+        return
+
+    _cleanup_existing_chunks(kb)
+    upserted_count = _upsert_chunks_to_qdrant(chunks, embeddings, kb, app)
+    _finalize_ingestion(kb, app, cleaned_content, upserted_count, len(chunks))
+
+def _extract_content(kb: KnowledgeBase) -> Optional[str]:
+    content = kb.metadata.get('content', '')
+
+    if not content:
+        logger.warning(f"[_extract_content] No content found for kb={kb.uuid}, skipping")
+        return None
+
+    logger.info(f"[_extract_content] Extracted {len(content)} chars for kb={kb.uuid}")
+    return content
+
+def _clean_content(content: str, kb: KnowledgeBase) -> Optional[str]:
+    if not _quality_filter.should_ingest(content, kb.source_type):
+        logger.info(f"[_clean_content] Skipping emoji-only content for kb={kb.uuid}")
+        kb.status = 'completed'
+        kb.save(update_fields=['status'])
+        return None
+
+    cleaned_content = _quality_filter.remove_emojis(content)
+
+    if not cleaned_content.strip():
+        logger.info(f"[_clean_content] Content became empty after cleaning for kb={kb.uuid}")
+        kb.status = 'completed'
+        kb.save(update_fields=['status'])
+        return None
+
+    logger.info(f"[_clean_content] Cleaned content: {len(content)} -> {len(cleaned_content)} chars for kb={kb.uuid}")
+    return cleaned_content
+
+def _handle_duplicate_checks(cleaned_content: str, kb: KnowledgeBase, app) -> bool:
+    if kb.source_type not in ['url', 'crawled_url']:
+        logger.info(f"[_handle_duplicate_checks] Checking duplicates for non-URL content (source_type: {kb.source_type})")
+
+        if _duplicate_detector.is_duplicate(cleaned_content, app, kb.source_type):
+            logger.info(f"[_handle_duplicate_checks] Skipping duplicate content for kb={kb.uuid}")
+            _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
+            kb.status = 'duplicate'
+            kb.save(update_fields=['status'])
+            return False
+
+        should_process = _duplicate_detector.handle_semantic_duplicate(cleaned_content, app, str(kb.uuid), kb.source_type)
+        if not should_process:
+            if _duplicate_detector._was_replacement_triggered():
+                logger.info(f"[_handle_duplicate_checks] KB {kb.uuid} was replaced, deleting duplicate")
+                kb.delete()
+            else:
+                logger.info(f"[_handle_duplicate_checks] KB {kb.uuid} is duplicate of higher-quality content")
+                kb.status = 'duplicate'
+                kb.save(update_fields=['status'])
+            return False
+    else:
+        logger.info(f"[_handle_duplicate_checks] Skipping duplicate checks for {kb.source_type} content (kb={kb.uuid}) - URL deduplication handled at crawling level")
+
+    return True
+
+def _generate_embeddings(chunks: list[str], app, kb: KnowledgeBase) -> Optional[tuple]:
     dense_embeddings = embed_text(text_chunks=chunks, app=app)
     non_empty = sum(1 for v in dense_embeddings if v)
-    logger.info(f"[ingest_kb] Dense embeddings: {non_empty}/{len(chunks)} non-empty for kb={kb.uuid}")
+    logger.info(f"[_generate_embeddings] Dense embeddings: {non_empty}/{len(chunks)} non-empty for kb={kb.uuid}")
+
+    if non_empty == 0:
+        return None
 
     sparse_embeddings = embed_sparse(chunks)
 
+    return (dense_embeddings, sparse_embeddings)
+
+def _cleanup_existing_chunks(kb: KnowledgeBase):
     existing_chunks = IngestedChunk.objects.filter(knowledge_base=kb)
     qdrant_ids = [str(chunk.uuid) for chunk in existing_chunks]
     existing_chunks.delete()
-    logger.info(f"[ingest_kb] Deleted {len(qdrant_ids)} existing chunks for kb={kb.uuid}")
+    logger.info(f"[_cleanup_existing_chunks] Deleted {len(qdrant_ids)} existing chunks for kb={kb.uuid}")
 
     try:
         if qdrant_ids:
@@ -238,12 +284,15 @@ def ingest_kb(kb, app):
                 points_selector=qdrant_ids
             )
     except Exception as e:
-        logger.warning(f"Failed to delete vectors from Qdrant: {e}")
+        logger.warning(f"[_cleanup_existing_chunks] Failed to delete vectors from Qdrant: {e}")
 
+def _upsert_chunks_to_qdrant(chunks: list[str], embeddings: tuple, kb: KnowledgeBase, app) -> int:
+    dense_embeddings, sparse_embeddings = embeddings
     upserted = 0
+
     for i, (chunk, dense_vector, sparse_vector) in enumerate(zip(chunks, dense_embeddings, sparse_embeddings)):
         if not dense_vector:
-            logger.warning(f"[ingest_kb] Skipping chunk {i} for kb {kb.uuid}: empty dense embedding")
+            logger.warning(f"[_upsert_chunks_to_qdrant] Skipping chunk {i} for kb {kb.uuid}: empty dense embedding")
             continue
 
         chunk_uuid = uuid.uuid4()
@@ -276,17 +325,21 @@ def ingest_kb(kb, app):
         )
         upserted += 1
 
-    if upserted > 0:
-        _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
-        logger.info(f"[ingest_kb] Stored content hash for kb={kb.uuid}")
-    else:
-        _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
-        logger.info(f"[ingest_kb] Stored content hash for kb={kb.uuid} (no chunks upserted)")
+    return upserted
 
-    logger.info(f"[ingest_kb] Upserted {upserted}/{len(chunks)} chunks to Qdrant for kb={kb.uuid}")
+def _finalize_ingestion(kb: KnowledgeBase, app, cleaned_content: str, upserted_count: int, total_chunks: int):
+    _duplicate_detector.store_content_hash(cleaned_content, app, kb.source_type)
+
+    if upserted_count > 0:
+        logger.info(f"[_finalize_ingestion] Stored content hash for kb={kb.uuid}")
+    else:
+        logger.info(f"[_finalize_ingestion] Stored content hash for kb={kb.uuid} (no chunks upserted)")
+
+    logger.info(f"[_finalize_ingestion] Upserted {upserted_count}/{total_chunks} chunks to Qdrant for kb={kb.uuid}")
+
     kb.status = 'completed'
     kb.save(update_fields=['status'])
-    logger.info(f"[ingest_kb] Finished for kb={kb.uuid}, status=completed")
+    logger.info(f"[_finalize_ingestion] Finished for kb={kb.uuid}, status=completed")
 
 def delete_vectors_from_qdrant(ids):
     if not ids:
