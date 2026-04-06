@@ -11,7 +11,7 @@ const config = useRuntimeConfig()
 useHead({
   script: [
     {
-      'src': '/widget.js',
+      'src': config.public.widgetUrl,
       'defer': true,
       'data-api-base-url': config.public.widgetApiBaseUrl,
       'data-app-uuid': config.public.widgetAppUuid,

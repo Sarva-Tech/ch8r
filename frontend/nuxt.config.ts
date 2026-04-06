@@ -47,6 +47,7 @@ export default defineNuxtConfig({
       widgetAppLogoUrl: process.env.WIDGET_APP_LOGO_URL || 'http://localhost:3000/favicon.ico',
       widgetOffsetBottom: process.env.WIDGET_OFFSET_BOTTOM || '64',
       widgetTheme: process.env.WIDGET_THEME || 'blue',
+      widgetUrl: process.env.WIDGET_URL || '/widget.js',
     },
   },
 })
