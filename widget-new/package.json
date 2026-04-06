@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build:css": "tailwindcss -i src/styles/base.css -o src/styles/widget.css --minify",
-    "build": "npm run build:css && vite build && cp dist/widget.js ../frontend/public/widget.js",
+    "build:dev": "npm run build:css && vite build && cp dist/widget.js ../frontend/public/widget.js",
+    "build": "npm run build:css && vite build",
     "dev": "vite build --watch",
     "test": "vitest run",
     "test:watch": "vitest"
