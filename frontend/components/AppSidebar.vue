@@ -18,7 +18,7 @@ import {
   ChevronLeft,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import SlideOver from '~/components/SlideOver.vue'
+import type SlideOver from '~/components/SlideOver.vue'
 import { ref, computed, onBeforeUnmount, watch, nextTick } from 'vue'
 import dayjs from 'dayjs'
 
@@ -42,12 +42,9 @@ import {
 } from '~/components/ui/dropdown-menu'
 import { Button } from '~/components/ui/button'
 import C8Dialog from '~/components/C8Dialog.vue'
-import ConfigureApp from '~/components/App/ConfigureApp.vue'
-import { useRoute } from 'vue-router'
 import NewApp from '~/components/App/NewApp.vue'
 
 const newAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
-const configureAppSlideOver = ref<InstanceType<typeof SlideOver> | null>(null)
 
 const activeMenu = ref('')
 const route = useRoute()
@@ -130,7 +127,28 @@ const selectedApplication = computed(
 )
 const chatrooms = computed(() => chatroomStore.chatrooms)
 
-const isSettingsRoute = computed(() => route.path.startsWith('/settings'))
+const isAppSettingsRoute = computed(() => route.path.match(/\/applications\/[^/]+\/settings/) !== null)
+
+const isSettingsRoute = computed(() => route.path.startsWith('/settings') || isAppSettingsRoute.value)
+
+const backToAppLink = computed(() => {
+  if (isAppSettingsRoute.value && selectedApplication.value) {
+    return `/applications/${selectedApplication.value.uuid}/knowledge-base`
+  }
+  return '/'
+})
+
+const appSettingsItems = [
+  { name: 'AI Models', tab: 'models', icon: Box },
+  { name: 'Integrations', tab: 'integrations', icon: Puzzle },
+  { name: 'Agent Configuration', tab: 'prompt', icon: Sparkles },
+  { name: 'Notifications', tab: 'notifications', icon: Bell },
+]
+
+const currentAppSettingsTab = computed(() => {
+  const tab = route.query.tab as string
+  return tab || 'models'
+})
 
 const settingsItems = [
   { name: 'AI Provider', path: '/settings/ai-providers', icon: Box, key: 'models' },
@@ -241,14 +259,45 @@ async function handleDelete() {
       <template v-if="isSettingsRoute">
         <div class="p-2">
           <NuxtLink
-            to="/"
+            :to="backToAppLink"
             class="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronLeft class="size-4" />
             Back to App
           </NuxtLink>
         </div>
-        <SidebarGroup class="p-0 m-0">
+        <SidebarGroup
+          v-if="isAppSettingsRoute"
+          class="p-0 m-0"
+        >
+          <SidebarGroupContent class="space-y-1">
+            <SidebarMenuButton
+              v-for="item in appSettingsItems"
+              :key="item.tab"
+              :class="[
+                'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 text-sm leading-tight whitespace-nowrap',
+                currentAppSettingsTab === item.tab
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold'
+                  : '',
+              ]"
+            >
+              <NuxtLink
+                :to="`/applications/${selectedApplication?.uuid}/settings?tab=${item.tab}`"
+                class="flex w-full items-center space-x-2"
+              >
+                <component
+                  :is="item.icon"
+                  class="size-4"
+                />
+                <div>{{ item.name }}</div>
+              </NuxtLink>
+            </SidebarMenuButton>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup
+          v-if="!isAppSettingsRoute"
+          class="p-0 m-0"
+        >
           <SidebarGroupContent class="space-y-1">
             <SidebarMenuButton
               v-for="item in settingsItems"
@@ -332,7 +381,7 @@ async function handleDelete() {
             class="w-8 h-8"
             variant="ghost"
             size="icon"
-            @click="configureAppSlideOver?.openSlide()"
+            @click="navigateTo(`/applications/${selectedApplication?.uuid}/settings`)"
           >
             <Settings2 class="w-4 h-4" />
           </Button>
@@ -495,16 +544,6 @@ async function handleDelete() {
     ref="newAppSlideOver"
     @success="setActiveMenu"
   />
-  <SlideOver
-    ref="configureAppSlideOver"
-    title="Configure Application"
-    submit-text="Configure"
-    cancel-text="Cancel"
-    width="!w-lg !max-w-xl"
-    :show-submit="false"
-  >
-    <ConfigureApp />
-  </SlideOver>
   <C8Dialog
     v-model:open="showDeleteDialog"
     title="Delete Conversation"

@@ -5,42 +5,22 @@
   >
     Loading...
   </div>
-  <div
-    v-else
-    class="space-y-5"
-  >
-    <Tabs
-      default-value="models"
-      class="w-full"
-    >
-      <TabsList class="grid w-full grid-cols-4">
-        <TabsTrigger
-          v-for="tab in tabs"
-          :key="tab.value"
-          :value="tab.value"
-        >
-          {{ tab.label }}
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent
-        v-for="tab in tabs"
-        :key="tab.value"
-        :value="tab.value"
-      >
-        <component :is="getTabComponent(tab.value)" />
-      </TabsContent>
-    </Tabs>
+  <div v-else>
+    <component :is="getTabComponent(activeTab)" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import { toast } from 'vue-sonner'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import AppAIModelsConfiguration from '~/components/App/AppAIModelsConfiguration.vue'
 import AppIntegrationsConfiguration from '~/components/App/AppIntegrationsConfiguration.vue'
 import AppNotificationConfiguration from '~/components/App/AppNotificationConfiguration.vue'
 import AppPromptConfiguration from '~/components/App/AppPromptConfiguration.vue'
+
+const props = defineProps<{
+  activeTab: string
+}>()
 
 const getTabComponent = (tab: string) => {
   switch (tab) {
@@ -53,16 +33,9 @@ const getTabComponent = (tab: string) => {
     case 'prompt':
       return AppPromptConfiguration
     default:
-      return null
+      return AppAIModelsConfiguration
   }
 }
-
-const tabs = [
-  { label: 'AI Models', value: 'models' },
-  { label: 'Integrations', value: 'integrations' },
-  { label: 'Agent Configuration', value: 'prompt' },
-  { label: 'Notifications', value: 'notifications' },
-]
 
 const appConfigStore = useAppConfigurationStore()
 const AIProviderModelsStore = useAIProviderModelsStore()
