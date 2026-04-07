@@ -53,6 +53,18 @@
           </DropdownMenuItem>
         </template>
       </C8Item>
+
+      <C8Empty
+        v-if="!loading && notificationProfiles.length === 0"
+        :icon="BellOff"
+        title="No notification profiles configured"
+        description="Add a notification profile to receive alerts via Slack, Discord, or Email."
+      >
+        <template #action>
+          <NewNotificationProfile />
+        </template>
+      </C8Empty>
+
       <UpdateNotificationProfile ref="updateNotificationProfileSlide" />
       <C8Dialog
         v-model:open="isDeleteDialogOpen"
@@ -81,7 +93,8 @@ import { ItemDescription } from '~/components/ui/item'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useNotificationProviderIcon } from '~/composables/useNotificationProviderIcon'
 import { toast } from 'vue-sonner'
-import { PencilLine, Trash, Bell, Mail } from 'lucide-vue-next'
+import { PencilLine, Trash, Bell, Mail, BellOff } from 'lucide-vue-next'
+import C8Empty from '~/components/C8Empty.vue'
 
 const updateNotificationProfileSlide = ref<InstanceType<typeof UpdateNotificationProfile> | null>(null)
 const isDeleteDialogOpen = ref(false)

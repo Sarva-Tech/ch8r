@@ -80,12 +80,16 @@
         </template>
       </div>
 
-      <div
+      <C8Empty
         v-if="integrationStore.integrations.length === 0"
-        class="text-center py-12 text-sm text-muted-foreground"
+        :icon="Plug"
+        title="No integrations connected"
+        description="Connect GitHub or other integrations to enable version control and project management features."
       >
-        No integrations connected yet. Click "Add New Integration" to get started.
-      </div>
+        <template #action>
+          <ConnectIntegration @connected="integrationStore.load()" />
+        </template>
+      </C8Empty>
 
       <UpdateIntegration ref="updateSlide" />
 
@@ -116,7 +120,8 @@ import C8Dialog from '~/components/C8Dialog.vue'
 import C8Item from '~/components/C8Item.vue'
 import { ItemDescription } from '~/components/ui/item'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { PencilLine, Trash, Link, ServerCog, FolderGit, SquareKanban } from 'lucide-vue-next'
+import { PencilLine, Trash, Link, ServerCog, FolderGit, SquareKanban, Plug } from 'lucide-vue-next'
+import C8Empty from '~/components/C8Empty.vue'
 import { toast } from 'vue-sonner'
 import type { Integration } from '~/stores/integration'
 

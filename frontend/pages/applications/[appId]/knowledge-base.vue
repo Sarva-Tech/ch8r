@@ -96,7 +96,15 @@
         v-if="!isLoading && kbs.length === 0"
         class="text-center py-8"
       >
-        Your knowledge base is empty.
+        <C8Empty
+            :icon="Layers"
+            title="Your knowledge base is empty"
+            description="Add files, URLs, or text..."
+        >
+          <template #action>
+            <NewKnowledgeBase :application="{ uuid: String($route.params.appId) }" />
+          </template>
+        </C8Empty>
       </div>
 
       <C8Dialog

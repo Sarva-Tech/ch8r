@@ -1,25 +1,44 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import { Eye, EyeOff, LogIn } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import C8Button from '@/components/C8Button.vue'
+import { z } from 'zod'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm, Field as FormField } from 'vee-validate'
+import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useHttpClient } from '~/composables/useHttpClient'
 
 const config = useRuntimeConfig()
 
+const schema = z.object({
+  email: z
+    .string()
+    .nonempty({ message: 'Email is required' })
+    .email({ message: 'Enter a valid email address' }),
+  password: z
+    .string()
+    .nonempty({ message: 'Password is required' }),
+})
+
+const form = useForm({
+  validationSchema: toTypedSchema(schema),
+  initialValues: {
+    email: '',
+    password: '',
+  },
+})
+
+const { handleSubmit, meta, isSubmitting } = form
+
 definePageMeta({
   layout: 'public',
   middleware: ['redirect-if-authenticated'],
 })
 
-const email = ref('')
-const password = ref('')
 const showPassword = ref(false)
-const loading = ref(false)
 const openInactiveAccountDialog = ref(false)
 const dialogMessage = ref('')
 const showResendOption = ref(false)
@@ -27,17 +46,16 @@ const userEmail = ref('')
 const resendLoading = ref(false)
 
 
-const handleLogin = async () => {
-  if (loading.value) return
-  loading.value = true
+const disabled = computed(() => !meta.value.valid)
 
+const onSubmit = handleSubmit(async (values) => {
   const userStore = useUserStore()
   const { httpPost } = useHttpClient()
 
   try {
     const response = await httpPost<{ token: string; user_id: number; username: string }>(
       '/login/',
-      { username: email.value, password: password.value },
+      { username: values.email, password: values.password },
       false
     )
 
@@ -63,7 +81,7 @@ const handleLogin = async () => {
 
     if (err.status === 403) {
       if (err?.errors?.is_verified === false) {
-        userEmail.value = email.value
+        userEmail.value = values.email
         dialogMessage.value = err?.errors?.error || 'Your account is not verified. Please check your email for verification instructions.'
         showResendOption.value = true
         openInactiveAccountDialog.value = true
@@ -81,10 +99,8 @@ const handleLogin = async () => {
         'Login failed. Please try again.'
       toast.error(message)
     }
-  } finally {
-    loading.value = false
   }
-}
+})
 
 const handleResendVerification = async () => {
   if (resendLoading.value) return
@@ -168,67 +184,66 @@ onMounted(async () => {
         </CardHeader>
 
         <CardContent class="space-y-6">
-          <form class="space-y-4" @submit.prevent="handleLogin">
-            <div class="space-y-2">
-              <Label for="email" class="text-sm font-medium">
-                Email
-              </Label>
-              <Input
-                id="email"
-                v-model="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                autofocus
-                class="w-full"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <div class="flex justify-between items-center">
-                <Label for="password" class="text-sm font-medium">
-                  Password
-                </Label>
-                <a
-                  href="/forgot-password"
-                  class="text-sm text-primary font-medium hover:underline"
-                >
-                  Forgot Password?
-                </a>
-              </div>
-              <div class="relative">
-                <Input
-                  id="password"
-                  v-model="password"
-                  :type="showPassword ? 'text' : 'password'"
-                  required
-                  placeholder="••••••••"
-                  class="w-full pr-10"
-                  @keyup.enter="handleLogin"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  @click="showPassword = !showPassword"
-                >
-                  <component
-                    :is="showPassword ? EyeOff : Eye"
-                    class="h-4 w-4 text-muted-foreground"
+          <form class="space-y-4" @submit.prevent="onSubmit">
+            <FormField v-slot="{ field }" name="email">
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="field"
+                    type="email"
+                    placeholder="you@example.com"
+                    autofocus
                   />
-                </Button>
-              </div>
-            </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
-            <Button
+            <FormField v-slot="{ field }" name="password">
+              <FormItem>
+                <div class="flex justify-between items-center">
+                  <FormLabel>Password</FormLabel>
+                  <a
+                    href="/forgot-password"
+                    class="text-sm text-primary font-medium hover:underline"
+                  >
+                    Forgot Password?
+                  </a>
+                </div>
+                <FormControl>
+                  <div class="relative">
+                    <Input
+                      v-bind="field"
+                      :type="showPassword ? 'text' : 'password'"
+                      placeholder="password"
+                      class="w-full pr-10"
+                    />
+                    <C8Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      @click="showPassword = !showPassword"
+                    >
+                      <component
+                        :is="showPassword ? EyeOff : Eye"
+                        class="h-4 w-4 text-muted-foreground"
+                      />
+                    </C8Button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+
+            <C8Button
               type="submit"
               class="w-full"
-              :disabled="loading"
-            >
-              <span v-if="loading">Signing in...</span>
-              <span v-else>Sign In</span>
-            </Button>
+              :loading="isSubmitting"
+              :disabled="disabled"
+              label="Sign In"
+            />
           </form>
         </CardContent>
 
@@ -251,30 +266,26 @@ onMounted(async () => {
         </DialogHeader>
         <DialogFooter v-if="showResendOption">
           <div class="flex flex-col gap-2 w-full">
-            <Button
+            <C8Button
               @click="handleResendVerification"
-              :disabled="resendLoading"
+              :loading="resendLoading"
               class="w-full"
-            >
-              <span v-if="resendLoading">Sending...</span>
-              <span v-else>Resend Verification Email</span>
-            </Button>
-            <Button
+              :label="resendLoading ? 'Sending...' : 'Resend Verification Email'"
+            />
+            <C8Button
               variant="outline"
               @click="openInactiveAccountDialog = false"
               class="w-full"
-            >
-              Cancel
-            </Button>
+              label="Cancel"
+            />
           </div>
         </DialogFooter>
         <DialogFooter v-else>
-          <Button
+          <C8Button
             @click="openInactiveAccountDialog = false"
             class="w-full"
-          >
-            OK
-          </Button>
+            label="OK"
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

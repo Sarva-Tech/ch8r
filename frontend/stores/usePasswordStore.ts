@@ -21,7 +21,6 @@ export const usePasswordStore = defineStore('password', {
       }
     },
 
-    // Confirm password reset using token
     async confirmPasswordReset(token: string, values: PasswordResetValues) {
       const { httpPost } = useHttpClient()
       try {

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import C8Button from '@/components/C8Button.vue'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-vue-next'
 import { Field as FormField, useForm } from 'vee-validate'
-import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
-import RequiredLabel from '~/components/RequiredLabel.vue'
+import { FormControl, FormItem, FormMessage } from '~/components/ui/form'
+import C8Label from '@/components/C8Label.vue'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import { toast } from 'vue-sonner'
@@ -72,67 +72,64 @@ const disabled = computed(() => !meta.value.valid)
         <p class="text-sm sm:text-base">Enter your new password below.</p>
       </header>
 
-      <!-- ✅ Vee-validate form -->
       <form class="space-y-4" @submit.prevent="onSubmit">
-        <!-- New Password -->
         <FormField v-slot="{ field }" name="password">
-          <FormItem class="relative">
-            <FormLabel class="flex items-center gap-1">
-              New Password <RequiredLabel />
-            </FormLabel>
+          <FormItem>
+            <C8Label message="New Password" required />
             <FormControl>
-              <Input
-                v-bind="field"
-                :type="showPassword ? 'text' : 'password'"
-                placeholder="••••••••"
-                class="pr-10"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-9 focus:outline-none"
-                @click="showPassword = !showPassword"
-              >
-                <component :is="showPassword ? Eye : EyeOff" class="w-5 h-5" />
-              </button>
+              <div class="relative">
+                <Input
+                  v-bind="field"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="password"
+                  class="w-full pr-10"
+                />
+                <C8Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  @click="showPassword = !showPassword"
+                >
+                  <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4 text-muted-foreground" />
+                </C8Button>
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>
         </FormField>
-
-        <!-- Confirm Password -->
         <FormField v-slot="{ field }" name="confirm_password">
-          <FormItem class="relative">
-            <FormLabel class="flex items-center gap-1">
-              Confirm Password <RequiredLabel />
-            </FormLabel>
+          <FormItem>
+            <C8Label message="Confirm Password" required />
             <FormControl>
-              <Input
-                v-bind="field"
-                :type="showConfirmPassword ? 'text' : 'password'"
-                placeholder="••••••••"
-                class="pr-10"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-9 focus:outline-none"
-                @click="showConfirmPassword = !showConfirmPassword"
-              >
-                <component :is="showConfirmPassword ? Eye : EyeOff" class="w-5 h-5" />
-              </button>
+              <div class="relative">
+                <Input
+                  v-bind="field"
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  placeholder="password"
+                  class="w-full pr-10"
+                />
+                <C8Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  @click="showConfirmPassword = !showConfirmPassword"
+                >
+                  <component :is="showConfirmPassword ? EyeOff : Eye" class="h-4 w-4 text-muted-foreground" />
+                </C8Button>
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>
         </FormField>
-
-        <!-- Submit Button -->
-        <Button
+        <C8Button
           type="submit"
           class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md"
-          :disabled="disabled || isSubmitting"
+          :disabled="disabled"
           :loading="isSubmitting"
-        >
-          Change Password
-        </Button>
+          label="Change Password"
+        />
       </form>
     </div>
   </div>
