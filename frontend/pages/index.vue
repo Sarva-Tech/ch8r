@@ -14,4 +14,7 @@ onMounted(async () => {
   }
 })
 </script>
-<template><div> Loading... </div></template>
+
+<template>
+  <div> Loading... </div>
+</template>

@@ -1,6 +1,6 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  const userStore = useUserStore();
-  if(!userStore.getToken?.value) return
+  const userStore = useUserStore()
+  if (!userStore.getToken?.value) return
 
   const excludedRoutes = ['/settings', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email']
   const isExcludedRoute = excludedRoutes.some(route => to.path.startsWith(route))
@@ -21,7 +21,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const apps = appStore.applications
 
   const appToBeSelected = appId
-    ? apps.find((app) => app?.uuid === appId)
+    ? apps.find(app => app?.uuid === appId)
     : apps[0]
 
   if (appToBeSelected) {

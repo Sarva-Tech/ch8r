@@ -6,7 +6,7 @@ export function useNavigation() {
 
     const selectedApp = appStore.selectedApplication
     if (selectedApp) {
-      await navigateTo(`/applications/${selectedApp.uuid}/knowledge-base`)
+      await navigateTo(`/applications/${selectedApp.uuid}/messages/new_chat`)
     }
   }
 
@@ -19,7 +19,6 @@ export function useNavigation() {
       await navigateTo(`/applications/${app.uuid}/messages/${chatroom.uuid}`)
     }
   }
-
 
   return { selectAppAndNavigate, selectChatroomAndNavigate }
 }

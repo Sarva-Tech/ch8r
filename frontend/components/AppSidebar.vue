@@ -133,7 +133,7 @@ const isSettingsRoute = computed(() => route.path.startsWith('/settings') || isA
 
 const backToAppLink = computed(() => {
   if (isAppSettingsRoute.value && selectedApplication.value) {
-    return `/applications/${selectedApplication.value.uuid}/knowledge-base`
+    return `/applications/${selectedApplication.value.uuid}/messages/new_chat`
   }
   return '/'
 })
