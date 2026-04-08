@@ -44,6 +44,12 @@
           :item="item"
           @remove="kbDraft.remove"
         />
+        <C8Empty
+          v-if="kbDraft.items.length === 0 && !isVersionControl"
+          :icon="Inbox"
+          title="No items selected"
+          description="Add files, URLs, or text to upload to your knowledge base."
+        />
       </div>
     </div>
 
@@ -66,11 +72,12 @@ import TextInput from '~/components/KnowledgeBase/TextInput.vue'
 import VersionControlInput from '~/components/KnowledgeBase/VersionControlInput.vue'
 import SlideOver from '~/components/SlideOver.vue'
 import Draft from '~/components/KnowledgeBase/Draft.vue'
+import C8Empty from '~/components/C8Empty.vue'
 import { KB_SOURCES } from '~/lib/consts'
 import { computed, ref, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import RequiredLabel from '~/components/RequiredLabel.vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus, Inbox } from 'lucide-vue-next'
 import type { VCIngestionRequest } from '~/types/version_control'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 import C8APIAlert from '~/components/C8APIAlert.vue'

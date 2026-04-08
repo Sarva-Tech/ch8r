@@ -61,6 +61,18 @@
           </DropdownMenuItem>
         </template>
       </C8Item>
+
+      <C8Empty
+        v-if="!loading && AIProviders.length === 0"
+        :icon="Cpu"
+        title="No AI providers configured"
+        description="Add a new AI provider"
+      >
+        <template #action>
+          <NewAIProvider />
+        </template>
+      </C8Empty>
+
       <UpdateAIProvider ref="updateAIProviderSlide" />
       <C8Dialog
         v-model:open="isDeleteDialogOpen"
@@ -89,7 +101,8 @@ import C8Item from '~/components/C8Item.vue'
 import { ItemDescription } from '~/components/ui/item'
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
-import { PencilLine, Trash, Globe, Server, FileBox } from 'lucide-vue-next'
+import { PencilLine, Trash, Globe, Server, FileBox, Cpu } from 'lucide-vue-next'
+import C8Empty from '~/components/C8Empty.vue'
 
 const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 const isDeleteDialogOpen = ref(false)
