@@ -83,8 +83,8 @@
       <C8Empty
         v-if="integrationStore.integrations.length === 0"
         :icon="Plug"
-        title="No integrations connected"
-        description="Connect GitHub or other integrations to enable version control and project management features."
+        title="No integrations configured"
+        description="Add a new Integration"
       >
         <template #action>
           <ConnectIntegration @connected="integrationStore.load()" />

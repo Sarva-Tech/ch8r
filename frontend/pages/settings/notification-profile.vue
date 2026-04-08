@@ -58,7 +58,7 @@
         v-if="!loading && notificationProfiles.length === 0"
         :icon="BellOff"
         title="No notification profiles configured"
-        description="Add a notification profile to receive alerts via Slack, Discord, or Email."
+        description="Add a new notification profile"
       >
         <template #action>
           <NewNotificationProfile />

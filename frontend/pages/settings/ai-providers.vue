@@ -66,7 +66,7 @@
         v-if="!loading && AIProviders.length === 0"
         :icon="Cpu"
         title="No AI providers configured"
-        description="Add an AI provider to enable AI-powered features."
+        description="Add a new AI provider"
       >
         <template #action>
           <NewAIProvider />
