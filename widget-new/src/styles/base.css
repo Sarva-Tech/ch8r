@@ -207,3 +207,21 @@ pre code {
 :host(.dark) .hljs-meta           { color: #8b949e; }
 :host(.dark) .hljs-meta-keyword   { color: #ff7b72; font-weight: bold; }
 :host(.dark) .hljs-meta-string    { color: #a5d6ff; }
+
+/* Chat panel responsive positioning */
+.ch8r-panel {
+  /* Mobile: full screen, ignore positioning variables */
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+@media (min-width: 640px) {
+  .ch8r-panel {
+    top: var(--panel-top, auto) !important;
+    bottom: var(--panel-bottom, auto) !important;
+    left: var(--panel-left, auto) !important;
+    right: var(--panel-right, auto) !important;
+  }
+}
