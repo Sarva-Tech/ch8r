@@ -1,10 +1,20 @@
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle>{{ config.title }}</CardTitle>
-      <CardDescription>{{ config.description }}</CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-4">
+  <component
+    :is="props.inline ? 'div' : Card"
+    :class="props.inline ? 'space-y-4' : ''"
+  >
+    <component
+      :is="props.inline ? 'div' : CardHeader"
+      :class="props.inline ? 'space-y-1' : ''"
+    >
+      <component :is="props.inline ? 'p' : CardTitle" :class="props.inline ? 'text-sm font-semibold' : ''">
+        {{ config.title }}
+      </component>
+      <component :is="props.inline ? 'p' : CardDescription" :class="props.inline ? 'text-xs text-muted-foreground' : ''">
+        {{ config.description }}
+      </component>
+    </component>
+    <component :is="props.inline ? 'div' : CardContent" class="space-y-4">
       <form
         class="space-y-4"
         @submit.prevent="save"
@@ -155,8 +165,8 @@
           </div>
         </template>
       </form>
-    </CardContent>
-  </Card>
+    </component>
+  </component>
 
   <SlideOver
     :title="customToolForm.editingUuid ? 'Edit Custom Tool' : 'Add Custom Tool'"
@@ -290,7 +300,7 @@ interface IntegrationConfig {
   successMessage: string
 }
 
-const props = defineProps<{ config: IntegrationConfig }>()
+const props = defineProps<{ config: IntegrationConfig, inline?: boolean }>()
 
 const appStore = useApplicationsStore()
 const integrationStore = useIntegrationStore()
