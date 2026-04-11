@@ -1,35 +1,43 @@
 <template>
-  <C8Loader
-    v-if="isLoading"
-    container-class="flex justify-center items-center"
-  />
-  <C8Empty
-    v-else-if="integrations.length === 0"
-    title="No integrations connected"
-    description="Connect an integration to configure version control and project management tools"
-  >
-    <template #action>
-      <ConnectIntegration />
-    </template>
-  </C8Empty>
-  <div
-    v-else
-    class="space-y-4"
-  >
-    <div class="flex justify-end">
-      <ConnectIntegration />
+  <div class="flex flex-col min-h-0 flex-1 p-4 pb-[120px] overflow-y-auto">
+    <div class="w-full space-y-2">
+      <C8Loader
+        v-if="loading"
+        container-class="flex justify-center items-center py-12"
+      />
+
+      <C8Empty
+        v-else-if="integrations.length === 0"
+        :icon="Plug"
+        title="No integrations connected"
+        description="Connect an integration to configure version control and project management tools"
+      >
+        <template #action>
+          <ConnectIntegration />
+        </template>
+      </C8Empty>
+
+      <template v-else>
+        <div class="flex gap-2 items-center py-4">
+          <div class="ml-auto">
+            <ConnectIntegration />
+          </div>
+        </div>
+
+        <ConfigureIntegration
+          v-for="type in INTEGRATION_TYPES"
+          :key="type.id"
+          :config="type"
+        />
+      </template>
     </div>
-    <ConfigureIntegration
-      v-for="type in INTEGRATION_TYPES"
-      :key="type.id"
-      :config="type"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import { Plug } from 'lucide-vue-next'
 import ConfigureIntegration from './ConfigureIntegration.vue'
 import ConnectIntegration from '~/components/Integration/ConnectIntegration.vue'
 import C8Empty from '~/components/C8Empty.vue'
@@ -39,10 +47,10 @@ import { useIntegrationStore } from '~/stores/integration'
 const integrationStore = useIntegrationStore()
 const { integrations } = storeToRefs(integrationStore)
 
-const isLoading = ref(false)
+const loading = ref(false)
 
 onMounted(async () => {
-  isLoading.value = true
+  loading.value = true
   try {
     await integrationStore.load()
   }
@@ -50,7 +58,7 @@ onMounted(async () => {
     console.error(e)
   }
   finally {
-    isLoading.value = false
+    loading.value = false
   }
 })
 

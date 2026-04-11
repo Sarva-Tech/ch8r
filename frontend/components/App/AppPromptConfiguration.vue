@@ -1,115 +1,158 @@
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle>Agent Configuration</CardTitle>
-      <CardDescription>
-        Define your agent's persona, tone, and response style.
-      </CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-4">
-      <!-- Persona + Task -->
-      <div class="grid grid-cols-2 gap-4">
-        <div class="space-y-2">
-          <Label for="role">Persona</Label>
-          <Select v-model="role">
-            <SelectTrigger id="role" class="!w-full">
-              <SelectValue placeholder="Select persona" />
-            </SelectTrigger>
-            <SelectContent class="w-[var(--reka-select-trigger-width)]">
-              <SelectItem v-for="preset in ROLE_PRESETS" :key="preset.value" :value="preset.value">
-                {{ preset.label }}
-              </SelectItem>
-              <SelectItem value="custom">Custom...</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            v-if="role === 'custom'"
-            v-model="customRole"
-            maxlength="200"
-            placeholder="Enter a custom persona..."
+  <div class="flex flex-col min-h-0 flex-1 p-4 pb-[120px] overflow-y-auto">
+    <div class="w-full space-y-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Agent Configuration</CardTitle>
+          <CardDescription>
+            Define your agent's persona, tone, and response style.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Label for="role">Persona</Label>
+              <Select v-model="role">
+                <SelectTrigger
+                  id="role"
+                  class="!w-full"
+                >
+                  <SelectValue placeholder="Select persona" />
+                </SelectTrigger>
+                <SelectContent class="w-[var(--reka-select-trigger-width)]">
+                  <SelectItem
+                    v-for="preset in ROLE_PRESETS"
+                    :key="preset.value"
+                    :value="preset.value"
+                  >
+                    {{ preset.label }}
+                  </SelectItem>
+                  <SelectItem value="custom">
+                    Custom...
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                v-if="role === 'custom'"
+                v-model="customRole"
+                maxlength="200"
+                placeholder="Enter a custom persona..."
+              />
+            </div>
+
+            <div class="space-y-2">
+              <Label for="behavior">Task</Label>
+              <Select v-model="behavior">
+                <SelectTrigger
+                  id="behavior"
+                  class="!w-full"
+                >
+                  <SelectValue placeholder="Select task" />
+                </SelectTrigger>
+                <SelectContent class="w-[var(--reka-select-trigger-width)]">
+                  <SelectItem
+                    v-for="preset in BEHAVIOR_PRESETS"
+                    :key="preset.value"
+                    :value="preset.value"
+                  >
+                    {{ preset.label }}
+                  </SelectItem>
+                  <SelectItem value="custom">
+                    Custom...
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                v-if="behavior === 'custom'"
+                v-model="customBehavior"
+                maxlength="500"
+                placeholder="Enter a custom task..."
+              />
+            </div>
+          </div>
+
+          <!-- Tone + Response Style -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <Label for="tone">Tone</Label>
+              <Select v-model="tone">
+                <SelectTrigger
+                  id="tone"
+                  class="!w-full"
+                >
+                  <SelectValue placeholder="Select tone" />
+                </SelectTrigger>
+                <SelectContent class="w-[var(--reka-select-trigger-width)]">
+                  <SelectItem value="professional">
+                    Professional
+                  </SelectItem>
+                  <SelectItem value="friendly">
+                    Friendly
+                  </SelectItem>
+                  <SelectItem value="formal">
+                    Formal
+                  </SelectItem>
+                  <SelectItem value="casual">
+                    Casual
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div class="space-y-2">
+              <Label for="response-style">Response Style</Label>
+              <Select v-model="responseStyle">
+                <SelectTrigger
+                  id="response-style"
+                  class="!w-full"
+                >
+                  <SelectValue placeholder="Select response style" />
+                </SelectTrigger>
+                <SelectContent class="w-[var(--reka-select-trigger-width)]">
+                  <SelectItem value="balanced">
+                    Balanced
+                  </SelectItem>
+                  <SelectItem value="concise">
+                    Concise
+                  </SelectItem>
+                  <SelectItem value="detailed">
+                    Detailed
+                  </SelectItem>
+                  <SelectItem value="step_by_step">
+                    Step-by-Step
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <!-- Custom Instructions -->
+          <div class="space-y-2">
+            <Label for="custom-instructions">Custom Instructions</Label>
+            <Textarea
+              id="custom-instructions"
+              v-model="customInstructions"
+              maxlength="1000"
+              placeholder="Enter any custom instructions..."
+              class="resize-none"
+              rows="4"
+            />
+            <p class="text-muted-foreground text-xs text-right">
+              {{ customInstructions.length }} / 1000
+            </p>
+          </div>
+        </CardContent>
+        <CardFooter class="flex justify-end">
+          <C8Button
+            label="Save"
+            :disabled="processing"
+            :loading="processing"
+            @click="save"
           />
-        </div>
-
-        <div class="space-y-2">
-          <Label for="behavior">Task</Label>
-          <Select v-model="behavior">
-            <SelectTrigger id="behavior" class="!w-full">
-              <SelectValue placeholder="Select task" />
-            </SelectTrigger>
-            <SelectContent class="w-[var(--reka-select-trigger-width)]">
-              <SelectItem v-for="preset in BEHAVIOR_PRESETS" :key="preset.value" :value="preset.value">
-                {{ preset.label }}
-              </SelectItem>
-              <SelectItem value="custom">Custom...</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            v-if="behavior === 'custom'"
-            v-model="customBehavior"
-            maxlength="500"
-            placeholder="Enter a custom task..."
-          />
-        </div>
-      </div>
-
-      <!-- Tone + Response Style -->
-      <div class="grid grid-cols-2 gap-4">
-        <div class="space-y-2">
-          <Label for="tone">Tone</Label>
-          <Select v-model="tone">
-            <SelectTrigger id="tone" class="!w-full">
-              <SelectValue placeholder="Select tone" />
-            </SelectTrigger>
-            <SelectContent class="w-[var(--reka-select-trigger-width)]">
-              <SelectItem value="professional">Professional</SelectItem>
-              <SelectItem value="friendly">Friendly</SelectItem>
-              <SelectItem value="formal">Formal</SelectItem>
-              <SelectItem value="casual">Casual</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div class="space-y-2">
-          <Label for="response-style">Response Style</Label>
-          <Select v-model="responseStyle">
-            <SelectTrigger id="response-style" class="!w-full">
-              <SelectValue placeholder="Select response style" />
-            </SelectTrigger>
-            <SelectContent class="w-[var(--reka-select-trigger-width)]">
-              <SelectItem value="balanced">Balanced</SelectItem>
-              <SelectItem value="concise">Concise</SelectItem>
-              <SelectItem value="detailed">Detailed</SelectItem>
-              <SelectItem value="step_by_step">Step-by-Step</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <!-- Custom Instructions -->
-      <div class="space-y-2">
-        <Label for="custom-instructions">Custom Instructions</Label>
-        <Textarea
-          id="custom-instructions"
-          v-model="customInstructions"
-          maxlength="1000"
-          placeholder="Enter any custom instructions..."
-          class="resize-none"
-          rows="4"
-        />
-        <p class="text-muted-foreground text-xs text-right">
-          {{ customInstructions.length }} / 1000
-        </p>
-      </div>
-    </CardContent>
-    <CardFooter class="flex justify-end">
-      <C8Button
-        label="Save"
-        :disabled="processing"
-        :loading="processing"
-        @click="save"
-      />
-    </CardFooter>
-  </Card>
+        </CardFooter>
+      </Card>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -135,7 +178,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { PromptConfig } from '~/stores/configureApp'
 
-const ROLE_PRESETS: { label: string; value: string }[] = [
+const ROLE_PRESETS: { label: string, value: string }[] = [
   { label: 'Customer Service Assistant', value: 'customer service assistant' },
   { label: 'Project Manager', value: 'project manager' },
   { label: 'Technical Support Specialist', value: 'technical support specialist' },
@@ -143,7 +186,7 @@ const ROLE_PRESETS: { label: string; value: string }[] = [
   { label: 'HR Assistant', value: 'HR assistant' },
 ]
 
-const BEHAVIOR_PRESETS: { label: string; value: string }[] = [
+const BEHAVIOR_PRESETS: { label: string, value: string }[] = [
   { label: 'Answer User Questions Politely and Competently', value: 'answer user questions politely and competently' },
   { label: 'Manage Project Tasks and Timelines', value: 'manage project tasks and timelines' },
   { label: 'Troubleshoot Technical Issues Step by Step', value: 'troubleshoot technical issues step by step' },
