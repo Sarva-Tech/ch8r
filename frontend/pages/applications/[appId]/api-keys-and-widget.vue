@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import NewApiKey from '~/components/ApiKey/NewApiKey.vue'
 import type { APIKeyItem } from '~/stores/apiKey'
-import { CircleAlert, Key, Calendar, Shield, Trash, Code2, Copy, Check, ChevronDown, Zap, Settings2, Globe, RefreshCw, Monitor } from 'lucide-vue-next'
+import { CircleAlert, Key, Calendar, Shield, Trash, Code2, Copy, Check, ChevronDown, Zap, Settings2, Globe, RefreshCw, Monitor, Power } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '~/components/ui/alert'
 import Clipboard from '~/components/Clipboard.vue'
@@ -17,6 +17,8 @@ import { Input } from '~/components/ui/input'
 import { Badge } from '~/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
+import C8Empty from '~/components/C8Empty.vue'
+import { Button } from '~/components/ui/button'
 
 const enablingWidget = ref(false)
 const isDeleteDialogOpen = ref(false)
@@ -237,7 +239,10 @@ async function toggleWidget() {
         <h2 class="text-lg font-semibold">
           API Keys
         </h2>
-        <div class="ml-auto">
+        <div
+          v-if="apiKeys.length > 0"
+          class="ml-auto"
+        >
           <NewApiKey />
         </div>
       </div>
@@ -270,12 +275,16 @@ async function toggleWidget() {
       >
         Loading...
       </div>
-      <div
+      <C8Empty
         v-if="!loading && apiKeys.length === 0"
-        class="text-center py-8 text-muted-foreground text-sm"
+        :icon="Key"
+        title="No API keys yet"
+        description="Create an API key to authenticate your API requests."
       >
-        No API keys yet.
-      </div>
+        <template #action>
+          <NewApiKey />
+        </template>
+      </C8Empty>
 
       <div
         v-if="!loading && apiKeys.length > 0"
@@ -339,10 +348,13 @@ async function toggleWidget() {
               Embed the ch8r chat widget on any website with a single script tag.
             </CardDescription>
           </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="text-sm text-muted-foreground">{{ widgetEnabled ? 'Enabled' : 'Disabled' }}</span>
+          <div
+            v-if="widgetEnabled"
+            class="flex items-center gap-2 shrink-0"
+          >
+            <span class="text-sm text-muted-foreground">Enabled</span>
             <Switch
-              :model-value="widgetEnabled"
+              :model-value="true"
               :disabled="enablingWidget"
               @click="toggleWidget"
             />
@@ -578,12 +590,28 @@ async function toggleWidget() {
       </CardContent>
 
       <CardContent v-else-if="!widgetEnabled">
-        <div class="flex flex-col items-center justify-center py-8 text-center gap-2">
-          <Globe class="w-8 h-8 text-muted-foreground/40" />
-          <p class="text-sm text-muted-foreground">
-            Enable widget integration to get your embed code and live preview.
-          </p>
-        </div>
+        <C8Empty
+          :icon="Globe"
+          title="Widget integration is disabled"
+          description="Enable widget integration to get your embed code and live preview."
+        >
+          <template #action>
+            <Button
+              :disabled="enablingWidget"
+              @click="toggleWidget"
+            >
+              <Power
+                v-if="!enablingWidget"
+                class="w-4 h-4 mr-2"
+              />
+              <RefreshCw
+                v-else
+                class="w-4 h-4 mr-2 animate-spin"
+              />
+              {{ enablingWidget ? 'Enabling...' : 'Enable Widget' }}
+            </Button>
+          </template>
+        </C8Empty>
       </CardContent>
     </Card>
   </div>
