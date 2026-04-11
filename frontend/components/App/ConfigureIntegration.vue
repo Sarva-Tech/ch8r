@@ -7,14 +7,23 @@
       :is="props.inline ? 'div' : CardHeader"
       :class="props.inline ? 'space-y-1' : ''"
     >
-      <component :is="props.inline ? 'p' : CardTitle" :class="props.inline ? 'text-sm font-semibold' : ''">
+      <component
+        :is="props.inline ? 'p' : CardTitle"
+        :class="props.inline ? 'text-sm font-semibold' : ''"
+      >
         {{ config.title }}
       </component>
-      <component :is="props.inline ? 'p' : CardDescription" :class="props.inline ? 'text-xs text-muted-foreground' : ''">
+      <component
+        :is="props.inline ? 'p' : CardDescription"
+        :class="props.inline ? 'text-xs text-muted-foreground' : ''"
+      >
         {{ config.description }}
       </component>
     </component>
-    <component :is="props.inline ? 'div' : CardContent" class="space-y-4">
+    <component
+      :is="props.inline ? 'div' : CardContent"
+      class="space-y-4"
+    >
       <form
         class="space-y-4"
         @submit.prevent="save"
@@ -260,7 +269,6 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import {
-  FormDescription,
   FormItem,
   FormLabel,
   FormMessage,
@@ -308,7 +316,6 @@ const appIntegrationStore = useAppIntegrationStore()
 const { apiError, handleError, clearError } = useApiErrorHandling()
 const { httpGet, httpPatch, httpPost, httpDelete } = useHttpClient()
 
-// --- Tools state ---
 const existingAppIntegration = ref<{ uuid: string } | null>(null)
 const tools = ref<Tool[]>([])
 const toolsLoading = ref(false)
@@ -316,7 +323,6 @@ const toolsLoading = ref(false)
 const builtInTools = computed(() => tools.value.filter(t => t.is_builtin))
 const customTools = computed(() => tools.value.filter(t => !t.is_builtin))
 
-// --- Custom tool form ---
 const slideOverOpen = ref(false)
 const customToolForm = ref({
   editingUuid: null as string | null,
@@ -328,7 +334,6 @@ const customToolForm = ref({
   fieldErrors: { title: '', description: '', urlSchema: '' },
 })
 
-// --- Delete confirm ---
 const deleteConfirm = ref({ open: false, toolUuid: '' })
 
 const repoOptions = ref<{ value: string, label: string }[]>([])
@@ -383,7 +388,6 @@ watch(() => form.values.integration_uuid, (uuid) => {
   }
 }, { immediate: false })
 
-// Keep form repo field in sync with combobox
 watch(selectedRepo, (val) => {
   form.setFieldValue('repo', val[0] ?? '')
 })
@@ -404,7 +408,6 @@ onMounted(async () => {
       const existing = appIntegrationStore.appIntegrations.find(
         ai => ai.integration_type === props.config.id,
       )
-      console.log(`[${props.config.id}] existing AppIntegration:`, existing?.uuid ?? 'none')
       if (existing) {
         existingAppIntegration.value = existing
         form.setFieldValue('integration_uuid', existing.integration.uuid)
@@ -432,7 +435,6 @@ const save = form.handleSubmit(async (values) => {
       ? Object.fromEntries(builtInTools.value.map(t => [t.tool_id, { is_enabled: t.is_enabled }]))
       : undefined
 
-    // Include custom tool enable/disable state (by uuid, for existing custom tools)
     const customToolsPayload = customTools.value
       .filter(t => t.uuid !== null)
       .map(t => ({ uuid: t.uuid, is_enabled: t.is_enabled }))
@@ -452,7 +454,6 @@ const save = form.handleSubmit(async (values) => {
   }
 })
 
-// --- Tools logic ---
 async function loadTools(appUuid: string, integrationUuid: string) {
   toolsLoading.value = true
   try {

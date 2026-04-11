@@ -163,7 +163,7 @@
           <C8Empty
             :icon="Layers"
             title="Your knowledge base is empty"
-            description="Add files, URLs, or text..."
+            description="Add files, URLs, texts or connect version control"
           >
             <template #action>
               <NewKnowledgeBase :application="{ uuid: String($route.params.appId) }" />

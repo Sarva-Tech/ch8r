@@ -1,5 +1,21 @@
 <template>
-  <div class="space-y-4">
+  <C8Loader
+    v-if="isLoading"
+    container-class="flex justify-center items-center"
+  />
+  <C8Empty
+    v-else-if="integrations.length === 0"
+    title="No integrations connected"
+    description="Connect an integration to configure version control and project management tools"
+  >
+    <template #action>
+      <ConnectIntegration />
+    </template>
+  </C8Empty>
+  <div
+    v-else
+    class="space-y-4"
+  >
     <div class="flex justify-end">
       <ConnectIntegration />
     </div>
@@ -12,8 +28,31 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import ConfigureIntegration from './ConfigureIntegration.vue'
 import ConnectIntegration from '~/components/Integration/ConnectIntegration.vue'
+import C8Empty from '~/components/C8Empty.vue'
+import C8Loader from '~/components/C8Loader.vue'
+import { useIntegrationStore } from '~/stores/integration'
+
+const integrationStore = useIntegrationStore()
+const { integrations } = storeToRefs(integrationStore)
+
+const isLoading = ref(false)
+
+onMounted(async () => {
+  isLoading.value = true
+  try {
+    await integrationStore.load()
+  }
+  catch (e: unknown) {
+    console.error(e)
+  }
+  finally {
+    isLoading.value = false
+  }
+})
 
 const INTEGRATION_TYPES = [
   {

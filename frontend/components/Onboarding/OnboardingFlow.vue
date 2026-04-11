@@ -33,7 +33,7 @@
           Configure a Text Model
         </h2>
         <p class="text-sm text-muted-foreground">
-          Now select the AI model that will generate responses in this chatroom.
+          Now select the AI model that will generate responses in this application.
         </p>
       </div>
       <ConfigureAIModels :config="textModelConfig" />

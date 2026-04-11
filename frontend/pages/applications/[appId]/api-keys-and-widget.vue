@@ -279,7 +279,7 @@ async function toggleWidget() {
         v-if="!loading && apiKeys.length === 0"
         :icon="Key"
         title="No API keys yet"
-        description="Create an API key to authenticate your API requests."
+        description="Create an API key to authenticate your API requests"
       >
         <template #action>
           <NewApiKey />
@@ -332,7 +332,9 @@ async function toggleWidget() {
         @confirm="confirmDelete"
       >
         <template #description>
-          Are you sure you want to delete <span class="font-bold">{{ apiKeyToDelete?.name }}</span>?
+          <div>
+            Are you sure you want to delete <span class="font-bold">{{ apiKeyToDelete?.name }}</span>?
+          </div>
         </template>
       </C8Dialog>
     </div>
@@ -593,7 +595,7 @@ async function toggleWidget() {
         <C8Empty
           :icon="Globe"
           title="Widget integration is disabled"
-          description="Enable widget integration to get your embed code and live preview."
+          description="Enable widget integration to get your embed code and live preview"
         >
           <template #action>
             <Button

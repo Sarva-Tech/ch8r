@@ -1,77 +1,84 @@
 <template>
   <div class="flex flex-col min-h-0 flex-1 p-4 pt-[72px] pb-[120px] overflow-y-auto">
     <div class="w-full space-y-2">
-      <div class="flex gap-2 items-center py-4">
-        <div class="ml-auto">
-          <NewAIProvider />
-        </div>
-      </div>
-
-      <C8Item
-        v-for="(AIProvider, index) in AIProviders"
-        :key="index"
-        :icon="getAIProviderIcon(AIProvider.provider)"
-        container-class="w-full"
-        item-class="w-full"
-      >
-        <template #title>
-          {{ AIProvider.name }}
-        </template>
-        <template #details>
-          <ItemDescription>
-            <div class="inline-flex space-x-3">
-              <div
-                class="flex items-center space-x-1"
-              >
-                <Server class="w-4 h-4" />
-                <div> {{ providerDisplayName(AIProvider.provider) }} </div>
-              </div>
-              <div
-                v-if="AIProvider.metadata?.base_url"
-                class="flex items-center space-x-1"
-              >
-                <Globe class="w-4 h-4" />
-                <div>{{ AIProvider.metadata?.base_url }} </div>
-              </div>
-              <div
-                class="flex items-center space-x-1"
-              >
-                <FileBox class="w-4 h-4" />
-                <div> {{ AIProvider.modelsCount }} </div>
-              </div>
-            </div>
-          </ItemDescription>
-        </template>
-
-        <template #dropdown>
-          <DropdownMenuItem
-            :disabled="!canManageProvider(AIProvider)"
-            @click="updateAIProvider(AIProvider)"
-          >
-            <PencilLine class="h-4 w-4" />
-            Update
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            class="text-destructive"
-            :disabled="!canManageProvider(AIProvider)"
-            @click="openDeleteDialog(AIProvider)"
-          >
-            <Trash class="h-4 w-4 text-destructive" />
-            Delete
-          </DropdownMenuItem>
-        </template>
-      </C8Item>
+      <C8Loader
+        v-if="loading"
+        container-class="flex justify-center items-center py-12"
+      />
 
       <C8Empty
-        v-if="!loading && AIProviders.length === 0"
+        v-else-if="AIProviders.length === 0"
         :icon="Cpu"
         title="No AI providers configured"
-        description="Add a new AI provider"
+        description="Add a new AI provider to get started"
       >
         <template #action>
           <NewAIProvider />
         </template>
       </C8Empty>
+
+      <template v-else>
+        <div class="flex gap-2 items-center py-4">
+          <div class="ml-auto">
+            <NewAIProvider />
+          </div>
+        </div>
+
+        <C8Item
+          v-for="(AIProvider, index) in AIProviders"
+          :key="index"
+          :icon="getAIProviderIcon(AIProvider.provider)"
+          container-class="w-full"
+          item-class="w-full"
+        >
+          <template #title>
+            {{ AIProvider.name }}
+          </template>
+          <template #details>
+            <ItemDescription>
+              <div class="inline-flex space-x-3">
+                <div
+                  class="flex items-center space-x-1"
+                >
+                  <Server class="w-4 h-4" />
+                  <div> {{ providerDisplayName(AIProvider.provider) }} </div>
+                </div>
+                <div
+                  v-if="AIProvider.metadata?.base_url"
+                  class="flex items-center space-x-1"
+                >
+                  <Globe class="w-4 h-4" />
+                  <div>{{ AIProvider.metadata?.base_url }} </div>
+                </div>
+                <div
+                  class="flex items-center space-x-1"
+                >
+                  <FileBox class="w-4 h-4" />
+                  <div> {{ AIProvider.modelsCount }} </div>
+                </div>
+              </div>
+            </ItemDescription>
+          </template>
+
+          <template #dropdown>
+            <DropdownMenuItem
+              :disabled="!canManageProvider(AIProvider)"
+              @click="updateAIProvider(AIProvider)"
+            >
+              <PencilLine class="h-4 w-4" />
+              Update
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="text-destructive"
+              :disabled="!canManageProvider(AIProvider)"
+              @click="openDeleteDialog(AIProvider)"
+            >
+              <Trash class="h-4 w-4 text-destructive" />
+              Delete
+            </DropdownMenuItem>
+          </template>
+        </C8Item>
+      </template>
 
       <UpdateAIProvider ref="updateAIProviderSlide" />
       <C8Dialog
@@ -103,6 +110,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
 import { PencilLine, Trash, Globe, Server, FileBox, Cpu } from 'lucide-vue-next'
 import C8Empty from '~/components/C8Empty.vue'
+import C8Loader from '~/components/C8Loader.vue'
 
 const updateAIProviderSlide = ref<InstanceType<typeof UpdateAIProvider> | null>(null)
 const isDeleteDialogOpen = ref(false)

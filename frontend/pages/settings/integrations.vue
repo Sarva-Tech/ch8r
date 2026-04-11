@@ -1,95 +1,97 @@
 <template>
   <div class="flex flex-col min-h-0 flex-1 p-4 pt-[72px] pb-[120px] overflow-y-auto">
     <div class="w-full space-y-2">
-      <div class="flex gap-2 items-center py-4">
-        <div class="ml-auto">
-          <ConnectIntegration @connected="integrationStore.load()" />
-        </div>
-      </div>
-
-      <div
-        v-for="supported in integrationStore.supportedIntegrations"
-        :key="supported.id"
-        class="space-y-2"
-      >
-        <template v-if="getConnectedAll(supported.id).length > 0">
-          <C8Item
-            v-for="integration in getConnectedAll(supported.id)"
-            :key="integration.uuid"
-            :icon="getIntegrationIcon(supported.id)"
-            container-class="w-full"
-            item-class="w-full"
-          >
-            <template #title>
-              <div class="flex items-center gap-2">
-                {{ integration.name }}
-              </div>
-            </template>
-            <template #details>
-              <ItemDescription>
-                <div class="inline-flex space-x-3">
-                  <div class="flex items-center space-x-1">
-                    <ServerCog class="w-4 h-4" />
-                    <div>{{ integrationProviderDetails(integration.provider) }}</div>
-                  </div>
-                  <div
-                    v-if="integration.supported_types?.includes('version_control')"
-                    class="flex items-center space-x-1"
-                  >
-                    <FolderGit class="w-4 h-4" />
-                    <div>Version Control</div>
-                  </div>
-                  <div
-                    v-if="integration.supported_types?.includes('project_management')"
-                    class="flex items-center space-x-1"
-                  >
-                    <SquareKanban class="w-4 h-4" />
-                    <div>Project Management</div>
-                  </div>
-                  <div
-                    v-if="(integration.metadata as any)?.account?.login"
-                    class="flex items-center space-x-1"
-                  >
-                    <Link class="w-4 h-4" />
-                    <a
-                      :href="(integration.metadata as any).account.html_url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="hover:underline"
-                    >
-                      {{ (integration.metadata as any).account.login }}
-                    </a>
-                  </div>
-                </div>
-              </ItemDescription>
-            </template>
-            <template #dropdown>
-              <DropdownMenuItem @click="updateIntegration(integration)">
-                <PencilLine class="h-4 w-4" />
-                Update
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                class="text-destructive"
-                @click="openDeleteDialog(integration)"
-              >
-                <Trash class="h-4 w-4 text-destructive" />
-                Delete
-              </DropdownMenuItem>
-            </template>
-          </C8Item>
-        </template>
-      </div>
-
       <C8Empty
         v-if="integrationStore.integrations.length === 0"
         :icon="Plug"
         title="No integrations configured"
-        description="Add a new Integration"
+        description="Add a new integration to connect with external services"
       >
         <template #action>
           <ConnectIntegration @connected="integrationStore.load()" />
         </template>
       </C8Empty>
+
+      <template v-else>
+        <div class="flex gap-2 items-center py-4">
+          <div class="ml-auto">
+            <ConnectIntegration @connected="integrationStore.load()" />
+          </div>
+        </div>
+
+        <div
+          v-for="supported in integrationStore.supportedIntegrations"
+          :key="supported.id"
+          class="space-y-2"
+        >
+          <template v-if="getConnectedAll(supported.id).length > 0">
+            <C8Item
+              v-for="integration in getConnectedAll(supported.id)"
+              :key="integration.uuid"
+              :icon="getIntegrationIcon(supported.id)"
+              container-class="w-full"
+              item-class="w-full"
+            >
+              <template #title>
+                <div class="flex items-center gap-2">
+                  {{ integration.name }}
+                </div>
+              </template>
+              <template #details>
+                <ItemDescription>
+                  <div class="inline-flex space-x-3">
+                    <div class="flex items-center space-x-1">
+                      <ServerCog class="w-4 h-4" />
+                      <div>{{ integrationProviderDetails(integration.provider) }}</div>
+                    </div>
+                    <div
+                      v-if="integration.supported_types?.includes('version_control')"
+                      class="flex items-center space-x-1"
+                    >
+                      <FolderGit class="w-4 h-4" />
+                      <div>Version Control</div>
+                    </div>
+                    <div
+                      v-if="integration.supported_types?.includes('project_management')"
+                      class="flex items-center space-x-1"
+                    >
+                      <SquareKanban class="w-4 h-4" />
+                      <div>Project Management</div>
+                    </div>
+                    <div
+                      v-if="(integration.metadata as any)?.account?.login"
+                      class="flex items-center space-x-1"
+                    >
+                      <Link class="w-4 h-4" />
+                      <a
+                        :href="(integration.metadata as any).account.html_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="hover:underline"
+                      >
+                        {{ (integration.metadata as any).account.login }}
+                      </a>
+                    </div>
+                  </div>
+                </ItemDescription>
+              </template>
+              <template #dropdown>
+                <DropdownMenuItem @click="updateIntegration(integration)">
+                  <PencilLine class="h-4 w-4" />
+                  Update
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  class="text-destructive"
+                  @click="openDeleteDialog(integration)"
+                >
+                  <Trash class="h-4 w-4 text-destructive" />
+                  Delete
+                </DropdownMenuItem>
+              </template>
+            </C8Item>
+          </template>
+        </div>
+      </template>
 
       <UpdateIntegration ref="updateSlide" />
 
@@ -101,9 +103,11 @@
         @confirm="confirmDelete"
       >
         <template #description>
-          Are you sure you want to delete
-          <span class="font-bold">{{ integrationToDelete?.name }}</span>?
-          Any applications using this integration will lose access.
+          <div>
+            Are you sure you want to delete
+            <span class="font-bold">{{ integrationToDelete?.name }}</span>?
+            Any applications using this integration will lose access.
+          </div>
         </template>
       </C8Dialog>
     </div>

@@ -1,69 +1,76 @@
 <template>
   <div class="flex flex-col min-h-0 flex-1 p-4 pt-[72px] pb-[120px] overflow-y-auto">
     <div class="w-full space-y-2">
-      <div class="flex gap-2 items-center py-4">
-        <div class="ml-auto">
-          <NewNotificationProfile />
-        </div>
-      </div>
-
-      <C8Item
-        v-for="(profile, index) in notificationProfiles"
-        :key="index"
-        :icon="getNotificationIcon(profile.type)"
-        container-class="w-full"
-        item-class="w-full"
-      >
-        <template #title>
-          {{ profile.name }}
-        </template>
-        <template #details>
-          <ItemDescription>
-            <div class="inline-flex space-x-3">
-              <div class="flex items-center space-x-1">
-                <Bell class="w-4 h-4" />
-                <div>{{ typeDisplayName(profile.type) }}</div>
-              </div>
-              <div
-                v-if="profile.config?.email"
-                class="flex items-center space-x-1"
-              >
-                <Mail class="w-4 h-4" />
-                <div>{{ profile.config.email }}</div>
-              </div>
-            </div>
-          </ItemDescription>
-        </template>
-
-        <template #dropdown>
-          <DropdownMenuItem
-            :disabled="!canManageProfile(profile)"
-            @click="updateProfile(profile)"
-          >
-            <PencilLine class="h-4 w-4" />
-            Update
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            class="text-destructive"
-            :disabled="!canManageProfile(profile)"
-            @click="openDeleteDialog(profile)"
-          >
-            <Trash class="h-4 w-4 text-destructive" />
-            Delete
-          </DropdownMenuItem>
-        </template>
-      </C8Item>
+      <C8Loader
+        v-if="loading"
+        container-class="flex justify-center items-center py-12"
+      />
 
       <C8Empty
-        v-if="!loading && notificationProfiles.length === 0"
+        v-else-if="notificationProfiles.length === 0"
         :icon="BellOff"
         title="No notification profiles configured"
-        description="Add a new notification profile"
+        description="Add a new notification profile to receive alerts"
       >
         <template #action>
           <NewNotificationProfile />
         </template>
       </C8Empty>
+
+      <template v-else>
+        <div class="flex gap-2 items-center py-4">
+          <div class="ml-auto">
+            <NewNotificationProfile />
+          </div>
+        </div>
+
+        <C8Item
+          v-for="(profile, index) in notificationProfiles"
+          :key="index"
+          :icon="getNotificationIcon(profile.type)"
+          container-class="w-full"
+          item-class="w-full"
+        >
+          <template #title>
+            {{ profile.name }}
+          </template>
+          <template #details>
+            <ItemDescription>
+              <div class="inline-flex space-x-3">
+                <div class="flex items-center space-x-1">
+                  <Bell class="w-4 h-4" />
+                  <div>{{ typeDisplayName(profile.type) }}</div>
+                </div>
+                <div
+                  v-if="profile.config?.email"
+                  class="flex items-center space-x-1"
+                >
+                  <Mail class="w-4 h-4" />
+                  <div>{{ profile.config.email }}</div>
+                </div>
+              </div>
+            </ItemDescription>
+          </template>
+
+          <template #dropdown>
+            <DropdownMenuItem
+              :disabled="!canManageProfile(profile)"
+              @click="updateProfile(profile)"
+            >
+              <PencilLine class="h-4 w-4" />
+              Update
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              class="text-destructive"
+              :disabled="!canManageProfile(profile)"
+              @click="openDeleteDialog(profile)"
+            >
+              <Trash class="h-4 w-4 text-destructive" />
+              Delete
+            </DropdownMenuItem>
+          </template>
+        </C8Item>
+      </template>
 
       <UpdateNotificationProfile ref="updateNotificationProfileSlide" />
       <C8Dialog
@@ -95,6 +102,7 @@ import { useNotificationProviderIcon } from '~/composables/useNotificationProvid
 import { toast } from 'vue-sonner'
 import { PencilLine, Trash, Bell, Mail, BellOff } from 'lucide-vue-next'
 import C8Empty from '~/components/C8Empty.vue'
+import C8Loader from '~/components/C8Loader.vue'
 
 const updateNotificationProfileSlide = ref<InstanceType<typeof UpdateNotificationProfile> | null>(null)
 const isDeleteDialogOpen = ref(false)

@@ -1,9 +1,25 @@
 <template>
-  <div class="space-y-4">
+  <C8Loader
+    v-if="initialLoading"
+    container-class="flex justify-center items-center"
+  />
+  <C8Empty
+    v-else-if="notifications.length === 0"
+    title="No notification profiles"
+    description="Add a notification profile to receive alerts during escalation"
+  >
+    <template #action>
+      <NewNotificationProfile @created="onNotificationCreated" />
+    </template>
+  </C8Empty>
+  <div
+    v-else
+    class="space-y-4"
+  >
     <div class="flex justify-end">
       <NewNotificationProfile @created="onNotificationCreated" />
     </div>
-    <Card v-if="notifications.length > 0">
+    <Card>
       <CardHeader>
         <CardTitle>Notifications</CardTitle>
         <CardDescription>
@@ -30,12 +46,6 @@
         />
       </CardFooter>
     </Card>
-    <p
-      v-else
-      class="text-sm text-muted-foreground"
-    >
-      No notification profiles yet. Add one above to get started.
-    </p>
   </div>
 </template>
 
@@ -51,6 +61,8 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import NewNotificationProfile from '~/components/notification/NewNotificationProfile.vue'
+import C8Empty from '~/components/C8Empty.vue'
+import C8Loader from '~/components/C8Loader.vue'
 import type { SelectOption } from '~/lib/types'
 
 const appConfigStore = useAppConfigurationStore()
