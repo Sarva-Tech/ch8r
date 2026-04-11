@@ -423,128 +423,211 @@
           @submit.prevent="send"
         >
           <C8APIAlert :api-error="apiError" />
-          <div class="flex gap-2">
-            <div class="w-50 min-w-0 max-w-50 overflow-hidden">
-              <FormField
-                v-slot="{ componentField }"
-                name="ai_provider"
-              >
-                <FormItem class="space-y-0">
-                  <C8Select
-                    :options="configuredAIProviderOptions"
-                    placeholder="Select AI provider"
-                    container-class="space-y-0"
-                    trigger-class="h-9 w-full"
-                    v-bind="componentField"
-                  />
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-            </div>
-
-            <div class="w-50 min-w-0 max-w-50 overflow-hidden">
-              <FormField
-                v-slot="{ componentField }"
-                name="models"
-              >
-                <FormItem class="space-y-0">
-                  <div class="w-full overflow-hidden">
-                    <C8Combobox
-                      v-bind="componentField"
-                      :options="getProviderModels(selectedProviderId)"
-                      :multiple="false"
-                    />
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              </FormField>
-            </div>
-          </div>
           <FormField
             v-slot="{ componentField }"
             name="message"
           >
             <FormItem class="space-y-0">
-              <Textarea
-                v-bind="componentField"
-                placeholder="Message"
-                class="max-h-40 overflow-y-auto resize-none"
-                @keydown="handleMessageKeydown"
-              />
+              <InputGroup>
+                <InputGroupAddon align="block-start">
+                  <Popover>
+                    <PopoverTrigger as-child>
+                      <InputGroupButton
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <component
+                          :is="configuredAIProviderOptions.find(p => p.value === form.values.ai_provider)?.icon"
+                          v-if="form.values.ai_provider"
+                          class="size-4"
+                        />
+                        <span class="ml-1 truncate max-w-32">{{ configuredAIProviderOptions.find(p => p.value === form.values.ai_provider)?.label || 'Select Provider' }}</span>
+                      </InputGroupButton>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      class="p-0 w-64"
+                      align="start"
+                    >
+                      <Command>
+                        <CommandInput placeholder="Search provider..." />
+                        <CommandList class="max-h-48 overflow-y-auto">
+                          <CommandEmpty>No provider found</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              v-for="provider in configuredAIProviderOptions"
+                              :key="provider.value"
+                              :value="provider.value"
+                              @select="form.setFieldValue('ai_provider', provider.value)"
+                            >
+                              <component
+                                :is="provider.icon"
+                                class="size-4 mr-2"
+                              />
+                              {{ provider.label }}
+                            </CommandItem>
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Popover v-model:open="modelPopoverOpen">
+                    <PopoverTrigger as-child>
+                      <InputGroupButton
+                        variant="ghost"
+                        size="sm"
+                        :disabled="!form.values.ai_provider"
+                      >
+                        <Cpu class="size-4" />
+                        <span class="ml-1 truncate max-w-32">{{ getSelectedModelLabel() }}</span>
+                      </InputGroupButton>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      class="p-0 w-64"
+                      align="start"
+                      @escape-key-down="modelPopoverOpen = false"
+                    >
+                      <Command
+                        @keydown.enter.prevent="handleModelCustomEntry"
+                      >
+                        <CommandInput
+                          v-model="modelCommandSearch"
+                          placeholder="Search or type model..."
+                        />
+                        <CommandList class="max-h-48 overflow-y-auto">
+                          <CommandGroup>
+                            <CommandItem
+                              v-for="model in getProviderModels(selectedProviderId)"
+                              :key="model.value"
+                              :value="model.label"
+                              @select="selectModel(model.value)"
+                            >
+                              {{ model.label }}
+                            </CommandItem>
+                          </CommandGroup>
+                          <CommandEmpty />
+                        </CommandList>
+                        <div
+                          v-if="modelCommandSearch"
+                          class="px-2 py-1.5 border-t"
+                        >
+                          <button
+                            class="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left"
+                            @click="setCustomModel(modelCommandSearch)"
+                          >
+                            Use "{{ modelCommandSearch }}"
+                          </button>
+                        </div>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </InputGroupAddon>
+
+                <InputGroupTextarea
+                  v-bind="componentField"
+                  placeholder="Message"
+                  class="max-h-40 overflow-y-auto resize-none"
+                  @keydown="handleMessageKeydown"
+                />
+                <InputGroupAddon align="block-end">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <InputGroupButton
+                        variant="ghost"
+                        size="sm"
+                      >
+                        <Eye
+                          v-if="!form.values.is_internal"
+                          class="size-4"
+                        />
+                        <EyeOff
+                          v-else
+                          class="size-4"
+                        />
+                        <span class="ml-1">{{ form.values.is_internal ? 'Internal' : 'Public' }}</span>
+                      </InputGroupButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="top"
+                      align="start"
+                    >
+                      <DropdownMenuItem @click="form.setFieldValue('is_internal', false)">
+                        <Eye class="size-4 mr-2" />
+                        Public - Visible to all participants
+                      </DropdownMenuItem>
+                      <DropdownMenuItem @click="form.setFieldValue('is_internal', true)">
+                        <EyeOff class="size-4 mr-2" />
+                        Internal - Team only
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <InputGroupButton
+                        variant="ghost"
+                        size="sm"
+                        :disabled="!form.values.is_internal"
+                      >
+                        <Bot
+                          v-if="form.values.ai_mode"
+                          class="size-4"
+                        />
+                        <UserRound
+                          v-else
+                          class="size-4"
+                        />
+                        <span class="ml-1">{{ form.values.ai_mode ? 'AI On' : 'AI Off' }}</span>
+                      </InputGroupButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      side="top"
+                      align="start"
+                    >
+                      <DropdownMenuItem
+                        :disabled="!form.values.is_internal"
+                        @click="form.setFieldValue('ai_mode', false)"
+                      >
+                        <UserRound class="size-4 mr-2" />
+                        Manual - No AI response
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        :disabled="!form.values.is_internal"
+                        @click="form.setFieldValue('ai_mode', true)"
+                      >
+                        <Bot class="size-4 mr-2" />
+                        Auto - Trigger AI response
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <div class="flex items-center gap-2 ml-auto">
+                    <InputGroupText class="hidden md:block text-xs text-muted-foreground truncate max-w-32">
+                      {{ form.values.is_internal ? (form.values.ai_mode ? 'AI will respond' : 'No AI response') : 'Public message' }}
+                    </InputGroupText>
+
+                    <InputGroupButton
+                      variant="default"
+                      size="icon-sm"
+                      :disabled="disabled || isSubmitting"
+                      @click="send"
+                    >
+                      <Loader2
+                        v-if="isSubmitting"
+                        class="size-4 animate-spin"
+                      />
+                      <ArrowUpIcon
+                        v-else
+                        class="size-4"
+                      />
+                      <span class="sr-only">Send</span>
+                    </InputGroupButton>
+                  </div>
+                </InputGroupAddon>
+              </InputGroup>
               <FormMessage />
             </FormItem>
           </FormField>
-          <div class="flex gap-4 items-end">
-            <div class="flex gap-4 items-end flex-1 justify-between">
-              <div class="flex items-center gap-4">
-                <FormField
-                  v-slot="{ componentField, handleChange }"
-                  type="checkbox"
-                  name="is_internal"
-                  :unchecked-value="false"
-                >
-                  <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                    <Switch
-                      id="isInternal"
-                      v-bind="componentField"
-                      @update:checked="handleChange"
-                    />
-                    <div class="grid gap-0.5">
-                      <Label for="isInternal">Visibility</Label>
-                      <p class="text-muted-foreground text-xs">
-                        {{ form.values.is_internal ? 'Internal note (team only)' : 'Visible to all participants' }}
-                      </p>
-                    </div>
-                  </FormItem>
-                </FormField>
-
-                <FormField
-                  v-slot="{ componentField, handleChange }"
-                  type="checkbox"
-                  name="ai_mode"
-                  :unchecked-value="false"
-                >
-                  <FormItem class="space-y-0 flex items-center space-x-2 self-center">
-                    <Switch
-                      id="aiMode"
-                      v-bind="componentField"
-                      :disabled="!form.values.is_internal"
-                      @update:checked="handleChange"
-                    />
-                    <div class="grid gap-0.5">
-                      <Label for="aiMode">AI Behavior</Label>
-                      <p
-                        v-if="form.values.is_internal"
-                        class="text-muted-foreground text-xs"
-                      >
-                        {{ form.values.ai_mode ? 'This will trigger an AI response' : 'This won\'t trigger an AI response' }}
-                      </p>
-                      <p
-                        v-else
-                        class="text-muted-foreground text-xs"
-                      >
-                        AI replies are disabled for public messages
-                      </p>
-                    </div>
-                  </FormItem>
-                </FormField>
-              </div>
-
-              <C8Button
-                label="Send"
-                :disabled="disabled"
-                :loading="isSubmitting"
-                type="submit"
-                @click="send"
-              >
-                <template #icon-right>
-                  <KbdGroup>
-                    <Kbd>Ctrl + ⏎</Kbd>
-                  </KbdGroup>
-                </template>
-              </C8Button>
-            </div>
-          </div>
         </form>
       </div>
     </div>
@@ -557,26 +640,49 @@ import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
 import 'highlight.js/styles/github.css'
 
-import { Kbd, KbdGroup } from '@/components/ui/kbd'
-import { Textarea } from '@/components/ui/textarea'
 import { NEW_CHAT, NEW_MESSAGE_UPDATE } from '~/lib/consts'
 import { useSidebar } from '@/components/ui/sidebar'
 import { SIDEBAR_WIDTH } from '~/components/ui/sidebar/utils'
-import { Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle, ArrowRight, ArrowLeft, BarChart2, Cpu, BookOpen } from 'lucide-vue-next'
+import {
+  Bot, UserRound, Globe, Hammer, Timer, CheckCircle2, XCircle,
+  ArrowRight, ArrowLeft, BarChart2, Cpu, BookOpen, ArrowUp as ArrowUpIcon,
+  Eye, EyeOff, Loader2
+} from 'lucide-vue-next'
+import {
+  InputGroup,
+  InputGroupTextarea,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupText
+} from '@/components/ui/input-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
-import C8Select from '~/components/C8Select.vue'
 import { FormField, FormItem, FormMessage } from '~/components/ui/form'
-import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
-import C8Combobox from '~/components/C8Combobox.vue'
-import C8Button from '~/components/C8Button.vue'
 import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 import { useNotificationProviderIcon } from '~/composables/useNotificationProviderIcon'
+import { useAIProviderIcon } from '~/composables/useAIProviderIcon'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 interface ToolCall {
   name: string
@@ -840,6 +946,37 @@ const getProviderModels = (providerId: number) => {
       value: modelName,
     }
   })
+}
+
+const modelPopoverOpen = ref(false)
+const modelCommandSearch = ref('')
+
+const selectModel = (value: string) => {
+  form.setFieldValue('models', [value])
+  modelPopoverOpen.value = false
+  modelCommandSearch.value = ''
+}
+
+const setCustomModel = (value: string) => {
+  if (!value.trim()) return
+  form.setFieldValue('models', [value.trim()])
+  modelPopoverOpen.value = false
+  modelCommandSearch.value = ''
+}
+
+const handleModelCustomEntry = () => {
+  if (modelCommandSearch.value.trim()) {
+    setCustomModel(modelCommandSearch.value.trim())
+  }
+}
+
+const getSelectedModelLabel = () => {
+  const modelValue = form.values.models?.[0]
+  if (!modelValue) return 'Select Model'
+  const fromList = getProviderModels(selectedProviderId.value).find(m => m.value === modelValue)?.label
+  if (fromList) return fromList
+  // For custom models, show the value (stripping 'models/' prefix if present)
+  return modelValue.startsWith('models/') ? modelValue.substring(7) : modelValue
 }
 
 const send = form.handleSubmit(async (values) => {
