@@ -116,6 +116,8 @@ import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 import { Plus, Sparkles } from 'lucide-vue-next'
 import { useUniqueName } from '~/composables/useUniqueName'
 
+const emit = defineEmits<{ created: [] }>()
+
 const newNotificationSlide = ref<InstanceType<typeof SlideOver> | null>(null)
 const notificationProfileStore = useNotificationProfileStore()
 const { apiError, handleError, clearError } = useApiErrorHandling()
@@ -218,6 +220,7 @@ const createNotificationProfile = form.handleSubmit(async (values) => {
     await notificationProfileStore.create(payload)
     newNotificationSlide.value?.closeSlide()
     toast.success('Notification profile created')
+    emit('created')
   }
   catch (error: unknown) {
     handleError(error, form)

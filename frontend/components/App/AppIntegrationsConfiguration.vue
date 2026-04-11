@@ -1,5 +1,8 @@
 <template>
   <div class="space-y-4">
+    <div class="flex justify-end">
+      <ConnectIntegration />
+    </div>
     <ConfigureIntegration
       v-for="type in INTEGRATION_TYPES"
       :key="type.id"
@@ -10,6 +13,7 @@
 
 <script setup lang="ts">
 import ConfigureIntegration from './ConfigureIntegration.vue'
+import ConnectIntegration from '~/components/Integration/ConnectIntegration.vue'
 
 const INTEGRATION_TYPES = [
   {

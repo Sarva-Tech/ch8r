@@ -1,31 +1,42 @@
 <template>
-  <Card v-if="notifications.length > 0">
-    <CardHeader>
-      <CardTitle>Notifications</CardTitle>
-      <CardDescription>
-        Configure your notifications here so that you can receive alerts
-        during smart escalation.
-      </CardDescription>
-    </CardHeader>
-    <CardContent class="space-y-2">
-      <C8Multiselect
-        v-model="selectedNotifications"
-        :options="notifications"
-        :multiple="true"
-        :preselect-first="false"
-        label="Select notification profiles"
-        placeholder="Select notification profiles"
-      />
-    </CardContent>
-    <CardFooter class="flex justify-end">
-      <C8Button
-        label="Save"
-        :disabled="processing"
-        :loading="processing"
-        @click="configureNotifications"
-      />
-    </CardFooter>
-  </Card>
+  <div class="space-y-4">
+    <div class="flex justify-end">
+      <NewNotificationProfile @created="onNotificationCreated" />
+    </div>
+    <Card v-if="notifications.length > 0">
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          Configure your notifications here so that you can receive alerts
+          during smart escalation.
+        </CardDescription>
+      </CardHeader>
+      <CardContent class="space-y-2">
+        <C8Multiselect
+          v-model="selectedNotifications"
+          :options="notifications"
+          :multiple="true"
+          :preselect-first="false"
+          label="Select notification profiles"
+          placeholder="Select notification profiles"
+        />
+      </CardContent>
+      <CardFooter class="flex justify-end">
+        <C8Button
+          label="Save"
+          :disabled="processing"
+          :loading="processing"
+          @click="configureNotifications"
+        />
+      </CardFooter>
+    </Card>
+    <p
+      v-else
+      class="text-sm text-muted-foreground"
+    >
+      No notification profiles yet. Add one above to get started.
+    </p>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -39,6 +50,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import NewNotificationProfile from '~/components/notification/NewNotificationProfile.vue'
 import type { SelectOption } from '~/lib/types'
 
 const appConfigStore = useAppConfigurationStore()
@@ -84,5 +96,9 @@ async function configureNotifications() {
   } finally {
     processing.value = false
   }
+}
+
+async function onNotificationCreated() {
+  await appConfigStore.initialize()
 }
 </script>

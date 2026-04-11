@@ -4,6 +4,9 @@
     container-class="flex justify-center items-center"
   />
   <div class="space-y-4">
+    <div class="flex justify-end">
+      <NewAIProvider />
+    </div>
     <ConfigureTextResponseModels />
     <ConfigureEmbeddingModels />
   </div>
@@ -13,6 +16,7 @@
 import { ref } from 'vue'
 import ConfigureTextResponseModels from './ConfigureTextResponseModels.vue'
 import ConfigureEmbeddingModels from './ConfigureEmbeddingModels.vue'
+import NewAIProvider from '~/components/AIProvider/NewAIProvider.vue'
 
 const AIProviderStore = useAIProviderStore()
 

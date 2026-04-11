@@ -40,7 +40,7 @@
     </div>
 
     <div
-      v-else
+      v-else-if="hasOptionalCards"
       class="w-full space-y-6"
     >
       <div class="space-y-1 text-center">
@@ -52,10 +52,11 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 w-full">
+      <div class="flex flex-wrap justify-center gap-4 w-full">
         <NuxtLink
+          v-if="!hasAppIntegration"
           to="/settings/integrations"
-          class="group rounded-lg border bg-card p-5 space-y-2 hover:border-primary hover:shadow-sm transition-all cursor-pointer"
+          class="group rounded-lg border bg-card p-5 space-y-2 hover:border-primary hover:shadow-sm transition-all cursor-pointer w-72"
         >
           <div class="flex items-center gap-2">
             <Plug class="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -72,8 +73,9 @@
         </NuxtLink>
 
         <NuxtLink
+          v-if="!hasAppIntegration"
           :to="`/applications/${appUuid}/settings?tab=integrations`"
-          class="group rounded-lg border bg-card p-5 space-y-2 hover:border-primary hover:shadow-sm transition-all cursor-pointer"
+          class="group rounded-lg border bg-card p-5 space-y-2 hover:border-primary hover:shadow-sm transition-all cursor-pointer w-72"
         >
           <div class="flex items-center gap-2">
             <Settings class="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -90,8 +92,9 @@
         </NuxtLink>
 
         <NuxtLink
+          v-if="!hasKnowledgeBase"
           :to="`/applications/${appUuid}/knowledge-base`"
-          class="group rounded-lg border bg-card p-5 space-y-2 hover:border-primary hover:shadow-sm transition-all cursor-pointer"
+          class="group rounded-lg border bg-card p-5 space-y-2 hover:border-primary hover:shadow-sm transition-all cursor-pointer w-72"
         >
           <div class="flex items-center gap-2">
             <BookOpen class="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -112,14 +115,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { Plug, Settings, BookOpen, ArrowRight } from 'lucide-vue-next'
 import NewAIProvider from '~/components/AIProvider/NewAIProvider.vue'
 import ConfigureAIModels from '~/components/App/ConfigureAIModels.vue'
+import { useAppIntegrationStore } from '~/stores/appIntegration'
 
 const AIProviderStore = useAIProviderStore()
 const AppAIProviderStore = useAppAIProviderStore()
 const appStore = useApplicationsStore()
+const appIntegrationStore = useAppIntegrationStore()
+const kbStore = useKnowledgeBaseStore()
 
 const appUuid = computed(() => appStore.selectedApplication?.uuid ?? '')
 
@@ -129,11 +135,23 @@ const hasTextModel = computed(() =>
     c => c.capability === 'text' && c.context === 'response',
   ),
 )
+const hasAppIntegration = computed(() => appIntegrationStore.appIntegrations.length > 0)
+const hasKnowledgeBase = computed(() => kbStore.kbs.length > 0)
+const hasOptionalCards = computed(() => !hasAppIntegration.value || !hasKnowledgeBase.value)
 
 const currentStep = computed(() => {
   if (!hasAIProvider.value) return 1
   if (!hasTextModel.value) return 2
   return 3
+})
+
+onMounted(async () => {
+  if (appUuid.value) {
+    await Promise.allSettled([
+      appIntegrationStore.load(appUuid.value),
+      kbStore.load(),
+    ])
+  }
 })
 
 const textModelConfig = {
