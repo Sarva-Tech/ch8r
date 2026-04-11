@@ -441,7 +441,7 @@
                           v-if="form.values.ai_provider"
                           class="size-4"
                         />
-                        <span class="ml-1 truncate max-w-32">{{ configuredAIProviderOptions.find(p => p.value === form.values.ai_provider)?.label || 'Select Provider' }}</span>
+                        <span class="ml-1 truncate max-w-16 sm:max-w-24 md:max-w-32">{{ configuredAIProviderOptions.find(p => p.value === form.values.ai_provider)?.label || 'Select Provider' }}</span>
                       </InputGroupButton>
                     </PopoverTrigger>
                     <PopoverContent
@@ -479,7 +479,7 @@
                         :disabled="!form.values.ai_provider"
                       >
                         <Cpu class="size-4" />
-                        <span class="ml-1 truncate max-w-32">{{ getSelectedModelLabel() }}</span>
+                        <span class="ml-1 truncate max-w-16 sm:max-w-24 md:max-w-32">{{ getSelectedModelLabel() }}</span>
                       </InputGroupButton>
                     </PopoverTrigger>
                     <PopoverContent
@@ -807,11 +807,11 @@ const sidebarWidth = computed(() =>
 const { apiError, handleError, clearError } = useApiErrorHandling()
 
 const schema = z.object({
-  ai_provider: z.string().min(1, { message: 'Please select an AI provider' }),
-  models: z.array(z.string()).min(1, { message: 'Please select a model' }),
+  ai_provider: z.string(),
+  models: z.array(z.string()),
   is_internal: z.boolean(),
   ai_mode: z.boolean(),
-  message: z.string().min(1, { message: 'Please enter a message' }),
+  message: z.string(),
   sender_identifier: z.string(),
   chatroom_identifier: z.string(),
 })
