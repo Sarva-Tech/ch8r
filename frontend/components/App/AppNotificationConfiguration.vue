@@ -1,58 +1,56 @@
 <template>
-  <div class="flex flex-col min-h-0 flex-1 p-4 pb-[120px] overflow-y-auto">
-    <div class="w-full space-y-2">
-      <C8Loader
-        v-if="loading"
-        container-class="flex justify-center items-center py-12"
-      />
+  <div class="w-full space-y-2">
+    <C8Loader
+      v-if="loading"
+      container-class="flex justify-center items-center py-12"
+    />
 
-      <C8Empty
-        v-else-if="notifications.length === 0"
-        :icon="Bell"
-        title="No notification profiles"
-        description="Add a notification profile to receive alerts during escalation"
-      >
-        <template #action>
-          <NewNotificationProfile @created="onNotificationCreated" />
-        </template>
-      </C8Empty>
-
-      <template v-else>
-        <div class="flex gap-2 items-center py-4">
-          <div class="ml-auto">
-            <NewNotificationProfile @created="onNotificationCreated" />
-          </div>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>
-              Configure your notifications here so that you can receive alerts
-              during smart escalation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent class="space-y-2">
-            <C8Multiselect
-              v-model="selectedNotifications"
-              :options="notifications"
-              :multiple="true"
-              :preselect-first="false"
-              label="Select notification profiles"
-              placeholder="Select notification profiles"
-            />
-          </CardContent>
-          <CardFooter class="flex justify-end">
-            <C8Button
-              label="Save"
-              :disabled="processing"
-              :loading="processing"
-              @click="configureNotifications"
-            />
-          </CardFooter>
-        </Card>
+    <C8Empty
+      v-else-if="notifications.length === 0"
+      :icon="Bell"
+      title="No notification profiles"
+      description="Add a notification profile to receive alerts during escalation"
+    >
+      <template #action>
+        <NewNotificationProfile @created="onNotificationCreated" />
       </template>
-    </div>
+    </C8Empty>
+
+    <template v-else>
+      <div class="flex gap-2 items-center py-4">
+        <div class="ml-auto">
+          <NewNotificationProfile @created="onNotificationCreated" />
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+          <CardDescription>
+            Configure your notifications here so that you can receive alerts
+            during smart escalation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="space-y-2">
+          <C8Multiselect
+            v-model="selectedNotifications"
+            :options="notifications"
+            :multiple="true"
+            :preselect-first="false"
+            label="Select notification profiles"
+            placeholder="Select notification profiles"
+          />
+        </CardContent>
+        <CardFooter class="flex justify-end">
+          <C8Button
+            label="Save"
+            :disabled="processing"
+            :loading="processing"
+            @click="configureNotifications"
+          />
+        </CardFooter>
+      </Card>
+    </template>
   </div>
 </template>
 

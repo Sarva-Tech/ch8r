@@ -141,8 +141,8 @@ const backToAppLink = computed(() => {
 const appSettingsItems = [
   { name: 'AI Models', tab: 'models', icon: Box },
   { name: 'Integrations', tab: 'integrations', icon: Puzzle },
-  { name: 'Agent Configuration', tab: 'prompt', icon: Sparkles },
   { name: 'Notifications', tab: 'notifications', icon: Bell },
+  { name: 'Agent Configuration', tab: 'prompt', icon: Sparkles },
 ]
 
 const currentAppSettingsTab = computed(() => {

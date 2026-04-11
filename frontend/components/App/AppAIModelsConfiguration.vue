@@ -1,33 +1,31 @@
 <template>
-  <div class="flex flex-col min-h-0 flex-1 p-4 pb-[120px] overflow-y-auto">
-    <div class="w-full space-y-2">
-      <C8Loader
-        v-if="loading"
-        container-class="flex justify-center items-center py-12"
-      />
+  <div class="w-full space-y-2">
+    <C8Loader
+      v-if="loading"
+      container-class="flex justify-center items-center py-12"
+    />
 
-      <C8Empty
-        v-else-if="AIProviders.length === 0"
-        :icon="Cpu"
-        title="No AI providers configured"
-        description="Add an AI provider to start configuring AI models for your application"
-      >
-        <template #action>
-          <NewAIProvider />
-        </template>
-      </C8Empty>
-
-      <template v-else>
-        <div class="flex gap-2 items-center py-4">
-          <div class="ml-auto">
-            <NewAIProvider />
-          </div>
-        </div>
-
-        <ConfigureTextResponseModels />
-        <ConfigureEmbeddingModels />
+    <C8Empty
+      v-else-if="AIProviders.length === 0"
+      :icon="Cpu"
+      title="No AI providers configured"
+      description="Add an AI provider to start configuring AI models for your application"
+    >
+      <template #action>
+        <NewAIProvider />
       </template>
-    </div>
+    </C8Empty>
+
+    <template v-else>
+      <div class="flex gap-2 items-center py-4">
+        <div class="ml-auto">
+          <NewAIProvider />
+        </div>
+      </div>
+
+      <ConfigureTextResponseModels />
+      <ConfigureEmbeddingModels />
+    </template>
   </div>
 </template>
 
