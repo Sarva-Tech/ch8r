@@ -123,6 +123,7 @@ function canManageProvider(AIProvider: AIProvider) {
 }
 
 function providerDisplayName(provider: string) {
+  if (!provider) return '—'
   switch (provider.toLowerCase()) {
     case 'gemini':
       return 'Gemini'

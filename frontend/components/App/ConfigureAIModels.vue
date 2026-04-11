@@ -151,7 +151,7 @@ watch(selectedProviderId, (newProviderId) => {
 })
 
 const configuredAIProviderOptions = computed(() =>
-  AIProviderStore.AIProviders.map(p => ({
+  AIProviderStore.AIProviders.filter(p => p.id != null).map(p => ({
     label: p.name,
     value: p.id.toString(),
     icon: useAIProviderIcon(p.provider).value,

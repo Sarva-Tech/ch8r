@@ -196,13 +196,7 @@
           <label class="text-sm font-medium">URL Schema <span class="text-destructive">*</span></label>
           <Textarea
             v-model="customToolForm.urlSchema"
-            :placeholder="`curl -X POST https://api.example.com/endpoint -H \"
-            Content-Type:
-            application
-            json\"
-            -d
-            '{\"key\":
-            \"value\"}'`"
+            placeholder="curl -X POST https://api.example.com/endpoint -H &quot;Content-Type: application/json&quot; -d '{&quot;key&quot;: &quot;value&quot;}'"
           />
           <p
             v-if="customToolForm.fieldErrors.urlSchema"
