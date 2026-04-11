@@ -429,7 +429,10 @@
           >
             <FormItem class="space-y-0">
               <InputGroup>
-                <InputGroupAddon align="block-start">
+                <InputGroupAddon
+                  align="block-start"
+                  class="px-1 pt-1"
+                >
                   <Popover>
                     <PopoverTrigger as-child>
                       <InputGroupButton
@@ -529,7 +532,10 @@
                   class="max-h-40 overflow-y-auto resize-none"
                   @keydown="handleMessageKeydown"
                 />
-                <InputGroupAddon align="block-end">
+                <InputGroupAddon
+                  align="block-end"
+                  class="px-1 pt-1"
+                >
                   <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                       <InputGroupButton
