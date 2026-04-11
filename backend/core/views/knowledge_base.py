@@ -75,13 +75,8 @@ class KnowledgeBaseViewSet(viewsets.ModelViewSet):
         _, embedding_model = ai_client_service.get_client_and_model(
             app=application, context='response', capability='embedding'
         )
-        _, text_model = ai_client_service.get_client_and_model(
-            app=application, context='response', capability='text'
-        )
 
         errors = {}
-        if not text_model:
-            errors["text_model"] = f"Text model not found for application {application.name}. Please configure a TEXT model."
         if not embedding_model:
             errors["embedding_model"] = f"Embedding model not found for application {application.name}. Please configure an EMBEDDING model."
 

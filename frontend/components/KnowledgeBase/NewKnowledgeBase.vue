@@ -71,12 +71,6 @@
           :item="item"
           @remove="kbDraft.remove"
         />
-        <C8Empty
-          v-if="kbDraft.items.length === 0 && !isVersionControl"
-          :icon="Inbox"
-          title="No items selected"
-          description="Add files, URLs, or text to upload to your knowledge base."
-        />
       </div>
     </div>
 
