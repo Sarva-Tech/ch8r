@@ -1,9 +1,5 @@
 import { defineStore } from 'pinia'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/zod'
-import { z } from 'zod'
 import { USER_ID_PREFIX } from '~/lib/consts'
-import { applyBackendErrors } from '~/lib/utils'
 import { toast } from 'vue-sonner'
 import { useHttpClient } from '~/composables/useHttpClient'
 
@@ -16,29 +12,6 @@ export interface User {
   last_name?: string | null
 }
 
-const registerSchema = z
-  .object({
-    email: z
-      .string()
-      .nonempty({ message: 'Required' })
-      .email({ message: 'Invalid email address' }),
-    password: z
-      .string()
-      .nonempty({ message: 'Required' })
-      .min(8, { message: 'At least 8 characters' }),
-    confirm_password: z
-      .string()
-      .nonempty({ message: 'Required' })
-      .min(8, { message: 'At least 8 characters' }),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    path: ['confirm_password'],
-    message: 'Passwords must match',
-  })
-
-type RegisterFormValues = z.infer<typeof registerSchema>
-const typedRegisterSchema = toTypedSchema(registerSchema)
-
 export const useUserStore = defineStore('user', {
   state: () => ({
     authUser: {
@@ -47,36 +20,9 @@ export const useUserStore = defineStore('user', {
       username: '',
       name: '',
     } as User,
-    form: shallowRef<ReturnType<typeof useForm<RegisterFormValues>> | null>(
-      null,
-    ),
   }),
 
   actions: {
-    initRegisterForm() {
-      if (!this.form) {
-        this.form = useForm<RegisterFormValues>({
-          validationSchema: typedRegisterSchema,
-          initialValues: {
-            email: '',
-            password: '',
-            confirm_password: '',
-          },
-        })
-      }
-      return this.form
-    },
-
-    getFormInstance() {
-      return this.initRegisterForm()
-    },
-
-    setBackendErrors(errors: Record<string, string[] | string>) {
-      const formInstance = this.getFormInstance()
-      if (!formInstance) return
-      applyBackendErrors(formInstance, errors)
-    },
-
     setUser(user: User) {
       this.authUser.id = user.id
       this.authUser.email = user.email
@@ -87,12 +33,9 @@ export const useUserStore = defineStore('user', {
 
     clearUser() {
       this.authUser = { id: null, email: '', username: '', name: '' }
-      if (this.form) {
-        this.form.resetForm()
-      }
     },
 
-    async register(values: RegisterFormValues) {
+    async register(values: { email: string; password: string }) {
       const { httpPost } = useHttpClient()
       await httpPost(
         '/register/',

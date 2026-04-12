@@ -10,8 +10,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
+import C8APIAlert from '@/components/C8APIAlert.vue'
+import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 import { toTypedSchema } from '@vee-validate/zod'
-import { KeyRound } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'public',
@@ -32,17 +33,17 @@ const form = useForm({
     email: '',
   },
 })
-
-const { handleSubmit, meta } = form
+const { handleSubmit, meta, isSubmitting } = form
+const { apiError, handleError, clearError } = useApiErrorHandling()
 
 const onSubmit = handleSubmit(async (values) => {
+  clearError()
   try {
     await passwordStore.requestResetLink(values)
     toast.success('Password reset link sent! Check your email.')
     await router.push('/login')
-  } catch (e: never) {
-    console.log(e.errors)
-    toast.error('Failed to send password reset link.')
+  } catch (e: unknown) {
+    handleError(e, form)
   }
 })
 
@@ -67,6 +68,7 @@ const disabled = computed(() => !meta.value.valid)
             class="space-y-4"
             @submit.prevent="onSubmit"
           >
+            <C8APIAlert :api-error="apiError" />
             <FormField
               v-slot="{ field }"
               name="email"
@@ -90,6 +92,7 @@ const disabled = computed(() => !meta.value.valid)
             <C8Button
               type="submit"
               class="w-full"
+              :loading="isSubmitting"
               :disabled="disabled"
               label="Reset Password"
             />

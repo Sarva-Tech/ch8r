@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useForm, Field as FormField } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/zod'
+import { z } from 'zod'
 import { useUserStore } from '~/stores/user'
 import C8Button from '@/components/C8Button.vue'
 import { Input } from '@/components/ui/input'
-import { Eye, EyeOff, UserPlus } from 'lucide-vue-next'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Field as FormField } from 'vee-validate'
+import { Eye, EyeOff } from 'lucide-vue-next'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   FormControl,
   FormItem,
@@ -13,23 +15,52 @@ import {
   FormMessage,
 } from '~/components/ui/form'
 import RequiredLabel from '~/components/RequiredLabel.vue'
+import C8APIAlert from '@/components/C8APIAlert.vue'
+import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 
 definePageMeta({
   layout: 'public',
   middleware: ['redirect-if-authenticated'],
 })
 
+const registerSchema = z
+  .object({
+    username: z.string().nonempty({ message: 'Required' }).email({ message: 'Invalid email address' }),
+    password: z.string().nonempty({ message: 'Required' }).min(8, { message: 'At least 8 characters' }),
+    confirm_password: z.string().nonempty({ message: 'Required' }).min(8, { message: 'At least 8 characters' }),
+  })
+  .refine(data => data.password === data.confirm_password, {
+    path: ['confirm_password'],
+    message: 'Passwords must match',
+  })
+
 const userStore = useUserStore()
-const form = userStore.getFormInstance()
-const { handleSubmit, meta } = form
+const form = useForm({
+  validationSchema: toTypedSchema(registerSchema),
+  initialValues: {
+    username: '',
+    password: '',
+    confirm_password: '',
+  },
+})
+const { handleSubmit, meta, isSubmitting } = form
 
 const showPassword = ref(false)
 const showConfirmPassword = ref(false)
+const { apiError, handleError, clearError } = useApiErrorHandling()
 
 const onSubmit = handleSubmit(async (values) => {
-  const success = await userStore.register(values)
-  if (success) {
-    navigateTo('/login')
+  clearError()
+  try {
+    const success = await userStore.register({
+      email: values.username,
+      password: values.password,
+    })
+    if (success) {
+      navigateTo('/login')
+    }
+  } catch (err: unknown) {
+    handleError(err, form)
   }
 })
 
@@ -51,9 +82,10 @@ const disabled = computed(() => !meta.value.valid)
             class="space-y-4"
             @submit.prevent="onSubmit"
           >
+            <C8APIAlert :api-error="apiError" />
             <FormField
               v-slot="{ field }"
-              name="email"
+              name="username"
             >
               <FormItem>
                 <FormLabel class="flex items-center gap-1">
@@ -143,6 +175,7 @@ const disabled = computed(() => !meta.value.valid)
             <C8Button
               type="submit"
               class="w-full"
+              :loading="isSubmitting"
               :disabled="disabled"
               label="Sign up"
             />

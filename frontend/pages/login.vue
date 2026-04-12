@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Eye, EyeOff, LogIn } from 'lucide-vue-next'
+import { Eye, EyeOff } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import C8Button from '@/components/C8Button.vue'
 import { z } from 'zod'
@@ -8,9 +8,11 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm, Field as FormField } from 'vee-validate'
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import RequiredLabel from '@/components/RequiredLabel.vue'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useHttpClient } from '~/composables/useHttpClient'
+import C8APIAlert from '@/components/C8APIAlert.vue'
+import { useApiErrorHandling } from '~/composables/useApiErrorHandling'
 
 const config = useRuntimeConfig()
 
@@ -45,10 +47,12 @@ const dialogMessage = ref('')
 const showResendOption = ref(false)
 const userEmail = ref('')
 const resendLoading = ref(false)
+const { apiError, handleError, clearError } = useApiErrorHandling()
 
 const disabled = computed(() => !meta.value.valid)
 
 const onSubmit = handleSubmit(async (values) => {
+  clearError()
   const userStore = useUserStore()
   const { httpPost } = useHttpClient()
 
@@ -91,13 +95,7 @@ const onSubmit = handleSubmit(async (values) => {
         openInactiveAccountDialog.value = true
       }
     } else {
-      const message
-        = err?.errors?.non_field_errors?.[0]
-          || err?.errors?.error
-          || err?.errors?.detail
-          || err?.message
-          || 'Login failed. Please try again.'
-      toast.error(message)
+      handleError(err, form)
     }
   }
 })
@@ -183,6 +181,7 @@ onMounted(async () => {
             class="space-y-4"
             @submit.prevent="onSubmit"
           >
+            <C8APIAlert :api-error="apiError" />
             <FormField
               v-slot="{ field }"
               name="email"
