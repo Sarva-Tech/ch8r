@@ -16,6 +16,7 @@ import {
   Pencil,
   Trash2,
   ChevronLeft,
+  LayoutGrid
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import type SlideOver from '~/components/SlideOver.vue'
@@ -418,8 +419,8 @@ async function handleDelete() {
                 class="flex w-full items-center space-x-2"
                 @click="setActiveMenu('api-keys')"
               >
-                <KeyRound class="size-4" />
-                <div>API Keys & Widget</div>
+                <LayoutGrid class="size-4" />
+                <div>Widget</div>
               </NuxtLink>
             </SidebarMenuButton>
             <SidebarMenuButton

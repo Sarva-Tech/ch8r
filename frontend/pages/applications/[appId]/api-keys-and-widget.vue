@@ -234,110 +234,110 @@ async function toggleWidget() {
 
 <template>
   <div class="flex flex-col h-screen p-4 pt-[72px] pb-[120px] overflow-y-auto space-y-6">
-    <div class="w-full space-y-3">
-      <div class="flex items-center gap-2 py-2">
-        <h2 class="text-lg font-semibold">
-          API Keys
-        </h2>
-        <div
-          v-if="apiKeys.length > 0"
-          class="ml-auto"
-        >
-          <NewApiKey />
-        </div>
-      </div>
+    <!--    <div class="w-full space-y-3"> -->
+    <!--      <div class="flex items-center gap-2 py-2"> -->
+    <!--        <h2 class="text-lg font-semibold"> -->
+    <!--          API Keys -->
+    <!--        </h2> -->
+    <!--        <div -->
+    <!--          v-if="apiKeys.length > 0" -->
+    <!--          class="ml-auto" -->
+    <!--        > -->
+    <!--          <NewApiKey /> -->
+    <!--        </div> -->
+    <!--      </div> -->
 
-      <Alert
-        v-if="newAPIKey"
-        class="py-4"
-      >
-        <CircleAlert class="h-4 w-4" />
-        <AlertTitle>Don't forget to copy your new API Key</AlertTitle>
-        <AlertDescription>
-          This API Key won't be shown again for your security.
-          <div class="relative w-full max-w-sm flex mt-2">
-            <Input
-              v-model="newAPIKey.api_key"
-              type="text"
-              disabled
-              class="pr-10"
-            />
-            <span class="absolute end-0 inset-y-0 flex items-center justify-center text-muted-foreground hover:text-foreground">
-              <Clipboard :text="newAPIKey.api_key" />
-            </span>
-          </div>
-        </AlertDescription>
-      </Alert>
+    <!--      <Alert -->
+    <!--        v-if="newAPIKey" -->
+    <!--        class="py-4" -->
+    <!--      > -->
+    <!--        <CircleAlert class="h-4 w-4" /> -->
+    <!--        <AlertTitle>Don't forget to copy your new API Key</AlertTitle> -->
+    <!--        <AlertDescription> -->
+    <!--          This API Key won't be shown again for your security. -->
+    <!--          <div class="relative w-full max-w-sm flex mt-2"> -->
+    <!--            <Input -->
+    <!--              v-model="newAPIKey.api_key" -->
+    <!--              type="text" -->
+    <!--              disabled -->
+    <!--              class="pr-10" -->
+    <!--            /> -->
+    <!--            <span class="absolute end-0 inset-y-0 flex items-center justify-center text-muted-foreground hover:text-foreground"> -->
+    <!--              <Clipboard :text="newAPIKey.api_key" /> -->
+    <!--            </span> -->
+    <!--          </div> -->
+    <!--        </AlertDescription> -->
+    <!--      </Alert> -->
 
-      <div
-        v-if="loading"
-        class="text-center py-8 text-muted-foreground text-sm"
-      >
-        Loading...
-      </div>
-      <C8Empty
-        v-if="!loading && apiKeys.length === 0"
-        :icon="Key"
-        title="No API keys yet"
-        description="Create an API key to authenticate your API requests"
-      >
-        <template #action>
-          <NewApiKey />
-        </template>
-      </C8Empty>
+    <!--      <div -->
+    <!--        v-if="loading" -->
+    <!--        class="text-center py-8 text-muted-foreground text-sm" -->
+    <!--      > -->
+    <!--        Loading... -->
+    <!--      </div> -->
+    <!--      <C8Empty -->
+    <!--        v-if="!loading && apiKeys.length === 0" -->
+    <!--        :icon="Key" -->
+    <!--        title="No API keys yet" -->
+    <!--        description="Create an API key to authenticate your API requests" -->
+    <!--      > -->
+    <!--        <template #action> -->
+    <!--          <NewApiKey /> -->
+    <!--        </template> -->
+    <!--      </C8Empty> -->
 
-      <div
-        v-if="!loading && apiKeys.length > 0"
-        class="space-y-2"
-      >
-        <C8Item
-          v-for="(apiKey, index) in apiKeys"
-          :key="index"
-          :icon="Key"
-          container-class="w-full"
-          item-class="w-full"
-        >
-          <template #title>
-            {{ apiKey.name }}
-          </template>
-          <template #details>
-            <ItemDescription>
-              <div class="inline-flex space-x-3">
-                <div class="flex items-center space-x-1">
-                  <Shield class="w-4 h-4" /><div>{{ apiKey.permissions?.map((p: string) => p.toUpperCase()).sort().join(', ') }}</div>
-                </div>
-                <div class="flex items-center space-x-1">
-                  <Calendar class="w-4 h-4" /><div>{{ apiKey.created?.split('T')[0] }}</div>
-                </div>
-              </div>
-            </ItemDescription>
-          </template>
-          <template #dropdown>
-            <DropdownMenuItem
-              :disabled="!canManageApiKey(apiKey)"
-              class="text-destructive"
-              @click="openDeleteDialog(apiKey)"
-            >
-              <Trash class="h-4 w-4 text-destructive" />Delete
-            </DropdownMenuItem>
-          </template>
-        </C8Item>
-      </div>
+    <!--      <div -->
+    <!--        v-if="!loading && apiKeys.length > 0" -->
+    <!--        class="space-y-2" -->
+    <!--      > -->
+    <!--        <C8Item -->
+    <!--          v-for="(apiKey, index) in apiKeys" -->
+    <!--          :key="index" -->
+    <!--          :icon="Key" -->
+    <!--          container-class="w-full" -->
+    <!--          item-class="w-full" -->
+    <!--        > -->
+    <!--          <template #title> -->
+    <!--            {{ apiKey.name }} -->
+    <!--          </template> -->
+    <!--          <template #details> -->
+    <!--            <ItemDescription> -->
+    <!--              <div class="inline-flex space-x-3"> -->
+    <!--                <div class="flex items-center space-x-1"> -->
+    <!--                  <Shield class="w-4 h-4" /><div>{{ apiKey.permissions?.map((p: string) => p.toUpperCase()).sort().join(', ') }}</div> -->
+    <!--                </div> -->
+    <!--                <div class="flex items-center space-x-1"> -->
+    <!--                  <Calendar class="w-4 h-4" /><div>{{ apiKey.created?.split('T')[0] }}</div> -->
+    <!--                </div> -->
+    <!--              </div> -->
+    <!--            </ItemDescription> -->
+    <!--          </template> -->
+    <!--          <template #dropdown> -->
+    <!--            <DropdownMenuItem -->
+    <!--              :disabled="!canManageApiKey(apiKey)" -->
+    <!--              class="text-destructive" -->
+    <!--              @click="openDeleteDialog(apiKey)" -->
+    <!--            > -->
+    <!--              <Trash class="h-4 w-4 text-destructive" />Delete -->
+    <!--            </DropdownMenuItem> -->
+    <!--          </template> -->
+    <!--        </C8Item> -->
+    <!--      </div> -->
 
-      <C8Dialog
-        v-model:open="isDeleteDialogOpen"
-        :title="`Delete API Key ${apiKeyToDelete?.name}`"
-        confirm-text="Delete"
-        :destructive="true"
-        @confirm="confirmDelete"
-      >
-        <template #description>
-          <div>
-            Are you sure you want to delete <span class="font-bold">{{ apiKeyToDelete?.name }}</span>?
-          </div>
-        </template>
-      </C8Dialog>
-    </div>
+    <!--      <C8Dialog -->
+    <!--        v-model:open="isDeleteDialogOpen" -->
+    <!--        :title="`Delete API Key ${apiKeyToDelete?.name}`" -->
+    <!--        confirm-text="Delete" -->
+    <!--        :destructive="true" -->
+    <!--        @confirm="confirmDelete" -->
+    <!--      > -->
+    <!--        <template #description> -->
+    <!--          <div> -->
+    <!--            Are you sure you want to delete <span class="font-bold">{{ apiKeyToDelete?.name }}</span>? -->
+    <!--          </div> -->
+    <!--        </template> -->
+    <!--      </C8Dialog> -->
+    <!--    </div> -->
 
     <Card class="w-full">
       <CardHeader>
