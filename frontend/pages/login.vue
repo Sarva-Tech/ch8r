@@ -194,7 +194,7 @@ onMounted(async () => {
                   <Input
                     v-bind="field"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder="hi@ch8r.com"
                     autofocus
                   />
                 </FormControl>
