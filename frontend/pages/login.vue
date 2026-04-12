@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm, Field as FormField } from 'vee-validate'
 import { FormControl, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import RequiredLabel from '@/components/RequiredLabel.vue'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useHttpClient } from '~/composables/useHttpClient'
@@ -16,11 +17,11 @@ const config = useRuntimeConfig()
 const schema = z.object({
   email: z
     .string()
-    .nonempty({ message: 'Email is required' })
+    .nonempty({ message: 'Required' })
     .email({ message: 'Enter a valid email address' }),
   password: z
     .string()
-    .nonempty({ message: 'Password is required' }),
+    .nonempty({ message: 'Required' }),
 })
 
 const form = useForm({
@@ -45,7 +46,6 @@ const showResendOption = ref(false)
 const userEmail = ref('')
 const resendLoading = ref(false)
 
-
 const disabled = computed(() => !meta.value.valid)
 
 const onSubmit = handleSubmit(async (values) => {
@@ -53,7 +53,7 @@ const onSubmit = handleSubmit(async (values) => {
   const { httpPost } = useHttpClient()
 
   try {
-    const response = await httpPost<{ token: string; user_id: number; username: string }>(
+    const response = await httpPost<{ token: string, user_id: number, username: string }>(
       '/login/',
       { username: values.email, password: values.password },
       false
@@ -77,7 +77,7 @@ const onSubmit = handleSubmit(async (values) => {
     toast.success('Login successful!')
     navigateTo('/')
   } catch (err: any) {
-    console.log(err, "error")
+    console.log(err, 'error')
 
     if (err.status === 403) {
       if (err?.errors?.is_verified === false) {
@@ -91,12 +91,12 @@ const onSubmit = handleSubmit(async (values) => {
         openInactiveAccountDialog.value = true
       }
     } else {
-      const message =
-        err?.errors?.non_field_errors?.[0] ||
-        err?.errors?.error ||
-        err?.errors?.detail ||
-        err?.message ||
-        'Login failed. Please try again.'
+      const message
+        = err?.errors?.non_field_errors?.[0]
+          || err?.errors?.error
+          || err?.errors?.detail
+          || err?.message
+          || 'Login failed. Please try again.'
       toast.error(message)
     }
   }
@@ -120,11 +120,11 @@ const handleResendVerification = async () => {
       openInactiveAccountDialog.value = false
     }
   } catch (err: any) {
-    const message =
-      err?.errors?.error ||
-      err?.errors?.detail ||
-      err?.message ||
-      'Failed to resend verification email. Please try again.'
+    const message
+      = err?.errors?.error
+        || err?.errors?.detail
+        || err?.message
+        || 'Failed to resend verification email. Please try again.'
     toast.error(message)
   } finally {
     resendLoading.value = false
@@ -152,7 +152,7 @@ onMounted(async () => {
     toast.success('Email verified! Logged in successfully.')
     navigateTo('/')
   } catch (err: any) {
-    console.log(err,"error")
+    console.log(err, 'error')
 
     if (err.status === 403) {
       dialogMessage.value = 'Your account approval is pending. We will get back to you as soon as the verification is complete. Thank you for your patience. Please contact our support team for any queries'
@@ -164,7 +164,6 @@ onMounted(async () => {
     }
   }
 })
-
 </script>
 
 <template>
@@ -175,19 +174,23 @@ onMounted(async () => {
       <Card>
         <CardHeader class="text-center">
           <CardTitle class="flex items-center justify-center gap-2 text-2xl">
-            <LogIn class="w-6 h-6" />
-            Welcome Back!
+            Sign in to your ch8r account
           </CardTitle>
-          <CardDescription>
-            Sign in to continue to your dashboard
-          </CardDescription>
         </CardHeader>
 
         <CardContent class="space-y-6">
-          <form class="space-y-4" @submit.prevent="onSubmit">
-            <FormField v-slot="{ field }" name="email">
+          <form
+            class="space-y-4"
+            @submit.prevent="onSubmit"
+          >
+            <FormField
+              v-slot="{ field }"
+              name="email"
+            >
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel class="flex items-center gap-1">
+                  Email <RequiredLabel />
+                </FormLabel>
                 <FormControl>
                   <Input
                     v-bind="field"
@@ -200,13 +203,18 @@ onMounted(async () => {
               </FormItem>
             </FormField>
 
-            <FormField v-slot="{ field }" name="password">
+            <FormField
+              v-slot="{ field }"
+              name="password"
+            >
               <FormItem>
                 <div class="flex justify-between items-center">
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel class="flex items-center gap-1">
+                    Password <RequiredLabel />
+                  </FormLabel>
                   <a
                     href="/forgot-password"
-                    class="text-sm text-primary font-medium hover:underline"
+                    class="text-sm underline"
                   >
                     Forgot Password?
                   </a>
@@ -249,9 +257,13 @@ onMounted(async () => {
 
         <CardFooter>
           <p class="text-center text-sm text-muted-foreground w-full">
-            Don't have an account?
-            <a href="/register" class="font-semibold underline underline-offset-4 text-primary">
-              Register here
+            Don't have an account yet?
+            <a
+              href="/register"
+              class="underline"
+              @click.prevent="navigateTo('/register')"
+            >
+              Sign up
             </a>
           </p>
         </CardFooter>
@@ -267,24 +279,24 @@ onMounted(async () => {
         <DialogFooter v-if="showResendOption">
           <div class="flex flex-col gap-2 w-full">
             <C8Button
-              @click="handleResendVerification"
               :loading="resendLoading"
               class="w-full"
               :label="resendLoading ? 'Sending...' : 'Resend Verification Email'"
+              @click="handleResendVerification"
             />
             <C8Button
               variant="outline"
-              @click="openInactiveAccountDialog = false"
               class="w-full"
               label="Cancel"
+              @click="openInactiveAccountDialog = false"
             />
           </div>
         </DialogFooter>
         <DialogFooter v-else>
           <C8Button
-            @click="openInactiveAccountDialog = false"
             class="w-full"
             label="OK"
+            @click="openInactiveAccountDialog = false"
           />
         </DialogFooter>
       </DialogContent>

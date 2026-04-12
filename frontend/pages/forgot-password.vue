@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { usePasswordStore } from '@/stores/usePasswordStore'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import C8Button from '@/components/C8Button.vue'
 import { Field as FormField, useForm } from 'vee-validate'
 import { FormControl, FormItem, FormLabel, FormMessage } from '~/components/ui/form'
 import RequiredLabel from '~/components/RequiredLabel.vue'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { z } from 'zod'
 import { toTypedSchema } from '@vee-validate/zod'
+import { KeyRound } from 'lucide-vue-next'
 
 definePageMeta({
   layout: 'public',
@@ -21,7 +23,7 @@ const passwordStore = usePasswordStore()
 const schema = z.object({
   email: z
     .string()
-    .nonempty({ message: 'Email is required' })
+    .nonempty({ message: 'Required' })
     .email({ message: 'Enter a valid email address' }),
 })
 const form = useForm({
@@ -31,7 +33,7 @@ const form = useForm({
   },
 })
 
-const { handleSubmit, meta, validate } = form
+const { handleSubmit, meta } = form
 
 const onSubmit = handleSubmit(async (values) => {
   try {
@@ -44,56 +46,69 @@ const onSubmit = handleSubmit(async (values) => {
   }
 })
 
-onMounted(() => {
-  validate()
-})
-
 const disabled = computed(() => !meta.value.valid)
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6">
-    <div
-      class="w-full max-w-md backdrop-blur-md rounded-lg shadow-xl border p-6 sm:p-10 bg-card"
-    >
-      <header class="mb-6 sm:mb-8 text-center">
-        <h1 class="text-2xl sm:text-3xl font-extrabold mb-2">Forgot Password?</h1>
-        <p class="text-sm sm:text-base">
-          Enter your email and we’ll send you a password reset link.
-        </p>
-      </header>
+  <div class="min-h-screen flex flex-col justify-center items-center bg-gradient-to-tr from-background to-muted px-4">
+    <div class="w-full max-w-md">
+      <Card>
+        <CardHeader class="text-center">
+          <CardTitle class="flex items-center justify-center gap-2 text-2xl">
+            Reset Password
+          </CardTitle>
+          <CardDescription>
+            We'll email you instructions on how to reset your password.
+          </CardDescription>
+        </CardHeader>
 
-      <form class="space-y-4" @submit.prevent="onSubmit">
-        <FormField v-slot="{ field }" name="email">
-          <FormItem>
-            <FormLabel class="flex items-center gap-1">
-              Email <RequiredLabel />
-            </FormLabel>
-            <FormControl>
-              <Input
-                v-bind="field"
-                type="email"
-                placeholder="you@example.com"
-                autofocus
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        </FormField>
+        <CardContent class="space-y-6">
+          <form
+            class="space-y-4"
+            @submit.prevent="onSubmit"
+          >
+            <FormField
+              v-slot="{ field }"
+              name="email"
+            >
+              <FormItem>
+                <FormLabel class="flex items-center gap-1">
+                  Email <RequiredLabel />
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    v-bind="field"
+                    type="email"
+                    placeholder="hi@ch8r.com"
+                    autofocus
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </FormField>
 
-        <Button
-          type="submit"
-          class="w-full font-semibold text-base sm:text-lg rounded-sm shadow-md"
-          :disabled="disabled"
-        >
-          Send Reset Link
-        </Button>
-      </form>
+            <C8Button
+              type="submit"
+              class="w-full"
+              :disabled="disabled"
+              label="Reset Password"
+            />
+          </form>
+        </CardContent>
 
-      <p class="mt-6 sm:mt-8 text-center text-sm">
-        Remembered your password?
-        <a href="/login" class="font-semibold underline underline-offset-4">Login</a>
-      </p>
+        <CardFooter>
+          <p class="text-center text-sm text-muted-foreground w-full">
+            Remember your password?
+            <a
+              href="/login"
+              class="underline"
+              @click.prevent="navigateTo('/login')"
+            >
+              Login
+            </a>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   </div>
 </template>

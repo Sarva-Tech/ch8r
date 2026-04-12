@@ -9,9 +9,10 @@ import { Field as FormField } from 'vee-validate'
 import {
   FormControl,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '~/components/ui/form'
-import C8Label from '@/components/C8Label.vue'
+import RequiredLabel from '~/components/RequiredLabel.vue'
 
 definePageMeta({
   layout: 'public',
@@ -41,29 +42,44 @@ const disabled = computed(() => !meta.value.valid)
       <Card>
         <CardHeader class="text-center">
           <CardTitle class="flex items-center justify-center gap-2 text-2xl">
-            <UserPlus class="w-6 h-6" />
-            Create Account
+            Let's get you started
           </CardTitle>
-          <CardDescription>
-            Fill the form below to register
-          </CardDescription>
         </CardHeader>
 
         <CardContent class="space-y-6">
-          <form class="space-y-4" @submit.prevent="onSubmit">
-            <FormField v-slot="{ field }" name="email">
+          <form
+            class="space-y-4"
+            @submit.prevent="onSubmit"
+          >
+            <FormField
+              v-slot="{ field }"
+              name="email"
+            >
               <FormItem>
-                <C8Label message="Email" required />
+                <FormLabel class="flex items-center gap-1">
+                  Email <RequiredLabel />
+                </FormLabel>
                 <FormControl>
-                  <Input v-bind="field" type="email" placeholder="you@example.com" autofocus class="w-full" />
+                  <Input
+                    v-bind="field"
+                    type="email"
+                    placeholder="hi@ch8r.com"
+                    autofocus
+                    class="w-full"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             </FormField>
 
-            <FormField v-slot="{ field }" name="password">
+            <FormField
+              v-slot="{ field }"
+              name="password"
+            >
               <FormItem>
-                <C8Label message="Password" required />
+                <FormLabel class="flex items-center gap-1">
+                  Password <RequiredLabel />
+                </FormLabel>
                 <FormControl>
                   <div class="relative">
                     <Input
@@ -79,7 +95,10 @@ const disabled = computed(() => !meta.value.valid)
                       class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       @click="showPassword = !showPassword"
                     >
-                      <component :is="showPassword ? EyeOff : Eye" class="h-4 w-4 text-muted-foreground" />
+                      <component
+                        :is="showPassword ? EyeOff : Eye"
+                        class="h-4 w-4 text-muted-foreground"
+                      />
                     </C8Button>
                   </div>
                 </FormControl>
@@ -87,9 +106,14 @@ const disabled = computed(() => !meta.value.valid)
               </FormItem>
             </FormField>
 
-            <FormField v-slot="{ field }" name="confirm_password">
+            <FormField
+              v-slot="{ field }"
+              name="confirm_password"
+            >
               <FormItem>
-                <C8Label message="Confirm Password" required />
+                <FormLabel class="flex items-center gap-1">
+                  Confirm Password <RequiredLabel />
+                </FormLabel>
                 <FormControl>
                   <div class="relative">
                     <Input
@@ -105,7 +129,10 @@ const disabled = computed(() => !meta.value.valid)
                       class="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       @click="showConfirmPassword = !showConfirmPassword"
                     >
-                      <component :is="showConfirmPassword ? EyeOff : Eye" class="h-4 w-4 text-muted-foreground" />
+                      <component
+                        :is="showConfirmPassword ? EyeOff : Eye"
+                        class="h-4 w-4 text-muted-foreground"
+                      />
                     </C8Button>
                   </div>
                 </FormControl>
@@ -117,7 +144,7 @@ const disabled = computed(() => !meta.value.valid)
               type="submit"
               class="w-full"
               :disabled="disabled"
-              label="Create Account"
+              label="Sign up"
             />
           </form>
         </CardContent>
@@ -125,8 +152,12 @@ const disabled = computed(() => !meta.value.valid)
         <CardFooter>
           <p class="text-center text-sm text-muted-foreground w-full">
             Already have an account?
-            <a href="/login" class="font-semibold underline underline-offset-4 text-primary">
-              Sign in here
+            <a
+              href="/login"
+              class="underline"
+              @click.prevent="navigateTo('/login')"
+            >
+              Login
             </a>
           </p>
         </CardFooter>
