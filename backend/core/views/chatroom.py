@@ -12,11 +12,13 @@ from core.consts import DASHBOARD_USER_ID_PREFIX
 from core.services.unread import mark_read_for_participant, broadcast_unread_update
 from django.db import transaction
 from core.serializers.chatroom import ChatRoomWithMessagesSerializer, ChatRoomDetailSerializer, ChatRoomNameUpdateSerializer, ChatRoomViewSerializer
+from core.rate_limit import WidgetRateThrottle
 
 
 class ChatRoomMessagesView(APIView):
     authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticatedOrWidget | HasAPIKeyPermission]
+    throttle_classes = [WidgetRateThrottle]
 
     def get(self, request, application_uuid, chatroom_uuid):
         if request.user and request.user.is_authenticated:

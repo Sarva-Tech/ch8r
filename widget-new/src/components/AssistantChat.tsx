@@ -42,7 +42,7 @@ export function AssistantChat() {
       localMessages.current = updated;
       messagesRef.current = updated;
       setMessages(updated);
-      
+
       if (msg.isOwn && (msg as any).aiMode !== undefined) {
         aiMode.value = (msg as any).aiMode;
       }
@@ -84,7 +84,7 @@ export function AssistantChat() {
           localMessages.current = result.data;
           messagesRef.current = result.data;
           setMessages(result.data);
-          
+
           if (result.data.length > 0) {
             const userMessages = result.data.filter(msg => msg.isOwn);
             if (userMessages.length > 0) {
@@ -179,7 +179,16 @@ export function AssistantChat() {
         isTyping.value = false;
       }
     } else {
-      sendError.value = result.error;
+      const withoutUser = localMessages.current.filter(m => m.uuid !== userMsg.uuid);
+      localMessages.current = withoutUser;
+      messagesRef.current = withoutUser;
+      setMessages(withoutUser);
+
+      if (result.retryAfter) {
+        sendError.value = `Rate limit exceeded. Please try again in ${result.retryAfter} seconds.`;
+      } else {
+        sendError.value = result.error;
+      }
       isTyping.value = false;
     }
   };

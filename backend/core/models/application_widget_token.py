@@ -14,3 +14,5 @@ class ApplicationWidgetToken(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
     label = models.CharField(max_length=100, blank=True, null=True)
+    rate_limit_count = models.PositiveIntegerField(default=60, help_text="Number of requests allowed per period")
+    rate_limit_period = models.PositiveIntegerField(default=60, help_text="Time period in seconds")

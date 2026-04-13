@@ -68,7 +68,7 @@ export interface ChatroomPreview {
   } | null;
 }
 
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string };
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; retryAfter?: number };
 
 export interface SendMessageRequest {
   message: string;
