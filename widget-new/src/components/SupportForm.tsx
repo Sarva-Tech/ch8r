@@ -68,7 +68,11 @@ export function SupportForm() {
       setForm(EMPTY_FORM);
       setErrors(EMPTY_ERRORS);
     } else {
-      setApiError(result.error);
+      if (result.retryAfter) {
+        setApiError(`Rate limit exceeded. Please try again in ${result.retryAfter} seconds.`);
+      } else {
+        setApiError(result.error);
+      }
     }
   };
 

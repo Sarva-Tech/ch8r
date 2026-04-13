@@ -23,6 +23,7 @@ class WidgetTokenAuthentication(BaseAuthentication):
         try:
             widget_token = ApplicationWidgetToken.objects.get(key=token, is_active=True)
             request.application = widget_token.application
+            request.widget_token = widget_token
             return None, None
         except ApplicationWidgetToken.DoesNotExist:
             raise AuthenticationFailed('Invalid or inactive widget token')

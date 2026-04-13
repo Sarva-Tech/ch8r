@@ -23,14 +23,28 @@ export class ApiClient {
       const response = await fetch(url, { ...options, headers: this.headers });
       if (!response.ok) {
         let error = `HTTP ${response.status}`;
+        let retryAfter: number | undefined;
+        
         try {
           const body = await response.json();
           if (body?.detail) error = body.detail;
           else if (body?.error) error = body.error;
+          if (body?.retry_after !== undefined) retryAfter = body.retry_after;
         } catch {
           // ignore parse errors
         }
-        return { ok: false, error };
+        
+        if (response.status === 429 && retryAfter === undefined) {
+          retryAfter = response.headers.get('Retry-After') 
+            ? parseInt(response.headers.get('Retry-After')!, 10) 
+            : undefined;
+        }
+        
+        if (retryAfter !== undefined) {
+          error += ` (Retry after ${retryAfter}s)`;
+        }
+        
+        return { ok: false, error, retryAfter };
       }
       if (response.status === 204 || response.headers.get('content-length') === '0') {
         return { ok: true, data: undefined as T };

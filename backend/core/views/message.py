@@ -23,6 +23,7 @@ from core.tasks import generate_bot_response
 from core.tasks.message import AGENT_IDENTIFIER
 from core.widget_auth import WidgetTokenAuthentication, IsAuthenticatedOrWidget
 from core.permissions import HasAPIKeyPermission
+from core.rate_limit import WidgetRateThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ def generate_chatroom_name(a, b):
 class SendMessageView(APIView):
     authentication_classes = [WidgetTokenAuthentication, SessionAuthentication, TokenAuthentication]
     permission_classes = [IsAuthenticatedOrWidget | HasAPIKeyPermission]
+    throttle_classes = [WidgetRateThrottle]
 
     def post(self, request, application_uuid):
         if request.user and request.user.is_authenticated:
