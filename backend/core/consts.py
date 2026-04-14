@@ -12,11 +12,6 @@ SUPPORTED_AI_PROVIDERS = [
         'id': 'gemini',
         'label': 'Google Gemini',
         'base_url': 'https://generativelanguage.googleapis.com/v1beta'
-    },
-    {
-        'id': 'custom',
-        'label': 'Custom Provider',
-        'base_url': ''
     }
 ]
 
