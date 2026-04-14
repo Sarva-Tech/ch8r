@@ -152,14 +152,14 @@
                     />
                   </div>
                 </div>
-                <Button
+                <!-- <Button
                   variant="outline"
                   size="sm"
                   type="button"
                   @click="openAdd"
                 >
                   Add Custom Tool
-                </Button>
+                </Button> -->
               </template>
             </div>
           </template>
