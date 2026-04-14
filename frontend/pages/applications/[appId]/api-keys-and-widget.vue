@@ -35,6 +35,9 @@ const configPosition = ref('bottom-right')
 const configAppName = ref('')
 const configAppDescription = ref('')
 const configAiGreeting = ref('')
+const configRateLimitCount = ref(60)
+const configRateLimitPeriod = ref(60)
+const savingRateLimit = ref(false)
 
 const apiKeyStore = useAPIKeyStore()
 const widgetStore = useWidgetStore()
@@ -169,14 +172,16 @@ const optionalAttrs = computed(() => {
 
 const scriptSnippet = computed(() => {
   if (!widget.value) return ''
-  const base = `<script\n  src="/widget.js"\n  data-app-uuid="${appUuid.value}"\n  data-token="${widget.value.token}"`
+  const apiBase = (runtimeConfig.public.apiBaseUrl as string).replace(/\/api\/?$/, '')
+  const base = `<script\n  src="/widget.js"\n  data-app-uuid="${appUuid.value}"\n  data-token="${widget.value.token}"\n  data-api-base-url="${apiBase}"`
   const extras = optionalAttrs.value.length ? '\n' + optionalAttrs.value.join('\n') : ''
   return base + extras + `\n><\/script>`
 })
 
 const windowConfigSnippet = computed(() => {
   if (!widget.value) return ''
-  const cfg: Record<string, string> = { appUuid: appUuid.value, token: widget.value.token }
+  const apiBase = (runtimeConfig.public.apiBaseUrl as string).replace(/\/api\/?$/, '')
+  const cfg: Record<string, string> = { appUuid: appUuid.value, token: widget.value.token, apiBaseUrl: apiBase }
   if (configTheme.value !== 'neutral') cfg.theme = configTheme.value
   if (configDarkMode.value !== 'auto') cfg.darkMode = configDarkMode.value
   if (configPosition.value !== 'bottom-right') cfg.position = configPosition.value
@@ -218,6 +223,10 @@ onMounted(async () => {
   try {
     widgetStore.widget = null
     await widgetStore.load()
+    if (widget.value) {
+      configRateLimitCount.value = widget.value.rate_limit_count || 60
+      configRateLimitPeriod.value = widget.value.rate_limit_period || 60
+    }
   } catch { toast.error('Failed to load widget configuration') }
   finally { loading.value = false }
 })
@@ -229,6 +238,15 @@ async function toggleWidget() {
     toast.success(widgetEnabled.value ? 'Widget integration enabled' : 'Widget integration disabled')
   } catch { toast.error('Error configuring widget integration') }
   finally { enablingWidget.value = false }
+}
+
+async function saveRateLimit() {
+  savingRateLimit.value = true
+  try {
+    await widgetStore.updateRateLimit(configRateLimitCount.value, configRateLimitPeriod.value)
+    toast.success('Rate limit settings updated')
+  } catch { toast.error('Failed to update rate limit settings') }
+  finally { savingRateLimit.value = false }
 }
 </script>
 
@@ -476,6 +494,50 @@ async function toggleWidget() {
                   placeholder="e.g. Hi! How can I help?"
                   class="h-8 text-sm"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <p class="text-sm font-medium flex items-center gap-1.5">
+              <Zap class="w-4 h-4" />Rate Limiting
+            </p>
+            <div class="rounded-lg border bg-muted/40 p-4 space-y-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1.5">
+                  <Label class="text-xs text-muted-foreground">Requests per period</Label>
+                  <Input
+                    v-model.number="configRateLimitCount"
+                    type="number"
+                    min="1"
+                    class="h-8 text-sm"
+                  />
+                </div>
+                <div class="space-y-1.5">
+                  <Label class="text-xs text-muted-foreground">Time period (seconds)</Label>
+                  <Input
+                    v-model.number="configRateLimitPeriod"
+                    type="number"
+                    min="1"
+                    class="h-8 text-sm"
+                  />
+                </div>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-muted-foreground">
+                  Limits widget requests to {{ configRateLimitCount }} requests every {{ configRateLimitPeriod }} seconds per user.
+                </p>
+                <Button
+                  size="sm"
+                  :disabled="savingRateLimit"
+                  @click="saveRateLimit"
+                >
+                  <RefreshCw
+                    v-if="savingRateLimit"
+                    class="w-3.5 h-3.5 mr-2 animate-spin"
+                  />
+                  {{ savingRateLimit ? 'Saving...' : 'Save' }}
+                </Button>
               </div>
             </div>
           </div>
