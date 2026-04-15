@@ -14,6 +14,11 @@ SUPPORTED_AI_PROVIDERS = [
         'base_url': 'https://generativelanguage.googleapis.com/v1beta'
     },
     {
+        'id': 'openai',
+        'label': 'OpenAI',
+        'base_url': 'https://api.openai.com/v1'
+    },
+    {
         'id': 'custom',
         'label': 'Custom Provider',
         'base_url': ''
