@@ -100,7 +100,7 @@ const previewSrcdoc = computed(() => {
   <script>
     window.Ch8rWidgetConfig = ${cfgJson};
   <\/script>
-  <script src="/widget.js"><\/script>
+  <script src="https:\/\/widget.ch8r.com\/widget.js"><\/script>
   <script>
     (function () {
       function tryOpen() {
@@ -173,7 +173,7 @@ const optionalAttrs = computed(() => {
 const scriptSnippet = computed(() => {
   if (!widget.value) return ''
   const apiBase = (runtimeConfig.public.apiBaseUrl as string).replace(/\/api\/?$/, '')
-  const base = `<script\n  src="/widget.js"\n  data-app-uuid="${appUuid.value}"\n  data-token="${widget.value.token}"\n  data-api-base-url="${apiBase}"`
+  const base = `<script\n  src="https:\/\/widget.ch8r.com\/widget.js"\n  data-app-uuid="${appUuid.value}"\n  data-token="${widget.value.token}"\n  data-api-base-url="${apiBase}"`
   const extras = optionalAttrs.value.length ? '\n' + optionalAttrs.value.join('\n') : ''
   return base + extras + `\n><\/script>`
 })
@@ -189,7 +189,7 @@ const windowConfigSnippet = computed(() => {
   if (configAppDescription.value) cfg.appDescription = configAppDescription.value
   if (configAiGreeting.value) cfg.aiGreeting = configAiGreeting.value
   const entries = Object.entries(cfg).map(([k, v]) => `    ${k}: "${v}"`).join(',\n')
-  return `<script>\n  window.Ch8rWidgetConfig = {\n${entries}\n  };\n<\/script>\n<script src="/widget.js"><\/script>`
+  return `<script>\n  window.Ch8rWidgetConfig = {\n${entries}\n  };\n<\/script>\n<script src="https:\/\/widget.ch8r.com\/widget.js"><\/script>`
 })
 
 async function copySnippet(key: string, text: string) {
