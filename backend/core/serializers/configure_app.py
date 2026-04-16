@@ -50,22 +50,17 @@ class ConfigureAppIntegrationSerializer(serializers.Serializer):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user:
-            self.fields['integration'].queryset = Integration.objects.filter(owner=user)
+            self.fields['integration'].queryset = Integration.objects.filter(creator=user)
 
     def validate(self, attrs):
         integration = attrs['integration']
         app = self.context.get("application")
         branch_name = attrs.get("branch_name")
 
-        if integration.owner != app.owner:
+        if integration.creator != app.owner:
             raise serializers.ValidationError("Integration and application owner mismatch.")
 
-        if integration.type != attrs["type"]:
-            raise serializers.ValidationError(
-                f"Integration type '{integration.type}' does not match '{attrs['type']}'"
-            )
-
-        if integration.type == "pms" and integration.provider.lower() == "github":
+        if attrs["type"] == "pms" and integration.provider.lower() == "github":
             if not branch_name:
                 raise serializers.ValidationError("Branch is required for GitHub PMS integrations.")
 
@@ -73,6 +68,6 @@ class ConfigureAppIntegrationSerializer(serializers.Serializer):
 
     def validate_integration(self, value):
         app = self.context.get('application')
-        if value.owner != app.owner:
+        if value.creator != app.owner:
             raise serializers.ValidationError("Integration and application owner mismatch.")
         return value
