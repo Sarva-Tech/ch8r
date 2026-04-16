@@ -110,12 +110,13 @@ class TestIntegrationCreateSerializer:
         mock_request = Mock()
         mock_request.user = user
 
-        with patch('core.serializers.integration.importlib.import_module') as mock_import:
-            mock_validator = Mock(return_value=(True, None, {'account_id': '123'}))
-            mock_module = Mock()
-            mock_module.validate_token = mock_validator
-            mock_import.return_value = mock_module
+        def mock_validate_token(data):
+            return True, None, {'account_id': '123'}
 
+        mock_module = Mock()
+        mock_module.validate_token = mock_validate_token
+
+        with patch('core.serializers.integration.importlib.import_module', return_value=mock_module):
             serializer = IntegrationCreateSerializer(context={'request': mock_request})
             attrs = {
                 'provider': 'github',
@@ -132,12 +133,13 @@ class TestIntegrationCreateSerializer:
         mock_request = Mock()
         mock_request.user = user
 
-        with patch('core.serializers.integration.importlib.import_module') as mock_import:
-            mock_validator = Mock(return_value=(False, 'Invalid token', None))
-            mock_module = Mock()
-            mock_module.validate_token = mock_validator
-            mock_import.return_value = mock_module
+        def mock_validate_token(data):
+            return False, 'Invalid token', None
 
+        mock_module = Mock()
+        mock_module.validate_token = mock_validate_token
+
+        with patch('core.serializers.integration.importlib.import_module', return_value=mock_module):
             serializer = IntegrationCreateSerializer(context={'request': mock_request})
             attrs = {
                 'provider': 'github',
