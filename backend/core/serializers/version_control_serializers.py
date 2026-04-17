@@ -21,7 +21,7 @@ class VCIssueCommentSerializer(serializers.ModelSerializer):
         model = VCIssueComment
         fields = [
             'id', 'uuid', 'external_id', 'body', 'author', 'author_association',
-            'created_at_field', 'updated_at_field', 'url', 'created_at', 'updated_at'
+            'url', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'uuid', 'created_at', 'updated_at']
 
@@ -35,7 +35,7 @@ class VCIssueSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'uuid', 'external_id', 'number', 'title', 'body', 'state',
             'author', 'author_association', 'assignees', 'labels', 'milestone',
-            'locked', 'created_at_field', 'updated_at_field', 'closed_at', 'url',
+            'locked', 'closed_at', 'url',
             'comments', 'comment_count', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'uuid', 'created_at', 'updated_at']
@@ -61,7 +61,7 @@ class VCPRCommentSerializer(serializers.ModelSerializer):
         model = VCPRComment
         fields = [
             'id', 'uuid', 'external_id', 'body', 'author', 'author_association',
-            'created_at_field', 'updated_at_field', 'url', 'created_at', 'updated_at'
+            'url', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'uuid', 'created_at', 'updated_at']
 
@@ -79,7 +79,7 @@ class VCPullRequestSerializer(serializers.ModelSerializer):
             'author', 'author_association', 'assignees', 'reviewers', 'labels',
             'milestone', 'head_branch', 'base_branch', 'merged', 'merged_at',
             'merge_commit_sha', 'additions', 'deletions', 'changed_files',
-            'created_at_field', 'updated_at_field', 'closed_at', 'url',
+            'closed_at', 'url',
             'comments', 'files', 'comment_count', 'file_count',
             'created_at', 'updated_at'
         ]
