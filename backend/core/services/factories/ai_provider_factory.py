@@ -3,11 +3,13 @@ from typing import Optional, Dict, Any
 from ..contracts.ai_provider_contract import AIProviderContract
 from ..providers.ai.custom_provider import CustomProvider
 from ..providers.ai.gemini_provider import GeminiProvider
+from ..providers.ai.openai_provider import OpenAIProvider
 
 
 class AIProviderFactory:
     PROVIDER_CLASSES = {
         'gemini': GeminiProvider,
+        'openai': OpenAIProvider,
         'custom': CustomProvider,
     }
 
