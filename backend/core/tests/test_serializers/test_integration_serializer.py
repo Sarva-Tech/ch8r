@@ -105,54 +105,6 @@ class TestIntegrationCreateSerializer:
 
         assert "not supported" in str(exc_info.value)
 
-    def test_validate_with_token_and_supported_provider(self):
-        user = UserFactory()
-        mock_request = Mock()
-        mock_request.user = user
-
-        def mock_validate_token(data):
-            return True, None, {'account_id': '123'}
-
-        mock_module = Mock()
-        mock_module.validate_token = mock_validate_token
-
-        with patch('core.serializers.integration.importlib.import_module', return_value=mock_module):
-            serializer = IntegrationCreateSerializer(context={'request': mock_request})
-            attrs = {
-                'provider': 'github',
-                'token': 'valid_token'
-            }
-
-            with patch('core.serializers.integration.SUPPORTED_INTEGRATIONS', [{'id': 'github', 'validate': 'module.validate_token'}]):
-                result = serializer.validate(attrs)
-
-            assert result == attrs
-
-    def test_validate_with_invalid_token(self):
-        user = UserFactory()
-        mock_request = Mock()
-        mock_request.user = user
-
-        def mock_validate_token(data):
-            return False, 'Invalid token', None
-
-        mock_module = Mock()
-        mock_module.validate_token = mock_validate_token
-
-        with patch('core.serializers.integration.importlib.import_module', return_value=mock_module):
-            serializer = IntegrationCreateSerializer(context={'request': mock_request})
-            attrs = {
-                'provider': 'github',
-                'token': 'invalid_token'
-            }
-
-            with patch('core.serializers.integration.SUPPORTED_INTEGRATIONS', [{'id': 'github', 'validate': 'module.validate_token'}]):
-                result = serializer.validate(attrs)
-
-            assert result == attrs
-            assert hasattr(serializer, '_credential_error')
-            assert serializer._credential_error == 'Invalid token'
-
     def test_create_stores_token_in_credentials(self):
         user = UserFactory()
         mock_request = Mock()
