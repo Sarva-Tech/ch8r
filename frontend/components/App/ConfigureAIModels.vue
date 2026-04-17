@@ -158,6 +158,8 @@ const configuredAIProviderOptions = computed(() =>
   })),
 )
 
+const EXCLUDED_MODELS = ['text-embedding-3-small']
+
 const getProviderModels = (providerId: number) => {
   const providerWithModels = AIProviderModelsStore.providerModels.find(
     pm => pm.ai_provider.id === providerId,
@@ -167,13 +169,33 @@ const getProviderModels = (providerId: number) => {
     return []
   }
 
-  return providerWithModels.ai_provider_models.models_data.map((model) => {
-    const modelName = model.name || model.displayName || model.id || Object.values(model)[0] || ''
-    return {
-      label: modelName,
-      value: modelName,
-    }
-  })
+  const capability = props.config.capability.toLowerCase()
+
+  return providerWithModels.ai_provider_models.models_data
+    .filter((model) => {
+      const modelName = (model.name || model.displayName || model.id || Object.values(model)[0] || '').toLowerCase()
+
+      if (EXCLUDED_MODELS.some(excluded => modelName.includes(excluded.toLowerCase()))) {
+        return false
+      }
+
+      if (capability === 'embedding') {
+        return modelName.includes('embedding')
+      }
+
+      if (capability === 'text') {
+        return !modelName.includes('embedding')
+      }
+
+      return true
+    })
+    .map((model) => {
+      const modelName = model.name || model.displayName || model.id || Object.values(model)[0] || ''
+      return {
+        label: modelName,
+        value: modelName,
+      }
+    })
 }
 
 const configureModel = form.handleSubmit(async (values) => {

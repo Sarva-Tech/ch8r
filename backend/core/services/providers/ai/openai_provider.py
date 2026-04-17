@@ -5,10 +5,6 @@ import openai
 from ...contracts.ai_provider_contract import AIProviderContract
 from core.agent_response_schema import SupportAgentResponse
 
-EXCLUDED_PREFIXES = ("whisper", "tts", "dall-e", "davinci", "babbage", "text-embedding-ada")
-EXCLUDED_SUFFIXES = ("-instruct",)
-
-
 class OpenAIProvider(AIProviderContract):
     def __init__(self, api_key: str, config: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(api_key, config)
@@ -37,10 +33,6 @@ class OpenAIProvider(AIProviderContract):
         result = []
         for model in raw_models:
             model_id = model.id
-            if any(model_id.startswith(p) for p in EXCLUDED_PREFIXES):
-                continue
-            if any(model_id.endswith(s) for s in EXCLUDED_SUFFIXES):
-                continue
             result.append({
                 "id": model_id,
                 "name": model_id,
@@ -57,26 +49,71 @@ class OpenAIProvider(AIProviderContract):
         tools: list[dict] | None,
         response_schema: type[BaseModel],
     ) -> tuple:
-        kwargs: Dict[str, Any] = {
-            "model": model,
-            "messages": messages,
-        }
-
-        if tools:
-            kwargs["tools"] = tools
-            kwargs["tool_choice"] = "auto"
-        else:
-            kwargs["response_format"] = {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": response_schema.__name__,
-                    "schema": response_schema.model_json_schema(),
-                    "strict": True,
-                },
-            }
+        has_tool_history = any(m.get("role") == "tool" for m in messages)
 
         try:
-            response = self.client.chat.completions.create(**kwargs)
+            if tools:
+                response = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                )
+                usage_metadata = self._extract_usage(response)
+                choice = response.choices[0]
+
+                if choice.finish_reason == "tool_calls":
+                    raw_tool_calls = [
+                        {
+                            "id": tc.id,
+                            "name": tc.function.name,
+                            "args": json.loads(tc.function.arguments),
+                        }
+                        for tc in (choice.message.tool_calls or [])
+                    ]
+                    messages.append({
+                        "role": "assistant",
+                        "content": choice.message.content or "",
+                        "tool_calls": [
+                            {
+                                "id": tc.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tc.function.name,
+                                    "arguments": tc.function.arguments,
+                                },
+                            }
+                            for tc in (choice.message.tool_calls or [])
+                        ],
+                    })
+                    return choice.message.content or "", raw_tool_calls, usage_metadata
+
+                return self._parse_structured_response(choice, response_schema, self._extract_usage(response))
+
+            elif has_tool_history:
+                response = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                )
+                usage_metadata = self._extract_usage(response)
+                choice = response.choices[0]
+                return self._parse_structured_response(choice, response_schema, usage_metadata)
+
+            else:
+                completion = self.client.beta.chat.completions.parse(
+                    model=model,
+                    messages=messages,
+                    response_format=response_schema,
+                )
+                usage_metadata = self._extract_usage(completion)
+                message = completion.choices[0].message
+
+                if message.refusal:
+                    raise ValueError(f"OpenAI refused the request: {message.refusal}")
+
+                return message.parsed, [], usage_metadata
+
         except openai.AuthenticationError as e:
             raise ValueError(f"Invalid OpenAI API key: {e}")
         except openai.RateLimitError as e:
@@ -84,24 +121,37 @@ class OpenAIProvider(AIProviderContract):
         except openai.APIError as e:
             raise ValueError(f"OpenAI API error: {e}")
 
-        usage_metadata = self._extract_usage(response)
-        choice = response.choices[0]
+    def _parse_structured_response(self, choice, response_schema, usage_metadata):
+        raw = choice.message.content or ""
+        stripped = raw.strip()
 
-        if choice.finish_reason == "tool_calls":
-            raw_tool_calls = []
-            for tc in (choice.message.tool_calls or []):
-                raw_tool_calls.append({
-                    "id": tc.id,
-                    "name": tc.function.name,
-                    "args": json.loads(tc.function.arguments),
-                })
-            return choice.message.content or "", raw_tool_calls, usage_metadata
+        if stripped.startswith("```"):
+            stripped = stripped.split("\n", 1)[-1]
+            if stripped.rstrip().endswith("```"):
+                stripped = stripped.rstrip()[:-3].rstrip()
+
+        brace_idx = stripped.find("{")
+        if brace_idx > 0:
+            stripped = stripped[brace_idx:]
+        last_brace = stripped.rfind("}")
+        if last_brace != -1 and last_brace < len(stripped) - 1:
+            stripped = stripped[:last_brace + 1]
+
+        if not stripped.startswith("{"):
+            stripped = json.dumps({
+                "answer": raw.strip(),
+                "status": "ANSWERED",
+                "escalation": False,
+                "reason_for_escalation": "",
+                "sentiment_score": 50,
+                "escalation_score": 0,
+                "criticality_score": 0,
+            })
 
         try:
-            parsed = response_schema.model_validate_json(choice.message.content)
+            parsed = response_schema.model_validate_json(stripped)
         except Exception as e:
             raise ValueError(f"Failed to parse OpenAI response as {response_schema.__name__}: {e}")
-
         return parsed, [], usage_metadata
 
     def _extract_usage(self, response) -> dict:

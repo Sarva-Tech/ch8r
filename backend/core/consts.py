@@ -18,11 +18,11 @@ SUPPORTED_AI_PROVIDERS = [
         'label': 'OpenAI',
         'base_url': 'https://api.openai.com/v1'
     },
-    {
-        'id': 'custom',
-        'label': 'Custom Provider',
-        'base_url': ''
-    }
+    # {
+    #     'id': 'custom',
+    #     'label': 'Custom Provider',
+    #     'base_url': ''
+    # }
 ]
 
 SUPPORTED_INTEGRATIONS = [
