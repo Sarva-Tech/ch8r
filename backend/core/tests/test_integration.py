@@ -305,3 +305,29 @@ class TestAppIntegrationAPI(BaseAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.json(), {'detail': 'deleted'})
+
+    def test_retrieve_other_users_app_integration(self):
+        user_a = UserFactory()
+        user_b = UserFactory()
+        app_b = ApplicationFactory(owner=user_b)
+        integration_b = IntegrationFactory(creator=user_b)
+        app_integration = AppIntegrationFactory(application=app_b, integration=integration_b)
+
+        self.client.force_authenticate(user=user_a)
+        response = self.client.get(
+            self._app_integration_detail_url(app_b.uuid, app_integration.uuid)
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_other_users_app_integration(self):
+        user_a = UserFactory()
+        user_b = UserFactory()
+        app_b = ApplicationFactory(owner=user_b)
+        integration_b = IntegrationFactory(creator=user_b)
+        app_integration = AppIntegrationFactory(application=app_b, integration=integration_b)
+
+        self.client.force_authenticate(user=user_a)
+        response = self.client.delete(
+            self._app_integration_detail_url(app_b.uuid, app_integration.uuid)
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

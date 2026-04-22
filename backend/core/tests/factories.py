@@ -6,7 +6,14 @@ from core.models import (
     AIProvider,
     Integration,
     AppIntegration,
-    NotificationProfile
+    NotificationProfile,
+    LLMModel,
+    ChatRoom,
+    KnowledgeBase,
+    AppModel,
+    AppNotificationProfile,
+    ApplicationAPIKey,
+    ApplicationWidgetToken
 )
 
 fake = RealFaker()
@@ -77,3 +84,77 @@ class NotificationProfileFactory(factory.django.DjangoModelFactory):
             obj.config = extracted if extracted else {'email': fake.email()}
         else:
             obj.config = extracted if extracted else {'webhookUrl': f'https://hooks.{obj.type}.com/test/webhook'}
+
+
+class LLMModelFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = LLMModel
+
+    name = factory.Sequence(lambda n: f"LLM Model {n}")
+    api_key = factory.Faker('password')
+    api_key_preview = factory.LazyAttribute(lambda obj: obj.api_key[:4] + '****')
+    base_url = factory.Faker('url')
+    model_name = factory.Iterator(['gpt-4', 'gpt-3.5-turbo', 'claude-3'])
+    model_type = factory.Iterator(['text', 'embedding', 'image'])
+    is_default = False
+    owner = factory.SubFactory(UserFactory)
+
+
+class ChatRoomFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ChatRoom
+
+    name = factory.Sequence(lambda n: f"Chat Room {n}")
+    application = factory.SubFactory(ApplicationFactory)
+    ai_provider = factory.SubFactory(AIProviderFactory)
+    model = factory.Iterator(['gpt-4', 'gpt-3.5-turbo'])
+    is_escalated = False
+
+
+class KnowledgeBaseFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = KnowledgeBase
+
+    application = factory.SubFactory(ApplicationFactory)
+    source_type = factory.Iterator(['url', 'file', 'text', 'github'])
+    path = factory.Faker('file_path')
+    metadata = factory.LazyFunction(lambda: {'content': fake.text()})
+    status = 'processed'
+
+
+class AppModelFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AppModel
+
+    application = factory.SubFactory(ApplicationFactory)
+    llm_model = factory.SubFactory(LLMModelFactory)
+
+
+class AppNotificationProfileFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AppNotificationProfile
+
+    application = factory.SubFactory(ApplicationFactory)
+    notification_profile = factory.SubFactory(NotificationProfileFactory)
+
+
+class ApplicationAPIKeyFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ApplicationAPIKey
+
+    application = factory.SubFactory(ApplicationFactory)
+    name = factory.Sequence(lambda n: f"API Key {n}")
+    hashed_api_key = factory.Faker('password')
+    permissions = factory.LazyFunction(lambda: ['read'])
+    owner = factory.SubFactory(UserFactory)
+
+
+class ApplicationWidgetTokenFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ApplicationWidgetToken
+
+    application = factory.SubFactory(ApplicationFactory)
+    label = factory.Sequence(lambda n: f"Widget Token {n}")
+    rate_limit_count = 60
+    rate_limit_period = 60
+    is_active = True

@@ -1,4 +1,5 @@
 from django.db.models import OuterRef, Subquery, DateTimeField
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, permissions, status
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.exceptions import MethodNotAllowed
@@ -70,10 +71,7 @@ class ApplicationChatRoomsPreviewView(APIView):
     permission_classes = [permissions.IsAuthenticated | HasAPIKeyPermission]
 
     def get(self, request, application_uuid):
-        try:
-            application = Application.objects.get(uuid=application_uuid)
-        except Application.DoesNotExist:
-            return Response({"detail": "Application not found."}, status=status.HTTP_404_NOT_FOUND)
+        application = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
 
         last_message_time_subquery = Message.objects.filter(
             chatroom=OuterRef('pk')
