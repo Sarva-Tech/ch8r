@@ -1,6 +1,7 @@
 from .base_model import BaseModel
 from .application import Application
 from .chatroom import ChatRoom
+from .chatroom_client_profile import ChatroomClientProfile
 from .chatroom_participant import ChatroomParticipant
 from .knowledge_base import KnowledgeBase
 from .message import Message

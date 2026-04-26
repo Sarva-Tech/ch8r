@@ -157,11 +157,22 @@ export function AssistantChat() {
       config.value?.token ?? '',
     );
 
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const domain = window.location.hostname || undefined;
+    const userAgent = navigator.userAgent || undefined;
+
     const result = await apiClient.sendMessage(appUuid, {
       message,
       sender_identifier: senderIdentifier,
       chatroom_identifier: chatroomId,
       ai_mode: aiMode.value,
+      metadata: {
+        client_context: {
+          timezone,
+          domain,
+          user_agent: userAgent,
+        },
+      },
     });
 
     if (result.ok) {

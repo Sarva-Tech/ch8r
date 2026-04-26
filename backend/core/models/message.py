@@ -15,6 +15,7 @@ class Message(models.Model):
     )
     is_internal = models.BooleanField(default=False)
     ai_mode = models.BooleanField(default=False)
+    is_authenticated_user = models.BooleanField(default=False)
     ai_provider = models.ForeignKey('AIProvider', on_delete=models.SET_NULL, null=True, blank=True)
     model = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

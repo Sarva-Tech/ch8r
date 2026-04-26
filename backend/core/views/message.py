@@ -16,6 +16,11 @@ from core.models.chatroom import ChatRoom
 from core.models.chatroom_participant import ChatroomParticipant
 from core.models.message import Message
 from core.models.ai_provider import AIProvider
+from core.services.client_context import (
+    build_client_context,
+    merge_message_metadata,
+    upsert_chatroom_client_profile,
+)
 from core.utils import normalize_model_name_by_provider
 
 from core.serializers.message import CreateMessageSerializer, ViewMessageSerializer
@@ -36,14 +41,16 @@ class SendMessageView(APIView):
     throttle_classes = [WidgetRateThrottle]
 
     def post(self, request, application_uuid):
-        if request.user and request.user.is_authenticated:
+        is_authenticated_user = bool(request.user and request.user.is_authenticated)
+
+        if is_authenticated_user:
             app = get_object_or_404(Application, uuid=application_uuid, owner=request.user)
         else:
             app = getattr(request, 'application', None)
             if not app or str(app.uuid) != str(application_uuid):
                 return Response({'detail': 'Invalid or unauthorized widget token'}, status=403)
 
-        platform = 'dashboard' if (request.user and request.user.is_authenticated) else 'widget'
+        platform = 'dashboard' if is_authenticated_user else 'widget'
 
         serializer = CreateMessageSerializer(data=request.data, app_owner=app.owner)
         serializer.is_valid(raise_exception=True)
@@ -54,7 +61,7 @@ class SendMessageView(APIView):
         message_text = data['message']
         metadata = data.get('metadata', {})
 
-        is_internal = data.get('is_internal', False) if (request.user and request.user.is_authenticated) else False
+        is_internal = data.get('is_internal', False) if is_authenticated_user else False
 
         if platform == 'dashboard' and not is_internal and data.get('ai_mode', False):
             return Response(
@@ -120,17 +127,24 @@ class SendMessageView(APIView):
                     ChatroomParticipant(chatroom=chatroom, user_identifier=agent_identifier, role='agent'),
                 ])
 
+        client_context = build_client_context(request, metadata)
+        enriched_metadata = merge_message_metadata(metadata, client_context)
+
         message = Message.objects.create(
             chatroom=chatroom,
             sender_identifier=sender_id,
             message=message_text,
-            metadata=metadata,
+            metadata=enriched_metadata,
             is_internal=is_internal,
             platform=platform,
             ai_mode=ai_mode,
+            is_authenticated_user=is_authenticated_user,
             ai_provider_id=ai_provider_id,
             model=model,
         )
+
+        if platform == 'widget':
+            upsert_chatroom_client_profile(chatroom, sender_id, client_context)
 
         unread_identifiers = mark_unread_for_participants(chatroom, sender_id, is_internal=is_internal)
         for user_identifier in unread_identifiers:
