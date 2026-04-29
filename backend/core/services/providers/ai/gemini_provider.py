@@ -1,4 +1,5 @@
 import uuid
+import copy
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 from google import genai
@@ -16,14 +17,33 @@ class GeminiProvider(AIProviderContract):
         except Exception as e:
             raise ValueError(f"Failed to initialize Gemini client: {e}")
 
+    def _clean_json_schema(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+        cleaned_schema = copy.deepcopy(schema)
+        
+        def remove_additional_properties(obj):
+            if isinstance(obj, dict):
+                keys_to_remove = ['additionalProperties', 'additional_properties']
+                for key in keys_to_remove:
+                    obj.pop(key, None)
+                
+                for value in obj.values():
+                    remove_additional_properties(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    remove_additional_properties(item)
+        
+        remove_additional_properties(cleaned_schema)
+        return cleaned_schema
+
     def generate_text(self, model: str, contents: str, **kwargs) -> SupportAgentResponse:
         try:
+            cleaned_schema = self._clean_json_schema(SupportAgentResponse.model_json_schema())
             response = self.client.models.generate_content(
                 model=model,
                 contents=contents,
                 config=GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_json_schema=SupportAgentResponse.model_json_schema(),
+                    response_json_schema=cleaned_schema,
                 )
             )
             return SupportAgentResponse.model_validate_json(response.text)
@@ -88,9 +108,10 @@ class GeminiProvider(AIProviderContract):
                 tools=[gemini_tools],
             )
         else:
+            cleaned_schema = self._clean_json_schema(response_schema.model_json_schema())
             config = types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=response_schema,
+                response_json_schema=cleaned_schema,
                 system_instruction=types.Content(parts=system_parts) if system_parts else None,
             )
 
@@ -245,3 +266,176 @@ class GeminiProvider(AIProviderContract):
             return [e.values for e in result.embeddings]
         except Exception as e:
             raise ValueError(f"Gemini embedding error: {e}")
+
+    def classify_intent(
+        self,
+        model: str,
+        messages: list[dict],
+        tools: list[dict] | None,
+        response_schema: type[BaseModel],
+    ) -> tuple:
+        ROLE_MAP = {"assistant": "model", "system": "system"}
+        system_parts: list = []
+        filtered_contents: list = []
+
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+
+            if role == "system":
+                system_parts.append(types.Part.from_text(text=content))
+            else:
+                gemini_role = ROLE_MAP.get(role, role)
+                filtered_contents.append(
+                    types.Content(
+                        role=gemini_role,
+                        parts=[types.Part.from_text(text=content)],
+                    )
+                )
+
+        cleaned_schema = self._clean_json_schema(response_schema.model_json_schema())
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_json_schema=cleaned_schema,
+            system_instruction=types.Content(parts=system_parts) if system_parts else None,
+        )
+
+        try:
+            response = self.client.models.generate_content(
+                model=model,
+                contents=filtered_contents,
+                config=config,
+            )
+        except Exception as e:
+            raise ValueError(f"Gemini API error: {e}")
+
+        usage_metadata = self._extract_usage(response)
+
+        try:
+            raw_text = response.text or ""
+            stripped = raw_text.strip()
+
+            if stripped.startswith("```"):
+                stripped = stripped.split("\n", 1)[-1]
+                if stripped.rstrip().endswith("```"):
+                    stripped = stripped.rstrip()[:-3].rstrip()
+
+            brace_idx = stripped.find("{")
+            if brace_idx > 0:
+                stripped = stripped[brace_idx:]
+
+            last_brace = stripped.rfind("}")
+            if last_brace != -1 and last_brace < len(stripped) - 1:
+                stripped = stripped[:last_brace + 1]
+
+            if not stripped.startswith("{"):
+                import json
+                wrapped = {
+                    "intent": "others",
+                    "tools_to_call": [],
+                    "reasoning": "Failed to parse structured response",
+                    "kb_sufficient": True,
+                    "sentiment_score": 50,
+                    "escalation_score": 0,
+                    "criticality_score": 0,
+                }
+                stripped = json.dumps(wrapped)
+
+            parsed = response_schema.model_validate_json(stripped)
+        except Exception as e:
+            raise ValueError(f"Failed to parse Gemini response as {response_schema.__name__}: {e}")
+
+        return parsed, usage_metadata
+
+    def generate_final_response(
+        self,
+        model: str,
+        messages: list[dict],
+        response_schema: type[BaseModel],
+    ) -> tuple:
+        ROLE_MAP = {"assistant": "model", "system": "system"}
+        system_parts: list = []
+        filtered_contents: list = []
+
+        for msg in messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+
+            if role == "system":
+                system_parts.append(types.Part.from_text(text=content))
+            elif role == "tool":
+                tool_call_id = msg.get("tool_call_id", "")
+                tool_name = msg.get("name", tool_call_id)
+                filtered_contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_function_response(
+                                name=tool_name,
+                                response={"result": content},
+                            )
+                        ],
+                    )
+                )
+            else:
+                gemini_role = ROLE_MAP.get(role, role)
+                filtered_contents.append(
+                    types.Content(
+                        role=gemini_role,
+                        parts=[types.Part.from_text(text=content)],
+                    )
+                )
+
+        cleaned_schema = self._clean_json_schema(response_schema.model_json_schema())
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_json_schema=cleaned_schema,
+            system_instruction=types.Content(parts=system_parts) if system_parts else None,
+        )
+
+        try:
+            response = self.client.models.generate_content(
+                model=model,
+                contents=filtered_contents,
+                config=config,
+            )
+        except Exception as e:
+            raise ValueError(f"Gemini API error: {e}")
+
+        usage_metadata = self._extract_usage(response)
+
+        try:
+            raw_text = response.text or ""
+            stripped = raw_text.strip()
+
+            if stripped.startswith("```"):
+                stripped = stripped.split("\n", 1)[-1]
+                if stripped.rstrip().endswith("```"):
+                    stripped = stripped.rstrip()[:-3].rstrip()
+
+            brace_idx = stripped.find("{")
+            if brace_idx > 0:
+                stripped = stripped[brace_idx:]
+
+            last_brace = stripped.rfind("}")
+            if last_brace != -1 and last_brace < len(stripped) - 1:
+                stripped = stripped[:last_brace + 1]
+
+            if not stripped.startswith("{"):
+                import json
+                wrapped = {
+                    "answer": stripped,
+                    "status": "ANSWERED",
+                    "escalation": False,
+                    "reason_for_escalation": "",
+                    "sentiment_score": 50,
+                    "escalation_score": 0,
+                    "criticality_score": 0,
+                }
+                stripped = json.dumps(wrapped)
+
+            parsed = response_schema.model_validate_json(stripped)
+        except Exception as e:
+            raise ValueError(f"Failed to parse Gemini response as {response_schema.__name__}: {e}")
+
+        return parsed, usage_metadata

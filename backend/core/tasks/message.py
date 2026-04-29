@@ -1,3 +1,4 @@
+import json
 import logging
 
 from celery import shared_task
@@ -19,10 +20,12 @@ from core.services.ai_client_service import AIClientService
 from core.services.tool_call_executor import ToolCallExecutor
 from core.services.escalation_service import EscalationService
 
+from core.agent_response_schema import SupportAgentResponse
+from core.intent_classification_schema import IntentClassificationResponse
+
 logger = logging.getLogger(__name__)
 
 AGENT_IDENTIFIER = getattr(settings, "DEFAULT_AGENT_IDENTIFIER", "agent_llm_001")
-MAX_TOOL_ROUNDS = 5
 
 
 def _send_live_update(bot_message: Message, user_message: Message):
@@ -71,6 +74,17 @@ def _send_live_update_to_dashboard(message: Message, user_message: Message):
 
 def _build_usage_meta(usage: dict) -> dict:
     return {k: v for k, v in usage.items() if v is not None} if usage else {}
+
+
+def _format_conversation_history(messages_qs, platform: str) -> list[dict]:
+    history = []
+    for msg in messages_qs:
+        role = "assistant" if msg.sender_identifier == AGENT_IDENTIFIER else "user"
+        history.append({
+            "role": role,
+            "content": msg.message
+        })
+    return history
 
 
 @shared_task
@@ -138,151 +152,78 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
     integration_context = "\n".join(integration_context_lines)
 
     config = app.get_prompt_config()
-    prompt_context = {
+    conversation_history = _format_conversation_history(messages_qs, user_message.platform)
+
+    # === STEP 1: INTENT CLASSIFICATION & TOOL DECISION ===
+    logger.info("[generate_bot_response] Step 1: Intent classification")
+
+    intent_prompt_context = {
         "product_name": app.name,
         "tone": config["tone"],
-        "response_style": config["response_style"],
-        "custom_instructions": config["custom_instructions"],
         "role": config["role"],
         "behavior": config["behavior"],
+        "conversation_history": conversation_history,
+        "kb_context": kb_context,
         "integration_context": integration_context,
+        "tools": tools,
     }
-    system_instruction = TemplateLoader.render_template('prompts/default.j2', prompt_context)
+    intent_system_instruction = TemplateLoader.render_template('prompts/intent_classification.j2', intent_prompt_context)
+    logger.debug("[generate_bot_response] Step 1 prompt: %s", intent_system_instruction)
 
-    conversation = messages_to_llm_conversation(messages_qs, platform=user_message.platform)
-    conversation = add_instructions_to_convo(conversation, system_instruction)
-    conversation = add_kb_to_convo(conversation, kb_context)
+    intent_conversation = [{"role": "system", "content": intent_system_instruction}]
+    intent_conversation.extend(messages_to_llm_conversation(messages_qs, platform=user_message.platform))
 
-    logger.info(
-        "[generate_bot_response] Context ready | messages=%d kb=%s tools=%d",
-        messages_qs.count(), has_chunks, len(tools or []),
-    )
-
-    from core.agent_response_schema import SupportAgentResponse, ResponseStatus
-
-    agent_response = None
+    intent_usage = {}
     tool_call_records: list[dict] = []
     intermediate_message = None
-    escalation_metadata: dict = {}
-    final_usage: dict = {}
 
     try:
-        executor = ToolCallExecutor()
+        intent_response, intent_usage_meta = provider.classify_intent(
+            model, intent_conversation, tools, IntentClassificationResponse
+        )
+        intent_usage = _build_usage_meta(intent_usage_meta)
 
-        for round_num in range(MAX_TOOL_ROUNDS):
-            logger.info("[generate_bot_response] Pipeline round %d/%d", round_num + 1, MAX_TOOL_ROUNDS)
+        logger.info(
+            "[generate_bot_response] Intent classified | intent=%s kb_sufficient=%s tools=%d",
+            intent_response.intent,
+            intent_response.kb_sufficient,
+            len(intent_response.tools_to_call),
+        )
 
-            tools_for_round = tools if round_num == 0 else None
-
-            response_or_text, raw_tool_calls, usage = provider.generate_with_conversation(
-                model, conversation, tools_for_round, SupportAgentResponse
-            )
-            final_usage = _build_usage_meta(usage)
-
-            if not raw_tool_calls:
-                agent_response = response_or_text
-                logger.info(
-                    "[generate_bot_response] Final answer | round=%d status=%s",
-                    round_num + 1, agent_response.status,
-                )
-                try:
-                    user_message.metadata = {
-                        **(user_message.metadata or {}),
-                        "status": str(agent_response.status),
-                        "sentiment_score": agent_response.sentiment_score,
-                        "escalation_score": agent_response.escalation_score,
-                        "criticality_score": agent_response.criticality_score,
-                    }
-                    user_message.save(update_fields=["metadata"])
-                    _send_live_update_to_dashboard(user_message, user_message)
-                except Exception as score_err:
-                    logger.warning("[generate_bot_response] Could not write scores to user message: %s", score_err)
-                break
-
-            logger.info(
-                "[generate_bot_response] Tool calls | round=%d calls=%s",
-                round_num + 1, [tc.get("name") for tc in raw_tool_calls],
-            )
-
-            if intermediate_message is None:
-                tool_names_list = [tc.get("name", "") for tc in raw_tool_calls]
-                intermediate_text = (
-                    response_or_text
-                    if isinstance(response_or_text, str) and response_or_text.strip()
-                    else "Calling tool{}: {}".format(
-                        "s" if len(tool_names_list) > 1 else "",
-                        ", ".join(tool_names_list),
-                    )
-                )
-                intermediate_message = Message.objects.create(
-                    chatroom=chatroom,
-                    sender_identifier=AGENT_IDENTIFIER,
-                    message=intermediate_text,
-                    metadata={
-                        "stage": "tool_planning",
-                        "tool_intent": tool_names_list,
-                        "tool_calls": [],
-                        "usage": _build_usage_meta(usage),
-                    },
-                    ai_provider_id=ai_provider_id,
-                    model=model,
-                    platform=user_message.platform,
-                    ai_mode=True,
-                    is_internal=True,
-                )
-                logger.info(
-                    "[generate_bot_response] Intermediate_Message saved | id=%s",
-                    intermediate_message.id,
-                )
-                _send_live_update_to_dashboard(intermediate_message, user_message)
-
-            round_records, tool_result_messages = executor.execute_all(str(app.uuid), raw_tool_calls)
-            tool_call_records.extend(round_records)
-            conversation.extend(tool_result_messages)
-
-        else:
-            logger.warning(
-                "[generate_bot_response] MAX_TOOL_ROUNDS (%d) exhausted — final structured call",
-                MAX_TOOL_ROUNDS,
-            )
-            try:
-                agent_response, _, usage = provider.generate_with_conversation(
-                    model, conversation, None, SupportAgentResponse
-                )
-                final_usage = _build_usage_meta(usage)
-            except Exception:
-                agent_response = SupportAgentResponse(
-                    answer="Unable to complete the request after maximum tool rounds.",
-                    status=ResponseStatus.INSUFFICIENT_INFORMATION,
-                    escalation=False,
-                    reason_for_escalation="",
-                    sentiment_score=50,
-                    escalation_score=0,
-                    criticality_score=0,
-                )
-
-        if intermediate_message is not None:
-            intermediate_message.metadata = {
-                **intermediate_message.metadata,
-                "tool_calls": tool_call_records,
-            }
-            intermediate_message.save(update_fields=["metadata"])
-            _send_live_update_to_dashboard(intermediate_message, user_message)
+        
+        # === STEP 1.5: CREATE REASONING MESSAGE ===
+        reasoning_message = Message.objects.create(
+            chatroom=chatroom,
+            sender_identifier=AGENT_IDENTIFIER,
+            message=intent_response.reasoning,
+            metadata={
+                "stage": "intent_reasoning",
+                "intent": intent_response.intent.value,
+                "kb_sufficient": intent_response.kb_sufficient,
+                "sentiment_score": intent_response.sentiment_score,
+                "escalation_score": intent_response.escalation_score,
+                "criticality_score": intent_response.criticality_score,
+                "usage": intent_usage,
+            },
+            ai_provider_id=ai_provider_id,
+            model=model,
+            platform=user_message.platform,
+            ai_mode=True,
+            is_internal=True,
+        )
+        logger.info(
+            "[generate_bot_response] Reasoning message saved | id=%s",
+            reasoning_message.id,
+        )
+        _send_live_update_to_dashboard(reasoning_message, user_message)
 
     except Exception as e:
-        logger.error(
-            "[generate_bot_response] Pipeline error | error=%s", e, exc_info=True,
-        )
+        logger.error("[generate_bot_response] Intent classification failed: %s", e, exc_info=True)
         bot_message = Message.objects.create(
             chatroom=chatroom,
             sender_identifier=AGENT_IDENTIFIER,
             message=str(e),
-            metadata={
-                "status": "ERROR",
-                "escalation": True,
-                "reason_for_escalation": str(e),
-                "error_details": str(e),
-            },
+            metadata={"status": "ERROR", "escalation": True, "reason_for_escalation": str(e)},
             ai_provider_id=ai_provider_id,
             model=model,
             platform=user_message.platform,
@@ -292,7 +233,113 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         _send_live_update(bot_message, user_message)
         return
 
+    # === STEP 2: EXECUTE TOOLS (if needed) ===
+    executor = ToolCallExecutor()
+
+    if intent_response.tools_to_call:
+        logger.info(
+            "[generate_bot_response] Step 2: Executing %d tools",
+            len(intent_response.tools_to_call),
+        )
+
+        tool_names_list = [tool.name for tool in intent_response.tools_to_call]
+        intermediate_text = f"Executing tool{'s' if len(tool_names_list) > 1 else ''}: {', '.join(tool_names_list)}"
+
+        intermediate_message = Message.objects.create(
+            chatroom=chatroom,
+            sender_identifier=AGENT_IDENTIFIER,
+            message=intermediate_text,
+            metadata={
+                "stage": "tool_execution",
+                "tool_intent": tool_names_list,
+                "tool_calls": [],
+                "usage": intent_usage,
+            },
+            ai_provider_id=ai_provider_id,
+            model=model,
+            platform=user_message.platform,
+            ai_mode=True,
+            is_internal=True,
+        )
+        logger.info(
+            "[generate_bot_response] Intermediate message saved | id=%s",
+            intermediate_message.id,
+        )
+        _send_live_update_to_dashboard(intermediate_message, user_message)
+
+        raw_tool_calls = []
+        for i, tool in enumerate(intent_response.tools_to_call):
+            try:
+                params = json.loads(tool.parameters_json) if tool.parameters_json else {}
+            except json.JSONDecodeError:
+                params = {}
+            raw_tool_calls.append({
+                "name": tool.name,
+                "args": params,
+                "id": f"{tool.name}_{i}",
+            })
+
+        round_records, _ = executor.execute_all(str(app.uuid), raw_tool_calls)
+        tool_call_records.extend(round_records)
+
+        intermediate_message.metadata = {
+            **intermediate_message.metadata,
+            "tool_calls": tool_call_records,
+        }
+        intermediate_message.save(update_fields=["metadata"])
+        _send_live_update_to_dashboard(intermediate_message, user_message)
+
+    else:
+        logger.info("[generate_bot_response] Step 2: Skipping tools (KB sufficient or no tools needed)")
+
+    # === STEP 3: FINAL RESPONSE GENERATION ===
+    logger.info("[generate_bot_response] Step 3: Generating final response")
+
+    final_prompt_context = {
+        "product_name": app.name,
+        "tone": config["tone"],
+        "response_style": config["response_style"],
+        "role": config["role"],
+        "behavior": config["behavior"],
+        "conversation_history": conversation_history,
+        "intent": intent_response.intent.value,
+        "reasoning": intent_response.reasoning,
+        "kb_context": kb_context,
+        "tool_results": tool_call_records,
+    }
+    final_system_instruction = TemplateLoader.render_template('prompts/final_response.j2', final_prompt_context)
+    logger.debug("[generate_bot_response] Step 3 prompt: %s", final_system_instruction)
+
+    final_conversation = [{"role": "system", "content": final_system_instruction}]
+    final_conversation.extend(messages_to_llm_conversation(messages_qs, platform=user_message.platform))
+
+
+    try:
+        agent_response, final_usage_meta = provider.generate_final_response(
+            model, final_conversation, SupportAgentResponse
+        )
+        final_usage = _build_usage_meta(final_usage_meta)
+
+    except Exception as e:
+        logger.error(
+            "[generate_bot_response] Final response generation failed: %s",
+            e, exc_info=True,
+        )
+        agent_response = SupportAgentResponse(
+            answer="I apologize, but I encountered an error while generating the response.",
+            status="INSUFFICIENT_INFORMATION",
+            escalation=False,
+            reason_for_escalation="",
+            sentiment_score=intent_response.sentiment_score,
+            escalation_score=intent_response.escalation_score,
+            criticality_score=intent_response.criticality_score,
+        )
+        final_usage = {}
+
+    # === ESCALATION CHECK ===
     escalation_service = EscalationService()
+    escalation_metadata: dict = {}
+
     if not user_message.is_internal and escalation_service.should_escalate(
         chatroom, agent_response, escalation_threshold=70
     ):
@@ -330,22 +377,22 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
                 is_internal=True,
             )
             _send_live_update_to_dashboard(warning_message, user_message)
-    else:
-        escalation_metadata = {}
 
-    final_tool_calls = [] if intermediate_message is not None else tool_call_records
+    # === COMBINE USAGE ===
+    combined_usage = intent_usage.copy()
+    combined_usage.update(final_usage)
 
+    # === CREATE FINAL MESSAGE ===
     final_metadata = {
         "status": str(agent_response.status),
         "escalation": agent_response.escalation,
         "reason_for_escalation": agent_response.reason_for_escalation,
-        "sentiment_score": agent_response.sentiment_score,
-        "escalation_score": agent_response.escalation_score,
-        "criticality_score": agent_response.criticality_score,
-        "tool_calls": final_tool_calls,
+        "intent": intent_response.intent.value,
+        "intent_reasoning": intent_response.reasoning,
+        "kb_sufficient": intent_response.kb_sufficient,
         "escalation_reason": escalation_metadata.get("escalation_reason", ""),
         "notified_profiles": escalation_metadata.get("notified_profiles", []),
-        "usage": final_usage,
+        "usage": combined_usage,
     }
 
     if kb_data:
@@ -363,8 +410,8 @@ def generate_bot_response(message_id, app_uuid, ai_provider_id=None, model=None)
         is_internal=user_message.is_internal,
     )
     logger.info(
-        "[generate_bot_response] Done | bot_message_id=%s status=%s",
-        bot_message.id, final_metadata.get("status"),
+        "[generate_bot_response] Done | bot_message_id=%s status=%s intent=%s",
+        bot_message.id, final_metadata.get("status"), intent_response.intent.value,
     )
 
     _send_live_update(bot_message, user_message)

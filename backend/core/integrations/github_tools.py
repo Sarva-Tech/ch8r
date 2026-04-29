@@ -79,6 +79,9 @@ def create_ticket(app_integration, **kwargs):
 
 
 def get_ticket(app_integration, **kwargs):
+    if "issue_number" not in kwargs:
+        raise ValueError("Missing required parameter: issue_number. Please provide the GitHub issue number you want to retrieve.")
+    
     token, repo = _creds(app_integration)
     issue_number = kwargs["issue_number"]
     resp = _gh_request("get", f"{GITHUB_API}/repos/{repo}/issues/{issue_number}", headers=_headers(token))
@@ -114,6 +117,20 @@ def unlock_ticket(app_integration, **kwargs):
     _gh_request("delete", f"{GITHUB_API}/repos/{repo}/issues/{issue_number}/lock", headers=_headers(token))
     return {"locked": False, "issue_number": issue_number}
 
+
+def add_comment(app_integration, **kwargs):
+    if "issue_number" not in kwargs:
+        raise ValueError("Missing required parameter: issue_number. Please provide the GitHub issue number you want to comment on.")
+    if "body" not in kwargs:
+        raise ValueError("Missing required parameter: body. Please provide the comment content.")
+    
+    token, repo = _creds(app_integration)
+    issue_number = kwargs["issue_number"]
+    payload = {"body": kwargs["body"]}
+    resp = _gh_request("post", f"{GITHUB_API}/repos/{repo}/issues/{issue_number}/comments", headers=_headers(token), json=payload)
+    d = resp.json()
+    return {"id": d["id"], "body": d["body"], "issue_number": issue_number, "created_at": d["created_at"]}
+
 GITHUB_VC_HANDLERS = {
     "list_commits": list_commits,
     "list_pull_requests": list_pull_requests,
@@ -127,4 +144,5 @@ GITHUB_PM_HANDLERS = {
     "update_ticket": update_ticket,
     "lock_ticket": lock_ticket,
     "unlock_ticket": unlock_ticket,
+    "add_comment": add_comment,
 }

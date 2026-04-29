@@ -176,3 +176,35 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 DISCORD_SIGNUP_WEBHOOK_URL = os.getenv("DISCORD_SIGNUP_WEBHOOK_URL")
 
 REQUIRE_ACCOUNT_APPROVAL = os.getenv("REQUIRE_ACCOUNT_APPROVAL", "False").lower() == "true"
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+    'loggers': {
+        'core.tasks.message': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}

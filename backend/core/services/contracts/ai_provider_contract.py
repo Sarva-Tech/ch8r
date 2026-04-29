@@ -36,3 +36,22 @@ class AIProviderContract(ABC):
     @abstractmethod
     def embed(self, model: str, texts: list[str]) -> list[list[float]]:
         pass
+
+    @abstractmethod
+    def classify_intent(
+        self,
+        model: str,
+        messages: list[dict],
+        tools: list[dict] | None,
+        response_schema: "type[BaseModel]",
+    ) -> "tuple[BaseModel, dict]":
+        pass
+
+    @abstractmethod
+    def generate_final_response(
+        self,
+        model: str,
+        messages: list[dict],
+        response_schema: "type[BaseModel]",
+    ) -> "tuple[BaseModel, dict]":
+        pass
