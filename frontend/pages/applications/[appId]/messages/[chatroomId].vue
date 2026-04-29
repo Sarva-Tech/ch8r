@@ -230,7 +230,7 @@
                 </PopoverContent>
               </Popover>
 
-              <Popover v-if="!isLLMAgent(message.sender_identifier) && message.metadata?.sentiment_score !== undefined">
+              <Popover v-if="isLLMAgent(message.sender_identifier) && message.metadata?.stage === 'intent_reasoning' && message.metadata?.sentiment_score !== undefined">
                 <PopoverTrigger as-child>
                   <button class="text-xs text-muted-foreground hover:text-foreground transition-colors px-1 py-0.5 rounded hover:bg-muted">
                     <BarChart2 class="w-3 h-3" />
@@ -770,6 +770,22 @@ const md = new MarkdownIt({
 const preprocessMarkdown = (text: string) => {
   let processed = text
   const protectedTexts: string[] = []
+
+  // Unescape common markdown characters
+  processed = processed.replace(/\\\*/g, '*')
+  processed = processed.replace(/\\_/g, '_')
+  processed = processed.replace(/\\`/g, '`')
+  processed = processed.replace(/\\#/g, '#')
+  processed = processed.replace(/\\\[/g, '[')
+  processed = processed.replace(/\\\]/g, ']')
+  processed = processed.replace(/\\\(/g, '(')
+  processed = processed.replace(/\\\)/g, ')')
+  processed = processed.replace(/\\\{/g, '{')
+  processed = processed.replace(/\\\}/g, '}')
+  processed = processed.replace(/\\-/g, '-')
+  processed = processed.replace(/\\\./g, '.')
+  processed = processed.replace(/\\!/g, '!')
+  processed = processed.replace(/\\n/g, '\n')
 
   processed = processed.replace(/```[\s\S]*?```/g, (match) => {
     const placeholder = `__PROTECTED_${protectedTexts.length}__`

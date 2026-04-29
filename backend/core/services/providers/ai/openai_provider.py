@@ -1,6 +1,7 @@
 import json
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
+import pydantic_core
 import openai
 from ...contracts.ai_provider_contract import AIProviderContract
 from core.agent_response_schema import SupportAgentResponse
@@ -189,3 +190,83 @@ class OpenAIProvider(AIProviderContract):
             response_schema=SupportAgentResponse,
         )
         return result
+
+    def classify_intent(
+        self,
+        model: str,
+        messages: list[dict],
+        tools: list[dict] | None,
+        response_schema: type[BaseModel],
+    ) -> tuple:
+        try:
+            completion = self.client.beta.chat.completions.parse(
+                model=model,
+                messages=messages,
+                response_format=response_schema,
+            )
+            usage_metadata = self._extract_usage(completion)
+            message = completion.choices[0].message
+
+            if message.refusal:
+                raise ValueError(f"OpenAI refused the request: {message.refusal}")
+
+            return message.parsed, usage_metadata
+
+        except pydantic_core._pydantic_core.ValidationError as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Structured output failed for intent classification, falling back to manual parsing: {e}")
+            
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages,
+                response_format={"type": "json_object"},
+            )
+            usage_metadata = self._extract_usage(response)
+            choice = response.choices[0]
+            return self._parse_structured_response(choice, response_schema, usage_metadata)
+        except openai.AuthenticationError as e:
+            raise ValueError(f"Invalid OpenAI API key: {e}")
+        except openai.RateLimitError as e:
+            raise ValueError(f"OpenAI rate limit exceeded: {e}")
+        except openai.APIError as e:
+            raise ValueError(f"OpenAI API error: {e}")
+
+    def generate_final_response(
+        self,
+        model: str,
+        messages: list[dict],
+        response_schema: type[BaseModel],
+    ) -> tuple:
+        try:
+            has_tool_history = any(m.get("role") == "tool" for m in messages)
+
+            if has_tool_history:
+                response = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    response_format={"type": "json_object"},
+                )
+                usage_metadata = self._extract_usage(response)
+                choice = response.choices[0]
+                return self._parse_structured_response(choice, response_schema, usage_metadata)
+            else:
+                completion = self.client.beta.chat.completions.parse(
+                    model=model,
+                    messages=messages,
+                    response_format=response_schema,
+                )
+                usage_metadata = self._extract_usage(completion)
+                message = completion.choices[0].message
+
+                if message.refusal:
+                    raise ValueError(f"OpenAI refused the request: {message.refusal}")
+
+                return message.parsed, usage_metadata
+
+        except openai.AuthenticationError as e:
+            raise ValueError(f"Invalid OpenAI API key: {e}")
+        except openai.RateLimitError as e:
+            raise ValueError(f"OpenAI rate limit exceeded: {e}")
+        except openai.APIError as e:
+            raise ValueError(f"OpenAI API error: {e}")

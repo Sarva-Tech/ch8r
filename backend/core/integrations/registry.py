@@ -160,16 +160,16 @@ INTEGRATION_TOOLS = {
         "get_ticket": {
             "id": "get_ticket",
             "title": "Get Ticket",
-            "description": "Retrieve details of a specific ticket or issue by its identifier.",
+            "description": "Retrieve details of a specific ticket or issue by its GitHub issue number. Use issue_number parameter (not ticket_id).",
             "schema": {
                 "type": "function",
                 "function": {
                     "name": "get_ticket",
-                    "description": "Retrieve details of a specific ticket or issue by its identifier.",
+                    "description": "Retrieve details of a specific ticket or issue by its GitHub issue number. Use issue_number parameter (not ticket_id).",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "issue_number": {"type": "integer", "description": "The number that identifies the issue."},
+                            "issue_number": {"type": "integer", "description": "The GitHub issue number (e.g., 5, 42, 123). Do NOT use ticket_id."},
                         },
                         "required": ["issue_number"],
                     },
@@ -179,15 +179,16 @@ INTEGRATION_TOOLS = {
         "update_ticket": {
             "id": "update_ticket",
             "title": "Update Ticket",
-            "description": "Update an existing ticket's title, description, status, assignees, or labels.",
+            "description": "Update an existing ticket's title, description, status, assignees, or labels. Use issue_number parameter (not ticket_id).",
             "schema": {
                 "type": "function",
                 "function": {
                     "name": "update_ticket",
-                    "description": "Update an existing ticket's title, description, status, assignees, or labels.",
+                    "description": "Update an existing ticket's title, description, status, assignees, or labels. Use issue_number parameter (not ticket_id).",
                     "parameters": {
                         "type": "object",
                         "properties": {
+                            "issue_number": {"type": "integer", "description": "The GitHub issue number to update (e.g., 5, 42, 123). Do NOT use ticket_id."},
                             "title": {"type": "string", "description": "The title of the issue."},
                             "body": {"type": "string", "description": "The contents of the issue."},
                             "state": {"type": "string", "enum": ["open", "closed"], "description": "The open or closed state of the issue."},
@@ -195,7 +196,7 @@ INTEGRATION_TOOLS = {
                             "milestone": {"type": "integer", "description": "The milestone number, or null to remove."},
                             "labels": {"type": "array", "items": {"type": "string"}, "description": "Labels to associate with this issue."},
                         },
-                        "required": [],
+                        "required": ["issue_number"],
                     },
                 },
             },
@@ -203,18 +204,19 @@ INTEGRATION_TOOLS = {
         "lock_ticket": {
             "id": "lock_ticket",
             "title": "Lock Ticket",
-            "description": "Prevent further comments on a ticket by locking it. Optionally specify a reason.",
+            "description": "Prevent further comments on a ticket by locking it. Use issue_number parameter (not ticket_id).",
             "schema": {
                 "type": "function",
                 "function": {
                     "name": "lock_ticket",
-                    "description": "Prevent further comments on a ticket by locking it. Optionally specify a reason.",
+                    "description": "Prevent further comments on a ticket by locking it. Use issue_number parameter (not ticket_id).",
                     "parameters": {
                         "type": "object",
                         "properties": {
+                            "issue_number": {"type": "integer", "description": "The GitHub issue number to lock (e.g., 5, 42, 123). Do NOT use ticket_id."},
                             "lock_reason": {"type": "string", "enum": ["off-topic", "too heated", "resolved", "spam"], "description": "The reason for locking the issue."},
                         },
-                        "required": [],
+                        "required": ["issue_number"],
                     },
                 },
             },
@@ -222,13 +224,39 @@ INTEGRATION_TOOLS = {
         "unlock_ticket": {
             "id": "unlock_ticket",
             "title": "Unlock Ticket",
-            "description": "Remove the lock on a ticket to allow new comments.",
+            "description": "Remove the lock on a ticket to allow new comments. Use issue_number parameter (not ticket_id).",
             "schema": {
                 "type": "function",
                 "function": {
                     "name": "unlock_ticket",
-                    "description": "Remove the lock on a ticket to allow new comments.",
-                    "parameters": {"type": "object", "properties": {}, "required": []},
+                    "description": "Remove the lock on a ticket to allow new comments. Use issue_number parameter (not ticket_id).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "issue_number": {"type": "integer", "description": "The GitHub issue number to unlock (e.g., 5, 42, 123). Do NOT use ticket_id."},
+                        },
+                        "required": ["issue_number"],
+                    },
+                },
+            },
+        },
+        "add_comment": {
+            "id": "add_comment",
+            "title": "Add Comment",
+            "description": "Add a comment to a GitHub issue or pull request. Use issue_number parameter (not ticket_id).",
+            "schema": {
+                "type": "function",
+                "function": {
+                    "name": "add_comment",
+                    "description": "Add a comment to a GitHub issue or pull request. Use issue_number parameter (not ticket_id).",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "issue_number": {"type": "integer", "description": "The GitHub issue number to comment on (e.g., 5, 42, 123). Do NOT use ticket_id."},
+                            "body": {"type": "string", "description": "The comment content to add."},
+                        },
+                        "required": ["issue_number", "body"],
+                    },
                 },
             },
         },
